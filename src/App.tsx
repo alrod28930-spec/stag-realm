@@ -10,11 +10,11 @@ import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
 import Portfolio from "@/pages/Portfolio";
 import Analyst from "@/pages/Analyst";
-import Oracle from "@/pages/Oracle";
 import TradeBots from "@/pages/TradeBots";
 import Recorder from "@/pages/Recorder";
 import Cradle from "@/pages/Cradle";
 import Settings from "@/pages/Settings";
+import SystemMonitor from "@/pages/SystemMonitor";
 import AdminPortal from "@/pages/AdminPortal";
 import NotFound from "./pages/NotFound";
 
@@ -34,11 +34,11 @@ const App = () => (
                 <Route path="/market" element={<Market />} />
                 <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/analyst" element={<Analyst />} />
-                <Route path="/oracle" element={<Oracle />} />
                 <Route path="/trade-bots" element={<TradeBots />} />
                 <Route path="/recorder" element={<Recorder />} />
                 <Route path="/cradle" element={<Cradle />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/system-monitor" element={<SystemMonitor />} />
                 <Route path="/admin" element={<AdminPortal />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

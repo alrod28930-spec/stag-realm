@@ -21,7 +21,10 @@ export const ENTITY_PREFIXES = {
   RESULT: 'res_',
   EVENT: 'evt_',
   QUERY: 'qry_',
-  ALERT: 'alrt_'
+  ALERT: 'alrt_',
+  SNAPSHOT: 'snap_',
+  NEWS: 'news_',
+  CSV: 'csv_'
 } as const;
 
 // Event Topics

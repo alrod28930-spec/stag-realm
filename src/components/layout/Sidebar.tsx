@@ -3,12 +3,13 @@ import {
   BarChart3,
   TrendingUp,
   Briefcase,
-  LineChart,
+  MessageSquare,
   Bot,
-  Video,
+  FileText,
   Baby,
   Settings,
-  Shield
+  Shield,
+  Monitor
 } from 'lucide-react';
 import {
   Sidebar,
@@ -29,14 +30,15 @@ const navigationItems = [
   { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
   { title: 'Market', url: '/market', icon: TrendingUp, description: 'Real-time market data' },
   { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Your positions' },
-  { title: 'Analyst', url: '/analyst', icon: LineChart, description: 'Technical analysis' },
+  { title: 'Analyst', url: '/analyst', icon: MessageSquare, description: 'AI trading assistant' },
   { title: 'Trade Bots', url: '/trade-bots', icon: Bot, description: 'Automated trading' },
-  { title: 'Recorder', url: '/recorder', icon: Video, description: 'Trade recordings' },
+  { title: 'Recorder', url: '/recorder', icon: FileText, description: 'Audit trail & exports' },
   { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
 ];
 
 const adminItems = [
   { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
+  { title: 'System Monitor', url: '/system-monitor', icon: Monitor, description: 'Core scaffold health' },
   { title: 'Admin Portal', url: '/admin', icon: Shield, description: 'Admin controls', adminOnly: true },
 ];
 

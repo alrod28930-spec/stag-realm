@@ -1,7 +1,7 @@
 // Core Scaffold - Number Systems and Constants
 
 // IDs & Versioning
-export type EntityPrefix = 'usr_' | 'org_' | 'ws_' | 'bot_' | 'brk_' | 'orc_' | 'res_' | 'evt_' | 'qry_' | 'alrt_';
+export type EntityPrefix = 'usr_' | 'org_' | 'ws_' | 'bot_' | 'brk_' | 'orc_' | 'res_' | 'evt_' | 'qry_' | 'alrt_' | 'snap_' | 'news_' | 'csv_';
 
 export interface VersionInfo {
   major: number;
