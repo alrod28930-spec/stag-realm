@@ -65,7 +65,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
         // Auto-refresh portfolio on connection
         await get().refreshPortfolio();
         
-        eventBus.emit('broker-connected', { brokerType, apiKey: apiKey.slice(0, 8) + '...' });
+        eventBus.emit('broker.connected' as any, { brokerType, apiKey: apiKey.slice(0, 8) + '...' });
         logService.log('info', 'Broker connected successfully', { brokerType });
         
         return true;
@@ -82,7 +82,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
       });
       
       logService.log('error', 'Broker connection failed', { error: errorMessage, brokerType });
-      eventBus.emit('broker-connection-failed', { error: errorMessage, brokerType });
+      eventBus.emit('broker.connection_failed' as any, { error: errorMessage, brokerType });
       
       return false;
     }
@@ -105,7 +105,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
         brokerAdapter: new FakeBrokerAdapter()
       });
       
-      eventBus.emit('broker-disconnected');
+      eventBus.emit('broker.disconnected' as any, {});
       logService.log('info', 'Broker disconnected');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Disconnection error';
@@ -130,7 +130,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
         isLoading: false
       });
       
-      eventBus.emit('portfolio-updated', portfolio);
+      eventBus.emit('portfolio.updated' as any, portfolio);
       logService.log('info', 'Portfolio refreshed', { 
         totalValue: portfolio.totalValue,
         positions: portfolio.positions.length 
@@ -144,7 +144,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
       });
       
       logService.log('error', 'Portfolio refresh failed', { error: errorMessage });
-      eventBus.emit('portfolio-error', { error: errorMessage });
+      eventBus.emit('portfolio.error' as any, { error: errorMessage });
     }
   },
 

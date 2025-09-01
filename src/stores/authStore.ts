@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthState, User, Organization, LoginCredentials } from '@/types/auth';
 import { createLogger } from '@/services/logging';
-import { eventBus, EVENTS } from '@/services/eventBus';
+import { eventBus } from '@/services/eventBus';
 
 const logger = createLogger('AuthStore');
 
