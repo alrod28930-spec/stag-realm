@@ -1,332 +1,492 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { 
-  LineChart, 
-  BarChart3, 
+  MessageSquare, 
+  Send, 
+  Bot, 
+  User, 
+  Crown,
   TrendingUp, 
   TrendingDown, 
-  Target,
-  Calendar,
-  Filter,
-  Download
+  DollarSign,
+  AlertTriangle,
+  RefreshCw,
+  Settings,
+  Eye,
+  Clock
 } from 'lucide-react';
+import { analystService, AnalystMessage } from '@/services/analyst';
+import { ANALYST_PERSONAS } from '@/services/llm';
+import { bid } from '@/services/bid';
+import { eventBus } from '@/services/eventBus';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Analyst() {
-  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
-  const [timeframe, setTimeframe] = useState('1D');
+  const [messages, setMessages] = useState<AnalystMessage[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState(ANALYST_PERSONAS[0].id);
+  const [showQuickActions, setShowQuickActions] = useState(true);
+  const { toast } = useToast();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const technicalIndicators = [
-    { name: 'RSI (14)', value: 68.5, signal: 'Neutral', status: 'neutral' },
-    { name: 'MACD', value: 2.45, signal: 'Buy', status: 'bullish' },
-    { name: 'SMA 50', value: 172.30, signal: 'Above', status: 'bullish' },
-    { name: 'SMA 200', value: 165.80, signal: 'Above', status: 'bullish' },
-    { name: 'Bollinger Bands', value: 'Upper', signal: 'Overbought', status: 'bearish' },
-    { name: 'Stochastic', value: 75.2, signal: 'Sell', status: 'bearish' }
-  ];
+  // Portfolio context data
+  const [portfolioData, setPortfolioData] = useState<any>(null);
+  const [riskMetrics, setRiskMetrics] = useState<any>(null);
 
-  const priceTargets = [
-    { analyst: 'Goldman Sachs', rating: 'Buy', target: 190.00, current: 175.50, upside: 8.26 },
-    { analyst: 'Morgan Stanley', rating: 'Hold', target: 180.00, current: 175.50, upside: 2.56 },
-    { analyst: 'JPMorgan', rating: 'Buy', target: 195.00, current: 175.50, upside: 11.11 },
-    { analyst: 'Bank of America', rating: 'Buy', target: 185.00, current: 175.50, upside: 5.41 },
-  ];
+  useEffect(() => {
+    // Start analyst session and load initial data
+    analystService.startSession();
+    loadContextData();
+    
+    // Subscribe to events
+    const unsubscribe = eventBus.on('portfolio.updated', loadContextData);
 
-  const marketSentiment = [
-    { metric: 'Institutional Ownership', value: 61.2, status: 'High' },
-    { metric: 'Insider Ownership', value: 0.07, status: 'Low' },
-    { metric: 'Short Interest', value: 1.8, status: 'Low' },
-    { metric: 'Put/Call Ratio', value: 0.85, status: 'Neutral' }
-  ];
+    return () => {
+      analystService.endSession();
+    };
+  }, []);
 
-  const newsEvents = [
-    {
-      time: '2 hours ago',
-      headline: 'Apple Reports Strong Q4 Earnings',
-      sentiment: 'positive',
-      impact: 'High'
-    },
-    {
-      time: '5 hours ago',
-      headline: 'iPhone 15 Sales Exceed Expectations',
-      sentiment: 'positive',
-      impact: 'Medium'
-    },
-    {
-      time: '1 day ago',
-      headline: 'Supply Chain Concerns in China',
-      sentiment: 'negative',
-      impact: 'Medium'
-    },
-    {
-      time: '2 days ago',
-      headline: 'New Product Launch Event Announced',
-      sentiment: 'positive',
-      impact: 'Low'
-    }
-  ];
+  useEffect(() => {
+    // Load messages from service
+    setMessages(analystService.getMessages());
+  }, []);
 
-  const getSignalColor = (status: string) => {
-    switch (status) {
-      case 'bullish': return 'text-accent';
-      case 'bearish': return 'text-destructive';
-      default: return 'text-muted-foreground';
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive
+    scrollToBottom();
+  }, [messages]);
+
+  const loadContextData = () => {
+    setPortfolioData(bid.getPortfolio());
+    setRiskMetrics(bid.getRiskMetrics());
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return;
+
+    const userInput = inputMessage.trim();
+    setInputMessage('');
+    setIsLoading(true);
+
+    try {
+      const response = await analystService.processUserMessage(userInput);
+      setMessages(analystService.getMessages());
+      
+      // Focus back to input
+      setTimeout(() => inputRef.current?.focus(), 100);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process your message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getRatingColor = (rating: string) => {
-    switch (rating) {
-      case 'Buy': return 'bg-accent text-accent-foreground';
-      case 'Sell': return 'bg-destructive text-destructive-foreground';
-      default: return 'bg-muted text-muted-foreground';
+  const handlePersonaChange = (personaId: string) => {
+    setSelectedPersona(personaId);
+    analystService.setPersona(personaId);
+    setMessages(analystService.getMessages());
+  };
+
+  const handleActionButtonClick = (eventType: string, eventData: any) => {
+    // Emit the event through the event bus
+    eventBus.emit(eventType, eventData);
+    
+    toast({
+      title: "Action Triggered",
+      description: `Requested: ${eventType}`,
+    });
+  };
+
+  const handleQuickAction = async (action: string) => {
+    setIsLoading(true);
+    try {
+      let response: AnalystMessage;
+      
+      switch (action) {
+        case 'explain-portfolio':
+          response = await analystService.processUserMessage("Explain my current portfolio");
+          break;
+        case 'diagnose-last-trade':
+          response = await analystService.diagnoseLastTrade();
+          break;
+        case 'daily-lessons':
+          response = await analystService.generateDailyLessons();
+          break;
+        case 'compare-execution':
+          response = await analystService.compareExecutionToPlan();
+          break;
+        default:
+          return;
+      }
+      
+      setMessages(analystService.getMessages());
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process quick action. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getSentimentColor = (sentiment: string) => {
-    switch (sentiment) {
-      case 'positive': return 'text-accent';
-      case 'negative': return 'text-destructive';
-      default: return 'text-muted-foreground';
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
+
+  const formatTimestamp = (timestamp: Date) => {
+    return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const currentPersona = ANALYST_PERSONAS.find(p => p.id === selectedPersona);
 
   return (
-    <div className="space-y-8">
+    <div className="h-full flex flex-col space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Technical Analyst</h1>
-          <p className="text-muted-foreground mt-2">
-            Advanced technical analysis and market insights
-          </p>
+        <div className="flex items-center space-x-3">
+          <Crown className="w-8 h-8 text-accent" />
+          <div>
+            <h1 className="text-2xl font-bold">The Analyst</h1>
+            <p className="text-muted-foreground">
+              AI-powered portfolio intelligence and market insights
+            </p>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
-          <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
-            <SelectTrigger className="w-32">
+          <Select value={selectedPersona} onValueChange={handlePersonaChange}>
+            <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="AAPL">AAPL</SelectItem>
-              <SelectItem value="GOOGL">GOOGL</SelectItem>
-              <SelectItem value="MSFT">MSFT</SelectItem>
-              <SelectItem value="TSLA">TSLA</SelectItem>
-              <SelectItem value="NVDA">NVDA</SelectItem>
+              {ANALYST_PERSONAS.map((persona) => (
+                <SelectItem key={persona.id} value={persona.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{persona.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {persona.description}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Select value={timeframe} onValueChange={setTimeframe}>
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1m">1m</SelectItem>
-              <SelectItem value="5m">5m</SelectItem>
-              <SelectItem value="15m">15m</SelectItem>
-              <SelectItem value="1H">1H</SelectItem>
-              <SelectItem value="1D">1D</SelectItem>
-              <SelectItem value="1W">1W</SelectItem>
-            </SelectContent>
-          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowQuickActions(!showQuickActions)}
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Chart Area */}
-        <Card className="lg:col-span-2 bg-gradient-card shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <LineChart className="w-5 h-5" />
-                {selectedSymbol} Price Chart
-              </CardTitle>
-              <CardDescription>Real-time price action with technical indicators</CardDescription>
-            </div>
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm">
-                <Filter className="w-4 h-4 mr-2" />
-                Indicators
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Mock Chart Area */}
-            <div className="h-96 bg-muted/20 rounded-lg flex items-center justify-center">
-              <div className="text-center space-y-2">
-                <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto" />
-                <p className="text-muted-foreground">Interactive Chart Area</p>
-                <p className="text-xs text-muted-foreground">
-                  Real-time {selectedSymbol} price chart with technical indicators
-                </p>
-              </div>
-            </div>
-            
-            {/* Chart Controls */}
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm">Candlestick</Button>
-                <Button variant="ghost" size="sm">Line</Button>
-                <Button variant="ghost" size="sm">Area</Button>
-              </div>
-              <div className="flex items-center space-x-2 text-sm">
-                <span className="text-muted-foreground">Price:</span>
-                <span className="font-semibold">$175.50</span>
-                <span className="text-accent">+2.25 (+1.30%)</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Technical Indicators */}
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader>
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 min-h-0">
+        {/* Main Chat Area */}
+        <Card className="lg:col-span-3 bg-gradient-card shadow-card flex flex-col">
+          <CardHeader className="flex-shrink-0 pb-4">
             <CardTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5" />
-              Technical Indicators
+              <MessageSquare className="w-5 h-5" />
+              Chat with {currentPersona?.name}
             </CardTitle>
+            <CardDescription>
+              {currentPersona?.description}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {technicalIndicators.map((indicator, index) => (
-                <div key={index} className="flex justify-between items-center p-3 rounded-lg bg-muted/30">
-                  <div>
-                    <p className="font-semibold text-sm">{indicator.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {typeof indicator.value === 'number' ? indicator.value.toFixed(2) : indicator.value}
-                    </p>
+          
+          <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+            {/* Messages Area */}
+            <ScrollArea className="flex-1 px-6">
+              <div className="space-y-4 pb-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg p-4 ${
+                        message.type === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : message.type === 'system'
+                          ? 'bg-muted/50 text-muted-foreground border'
+                          : 'bg-muted text-foreground'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 mb-2">
+                        {message.type === 'user' ? (
+                          <User className="w-4 h-4 mt-0.5" />
+                        ) : message.type === 'analyst' ? (
+                          <Bot className="w-4 h-4 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs opacity-70">
+                              {message.type === 'analyst' && message.persona
+                                ? ANALYST_PERSONAS.find(p => p.id === message.persona)?.name
+                                : message.type.charAt(0).toUpperCase() + message.type.slice(1)
+                              }
+                            </span>
+                            <span className="text-xs opacity-70">
+                              {formatTimestamp(message.timestamp)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="prose prose-sm max-w-none text-current">
+                        {message.content.split('\n').map((line, index) => (
+                          <div key={index}>
+                            {line.startsWith('**') && line.endsWith('**') ? (
+                              <h4 className="font-semibold text-current mb-1">
+                                {line.slice(2, -2)}
+                              </h4>
+                            ) : line.startsWith('*') && line.endsWith('*') ? (
+                              <em className="text-current opacity-80">
+                                {line.slice(1, -1)}
+                              </em>
+                            ) : (
+                              <p className="text-current">{line || '\u00A0'}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Action Buttons */}
+                      {message.actionButtons && message.actionButtons.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {message.actionButtons.map((button, index) => (
+                            <Button
+                              key={index}
+                              variant={button.variant || 'outline'}
+                              size="sm"
+                              onClick={() => handleActionButtonClick(button.eventType, button.eventData)}
+                            >
+                              {button.label}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Watch Next */}
+                      {message.watchNext && (
+                        <div className="mt-3 p-2 bg-accent/10 rounded border-l-2 border-accent">
+                          <div className="flex items-start gap-2">
+                            <Eye className="w-4 h-4 text-accent mt-0.5" />
+                            <div>
+                              <p className="text-xs font-medium text-accent">What to watch next:</p>
+                              <p className="text-xs text-current opacity-80">{message.watchNext}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant="outline" className={`text-xs ${getSignalColor(indicator.status)}`}>
-                      {indicator.signal}
-                    </Badge>
+                ))}
+                
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted text-foreground rounded-lg p-4 max-w-[80%]">
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-4 h-4" />
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span className="text-sm">Analyzing...</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            {/* Input Area */}
+            <div className="flex-shrink-0 p-6 border-t">
+              <div className="flex gap-2">
+                <Textarea
+                  ref={inputRef}
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask about your portfolio, market conditions, or recent trades..."
+                  className="flex-1 min-h-[60px] max-h-32 resize-none"
+                  disabled={isLoading}
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={!inputMessage.trim() || isLoading}
+                  size="lg"
+                  className="px-6"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Context Rail */}
+        <div className="space-y-4">
+          {/* Quick Actions */}
+          {showQuickActions && (
+            <Card className="bg-gradient-card shadow-card">
+              <CardHeader>
+                <CardTitle className="text-sm">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => handleQuickAction('explain-portfolio')}
+                  disabled={isLoading}
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Explain Portfolio
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => handleQuickAction('diagnose-last-trade')}
+                  disabled={isLoading}
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Diagnose Last Trade
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => handleQuickAction('daily-lessons')}
+                  disabled={isLoading}
+                >
+                  <Bot className="w-4 h-4 mr-2" />
+                  Daily Lessons
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => handleQuickAction('compare-execution')}
+                  disabled={isLoading}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Compare Execution
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Portfolio Summary */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Portfolio Context</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total Equity</span>
+                <span className="text-sm font-medium">
+                  ${portfolioData?.totalEquity?.toLocaleString() || '125,750'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Available Cash</span>
+                <span className="text-sm font-medium">
+                  ${portfolioData?.availableCash?.toLocaleString() || '15,250'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Day Change</span>
+                <span className={`text-sm font-medium ${
+                  (portfolioData?.dayChange || 2650) >= 0 ? 'text-accent' : 'text-destructive'
+                }`}>
+                  ${(portfolioData?.dayChange || 2650).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Positions</span>
+                <span className="text-sm font-medium">
+                  {portfolioData?.positionCount || 8}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Risk Metrics */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Risk Metrics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Portfolio Beta</span>
+                <span className="text-sm font-medium">
+                  {riskMetrics?.betaToMarket?.toFixed(2) || '1.12'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Max Drawdown</span>
+                <span className="text-sm font-medium text-destructive">
+                  {riskMetrics?.maxDrawdown?.toFixed(1) || '4.2'}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Concentration</span>
+                <span className="text-sm font-medium">
+                  {riskMetrics?.concentrationRisk?.toFixed(1) || '15.2'}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Sharpe Ratio</span>
+                <span className="text-sm font-medium text-accent">
+                  {riskMetrics?.sharpeRatio?.toFixed(2) || '1.87'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Session Info */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Session Info</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  {messages.length} messages
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Bot className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  {currentPersona?.name}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {/* Analysis Tabs */}
-      <Tabs defaultValue="targets" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="targets">Price Targets</TabsTrigger>
-          <TabsTrigger value="sentiment">Market Sentiment</TabsTrigger>
-          <TabsTrigger value="news">News & Events</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="targets" className="space-y-4">
-          <Card className="bg-gradient-card shadow-card">
-            <CardHeader>
-              <CardTitle>Analyst Price Targets</CardTitle>
-              <CardDescription>
-                Consensus price targets from major investment banks
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {priceTargets.map((target, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <p className="font-semibold">{target.analyst}</p>
-                        <p className="text-sm text-muted-foreground">Investment Bank</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-6">
-                      <Badge className={getRatingColor(target.rating)}>
-                        {target.rating}
-                      </Badge>
-                      <div className="text-right">
-                        <p className="font-semibold">${target.target.toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">Target</p>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-semibold ${target.upside > 0 ? 'text-accent' : 'text-destructive'}`}>
-                          +{target.upside.toFixed(1)}%
-                        </p>
-                        <p className="text-sm text-muted-foreground">Upside</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sentiment" className="space-y-4">
-          <Card className="bg-gradient-card shadow-card">
-            <CardHeader>
-              <CardTitle>Market Sentiment Indicators</CardTitle>
-              <CardDescription>
-                Key metrics that indicate market sentiment and institutional activity
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {marketSentiment.map((item, index) => (
-                  <div key={index} className="p-4 rounded-lg bg-muted/30">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-semibold text-sm">{item.metric}</h3>
-                      <Badge variant="outline">{item.status}</Badge>
-                    </div>
-                    <p className="text-2xl font-bold">{item.value}%</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {item.metric === 'Institutional Ownership' && 'Percentage held by institutions'}
-                      {item.metric === 'Insider Ownership' && 'Percentage held by insiders'}
-                      {item.metric === 'Short Interest' && 'Percentage of float sold short'}
-                      {item.metric === 'Put/Call Ratio' && 'Bearish vs bullish options'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="news" className="space-y-4">
-          <Card className="bg-gradient-card shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                News & Market Events
-              </CardTitle>
-              <CardDescription>
-                Recent news and events that may impact price movement
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {newsEvents.map((news, index) => (
-                  <div key={index} className="p-4 rounded-lg bg-muted/30 border-l-4 border-border">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className="text-xs">{news.impact} Impact</Badge>
-                          <span className="text-xs text-muted-foreground">{news.time}</span>
-                        </div>
-                        <p className="font-medium">{news.headline}</p>
-                      </div>
-                      <div className={`ml-4 ${getSentimentColor(news.sentiment)}`}>
-                        {news.sentiment === 'positive' ? (
-                          <TrendingUp className="w-4 h-4" />
-                        ) : (
-                          <TrendingDown className="w-4 h-4" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
