@@ -2,10 +2,15 @@
 
 import { TradeBot, BotStatus, BotConfig, PreTradeJournal, BotResearchResult, BotMetrics, StrategyModule } from '@/types/tradeBots';
 import { TradeIntent } from '@/types/governance';
+import { BotToggleState } from '@/types/core';
+import { EVENT_TOPICS } from '@/utils/constants';
+import { generateULID } from '@/utils/ulid';
+import { calculateConfidence } from '@/utils/formulas';
 import { eventBus } from './eventBus';
 import { recorder } from './recorder';
 import { repository } from './repository';
 import { oracle } from './oracle';
+import { coreScaffold } from './scaffold';
 
 class TradeBotSystem {
   private bots: Map<string, TradeBot> = new Map();
@@ -196,7 +201,7 @@ class TradeBotSystem {
 
   private async createPreTradeJournal(bot: TradeBot, result: BotResearchResult): Promise<PreTradeJournal> {
     return {
-      id: `journal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: generateULID('bot_'),
       botId: bot.id,
       symbol: result.symbol,
       timestamp: new Date(),
@@ -260,7 +265,7 @@ class TradeBotSystem {
   // Public API methods
   public createBot(config: Partial<TradeBot> & Pick<TradeBot, 'name' | 'strategy'>): TradeBot {
     const bot: TradeBot = {
-      id: `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: generateULID('bot_'),
       name: config.name,
       strategy: config.strategy,
       status: 'off',
@@ -282,7 +287,7 @@ class TradeBotSystem {
 
     this.bots.set(bot.id, bot);
     
-    eventBus.emit('bot.created', { bot });
+    eventBus.emit(EVENT_TOPICS.BOT_STATE_CHANGED, { bot });
     console.log(`Created new bot: ${bot.name}`);
     
     return bot;
