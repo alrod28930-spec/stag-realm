@@ -1,0 +1,147 @@
+import { NavLink, useLocation } from 'react-router-dom';
+import {
+  BarChart3,
+  TrendingUp,
+  Briefcase,
+  LineChart,
+  Bot,
+  Video,
+  Baby,
+  Settings,
+  Shield
+} from 'lucide-react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { useAuthStore } from '@/stores/authStore';
+import { cn } from '@/lib/utils';
+
+const navigationItems = [
+  { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
+  { title: 'Market', url: '/market', icon: TrendingUp, description: 'Real-time market data' },
+  { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Your positions' },
+  { title: 'Analyst', url: '/analyst', icon: LineChart, description: 'Technical analysis' },
+  { title: 'Trade Bots', url: '/trade-bots', icon: Bot, description: 'Automated trading' },
+  { title: 'Recorder', url: '/recorder', icon: Video, description: 'Trade recordings' },
+  { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
+];
+
+const adminItems = [
+  { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
+  { title: 'Admin Portal', url: '/admin', icon: Shield, description: 'Admin controls', adminOnly: true },
+];
+
+export function AppSidebar() {
+  const { state } = useSidebar();
+  const location = useLocation();
+  const { user, hasPermission } = useAuthStore();
+  const currentPath = location.pathname;
+  const collapsed = state === 'collapsed';
+
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return currentPath === path;
+    }
+    return currentPath.startsWith(path);
+  };
+
+  const getNavClassName = (path: string) => {
+    const isCurrentlyActive = isActive(path);
+    return cn(
+      "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+      isCurrentlyActive 
+        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
+        : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+    );
+  };
+
+  const filteredAdminItems = adminItems.filter(item => {
+    if (item.adminOnly) {
+      return hasPermission('manage-users') || user?.role === 'Owner' || user?.role === 'Admin';
+    }
+    return true;
+  });
+
+  return (
+    <Sidebar className={cn("border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
+      <SidebarContent className="py-4">
+        {/* Main Navigation */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wide">
+            Trading Platform
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} className={getNavClassName(item.url)}>
+                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      {!collapsed && (
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium truncate">{item.title}</span>
+                          <span className="text-xs text-sidebar-foreground/60 truncate">
+                            {item.description}
+                          </span>
+                        </div>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Admin & Settings */}
+        <SidebarGroup className="mt-8">
+          <SidebarGroupLabel className="px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wide">
+            Administration
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filteredAdminItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} className={getNavClassName(item.url)}>
+                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      {!collapsed && (
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium truncate">{item.title}</span>
+                          <span className="text-xs text-sidebar-foreground/60 truncate">
+                            {item.description}
+                          </span>
+                        </div>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* User Info in collapsed mode */}
+        {collapsed && user && (
+          <SidebarGroup className="mt-auto">
+            <div className="px-3 py-2 text-center">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center mx-auto">
+                <span className="text-xs font-semibold text-primary-foreground">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+          </SidebarGroup>
+        )}
+      </SidebarContent>
+    </Sidebar>
+  );
+}
