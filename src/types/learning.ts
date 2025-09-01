@@ -1,22 +1,171 @@
-// Learning Engine Types - Pattern recognition and predictive modeling
+// Learning System Types
 
 export interface TradeOutcome {
-  tradeId: string;
-  symbol: string;
-  side: 'buy' | 'sell';
-  entryPrice: number;
-  exitPrice?: number;
-  quantity: number;
-  pnl?: number;
-  duration?: number; // milliseconds
-  outcome: 'win' | 'loss' | 'breakeven' | 'open';
-  executedAt: Date;
-  closedAt?: Date;
-  relatedSignals: string[]; // Oracle signal IDs that influenced this trade
-  botId?: string;
-  confidence?: number; // 0-1, how confident the bot was
+  trade_id: string;
+  realized_pnl: number;
+  holding_period_hours: number;
+  exit_reason: 'profit_target' | 'stop_loss' | 'time_exit' | 'manual' | 'risk_governor';
+  max_drawdown_pct: number;
+  max_gain_pct: number;
+  was_profitable: boolean;
+  met_expectations: boolean;
 }
 
+export interface LearningEvent {
+  id: string;
+  type: 'trade_execution' | 'signal_outcome' | 'bot_decision' | 'risk_event';
+  timestamp: number;
+  trade_id?: string;
+  bot_id?: string;
+  symbol?: string;
+  pre_trade_signals: any[];
+  intent_reasoning: string;
+  execution_details: {
+    price: number;
+    quantity: number;
+    slippage: number;
+    fill_speed_ms: number;
+  };
+  market_context: Record<string, any>;
+  workspace_id: string;
+}
+
+export interface BotPerformance {
+  bot_id: string;
+  total_trades: number;
+  winning_trades: number;
+  total_pnl: number;
+  accuracy_score: number; // 0-1, recent accuracy
+  confidence_weight: number; // multiplier for bot decisions
+  avg_holding_period: number;
+  recent_outcomes: TradeOutcome[];
+  last_updated: number;
+}
+
+export interface SignalEffectiveness {
+  signal_type: string;
+  source: string;
+  total_signals: number;
+  successful_predictions: number;
+  effectiveness_score: number; // 0-1
+  weight_multiplier: number; // applied to signal strength
+  recent_outcomes: {
+    was_correct: boolean;
+    strength: number;
+    timestamp: number;
+  }[];
+  last_updated: number;
+}
+
+export interface PortfolioLearning {
+  successful_patterns: Map<string, number>; // pattern -> success rate
+  failed_patterns: Map<string, number>; // pattern -> failure rate
+  sector_performance: Map<string, number>; // sector -> avg performance
+  timeframe_effectiveness: Map<string, number>; // timeframe -> effectiveness
+  risk_tolerance_learned: number; // learned risk tolerance (0-1)
+  preferred_holding_periods: {
+    hours: number;
+    was_profitable: boolean;
+    pnl: number;
+  }[];
+  last_updated: number;
+}
+
+export interface LearningInsight {
+  type: 'positive_trend' | 'negative_trend' | 'pattern_identified' | 'risk_adjustment' | 'holding_period_insight';
+  confidence: number; // 0-1
+  message: string;
+  actionable: string; // actionable recommendation
+  data: Record<string, any>;
+}
+
+export interface AdaptiveSettings {
+  riskMultiplier: number; // multiplies base risk thresholds
+  confidenceThreshold: number; // minimum confidence for trades
+  signalWeights: Map<string, number>; // signal type -> weight multiplier
+  botWeights: Map<string, number>; // bot id -> weight multiplier
+  lastUpdated: number;
+}
+
+export interface LearningDashboard {
+  overview: {
+    total_trades: number;
+    overall_win_rate: number;
+    active_bots: number;
+    learning_events: number;
+  };
+  top_performing_bots: BotPerformance[];
+  recent_insights: LearningInsight[];
+  adaptive_settings: AdaptiveSettings;
+  performance_trends: {
+    daily_pnl: number[];
+    win_rate_trend: number[];
+    risk_adjusted_returns: number[];
+  };
+}
+
+export interface WorkspaceLearning {
+  workspace_id: string;
+  events: LearningEvent[];
+  bot_performance: BotPerformance[];
+  learning_summary: {
+    total_events: number;
+    learning_active: boolean;
+    personalization_level: number; // 0-1, how personalized the system is
+  };
+}
+
+// Subscription-based learning features
+export interface SubscriptionLearningFeatures {
+  basic: {
+    max_learning_events: 1000;
+    bot_performance_tracking: boolean;
+    basic_insights: boolean;
+  };
+  standard: {
+    max_learning_events: 10000;
+    bot_performance_tracking: boolean;
+    advanced_insights: boolean;
+    adaptive_parameters: boolean;
+  };
+  pro: {
+    max_learning_events: 100000;
+    bot_performance_tracking: boolean;
+    advanced_insights: boolean;
+    adaptive_parameters: boolean;
+    portfolio_personalization: boolean;
+    export_learning_data: boolean;
+  };
+  elite: {
+    max_learning_events: -1; // unlimited
+    bot_performance_tracking: boolean;
+    advanced_insights: boolean;
+    adaptive_parameters: boolean;
+    portfolio_personalization: boolean;
+    export_learning_data: boolean;
+    custom_learning_models: boolean;
+  };
+}
+
+export interface PersonalizationProfile {
+  user_id: string;
+  workspace_id: string;
+  risk_profile: 'conservative' | 'moderate' | 'aggressive';
+  learned_preferences: {
+    preferred_sectors: string[];
+    optimal_holding_periods: number[];
+    risk_tolerance: number;
+    position_sizing_preference: number;
+  };
+  performance_history: {
+    best_strategies: string[];
+    worst_strategies: string[];
+    seasonal_patterns: Record<string, number>;
+  };
+  last_updated: number;
+}
+
+// Legacy types for compatibility
 export interface PatternMatch {
   patternId: string;
   type: 'signal_accuracy' | 'trade_success' | 'risk_pattern' | 'market_regime';

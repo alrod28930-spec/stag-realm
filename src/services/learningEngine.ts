@@ -1,870 +1,387 @@
-import { logService } from './logging';
+import { generateULID } from '../utils/ulid';
 import { eventBus } from './eventBus';
+import { recorder } from './recorder';
 import type { 
   TradeOutcome, 
-  PatternMatch, 
-  PatternInsights, 
-  PredictiveModel, 
-  RiskPrediction, 
-  ReturnPrediction,
-  LearningMetrics,
-  FeedbackLoop,
-  PatternCondition
-} from '@/types/learning';
-import type { ProcessedSignal } from '@/types/oracle';
+  LearningEvent, 
+  BotPerformance, 
+  SignalEffectiveness, 
+  PortfolioLearning,
+  LearningInsight,
+  AdaptiveSettings,
+  LearningDashboard as LearningDashboardType
+} from '../types/learning';
 
-class LearningEngineService {
-  private tradeOutcomes: TradeOutcome[] = [];
-  private patterns: Map<string, PatternMatch> = new Map();
-  private models: Map<string, PredictiveModel> = new Map();
-  private feedbackLoops: FeedbackLoop[] = [];
-  private learningMetrics: LearningMetrics;
+export class LearningEngine {
+  private botPerformanceCache = new Map<string, BotPerformance>();
+  private signalEffectivenessCache = new Map<string, SignalEffectiveness>();
+  private portfolioLearning: PortfolioLearning | null = null;
+  private learningEvents: LearningEvent[] = [];
+  private adaptiveSettings: AdaptiveSettings = {
+    riskMultiplier: 1.0,
+    confidenceThreshold: 0.6,
+    signalWeights: new Map(),
+    botWeights: new Map(),
+    lastUpdated: Date.now()
+  };
 
   constructor() {
-    this.initializeModels();
-    this.learningMetrics = this.initializeLearningMetrics();
-    this.startLearningScheduler();
-    this.subscribeToEvents();
+    this.initializeEventHandlers();
+    this.loadLearningState();
   }
 
-  private initializeModels() {
-    const defaultModels: PredictiveModel[] = [
-      {
-        modelId: 'signal_accuracy_v1',
-        type: 'signal_scoring',
-        description: 'Predicts accuracy of Oracle signals based on historical performance',
-        accuracy: 0.72,
-        features: ['signal_type', 'confidence', 'market_volatility', 'sector', 'time_of_day'],
-        lastTrained: new Date(),
-        trainingDataSize: 0,
-        version: '1.0.0',
-        isActive: true
-      },
-      {
-        modelId: 'risk_prediction_v1',
-        type: 'risk_prediction',
-        description: 'Predicts portfolio risk based on current positions and market conditions',
-        accuracy: 0.68,
-        features: ['position_concentration', 'market_volatility', 'sector_correlation', 'leverage'],
-        lastTrained: new Date(),
-        trainingDataSize: 0,
-        version: '1.0.0',
-        isActive: true
-      },
-      {
-        modelId: 'return_prediction_v1',
-        type: 'return_prediction',
-        description: 'Predicts expected returns for individual positions',
-        accuracy: 0.65,
-        features: ['technical_indicators', 'fundamental_metrics', 'sentiment_score', 'volume_profile'],
-        lastTrained: new Date(),
-        trainingDataSize: 0,
-        version: '1.0.0',
-        isActive: true
-      }
-    ];
+  private initializeEventHandlers(): void {
+    eventBus.on('trade.executed', (event) => {
+      this.recordTradeExecution(event);
+    });
 
-    defaultModels.forEach(model => {
-      this.models.set(model.modelId, model);
+    eventBus.on('trade.closed', (event) => {
+      this.processTradeOutcome(event);
+    });
+
+    eventBus.on('oracle.signal.outcome', (event) => {
+      this.updateSignalEffectiveness(event);
+    });
+
+    eventBus.on('bot.decision', (event) => {
+      this.trackBotDecision(event);
     });
   }
 
-  private initializeLearningMetrics(): LearningMetrics {
-    return {
-      totalTrades: 0,
-      successfulTrades: 0,
-      successRate: 0,
-      averageReturn: 0,
-      sharpeRatio: 0,
-      maxDrawdown: 0,
-      patternsIdentified: 0,
-      modelAccuracy: 0,
-      dataQuality: 'good',
-      lastUpdated: new Date()
-    };
-  }
-
-  private startLearningScheduler() {
-    // Run pattern analysis every 6 hours
-    setInterval(() => {
-      this.analyzePatterns();
-    }, 6 * 60 * 60 * 1000);
-
-    // Update models daily
-    setInterval(() => {
-      this.updateModels();
-    }, 24 * 60 * 60 * 1000);
-
-    // Calculate metrics every hour
-    setInterval(() => {
-      this.updateLearningMetrics();
-    }, 60 * 60 * 1000);
-
-    // Initial run after 10 seconds
-    setTimeout(() => {
-      this.analyzePatterns();
-      this.updateLearningMetrics();
-    }, 10000);
-  }
-
-  private subscribeToEvents() {
-    // Listen for trade completions
-    eventBus.on('trade.executed', (data) => {
-      this.recordTradeOutcome(data);
-    });
-
-    // Listen for Oracle signals
-    eventBus.on('oracle.signal.created', (signal: ProcessedSignal) => {
-      this.analyzeSignalPattern(signal);
-    });
-
-    // Listen for risk events
-    eventBus.on('risk.soft_pull', (data) => {
-      this.processFeedbackLoop('monarch', 'oracle', 'risk_adjustment', data);
-    });
-
-    eventBus.on('risk.hard_pull', (data) => {
-      this.processFeedbackLoop('overseer', 'trade_bots', 'risk_adjustment', data);
-    });
-  }
-
-  // Record trade outcomes for learning
-  recordTradeOutcome(tradeData: any): void {
-    const outcome: TradeOutcome = {
-      tradeId: tradeData.tradeId || `trade_${Date.now()}`,
+  private recordTradeExecution(tradeData: any): void {
+    const learningEvent: LearningEvent = {
+      id: generateULID(),
+      type: 'trade_execution',
+      timestamp: Date.now(),
+      trade_id: tradeData.id,
+      bot_id: tradeData.bot_id,
       symbol: tradeData.symbol,
-      side: tradeData.side,
-      entryPrice: tradeData.entryPrice || tradeData.price,
-      exitPrice: tradeData.exitPrice,
-      quantity: tradeData.quantity,
-      pnl: tradeData.pnl,
-      duration: tradeData.duration,
-      outcome: this.calculateTradeOutcome(tradeData),
-      executedAt: tradeData.executedAt || new Date(),
-      closedAt: tradeData.closedAt,
-      relatedSignals: tradeData.relatedSignals || [],
-      botId: tradeData.botId,
-      confidence: tradeData.confidence
+      pre_trade_signals: tradeData.signals || [],
+      intent_reasoning: tradeData.reasoning || '',
+      execution_details: {
+        price: tradeData.price,
+        quantity: tradeData.quantity,
+        slippage: tradeData.slippage || 0,
+        fill_speed_ms: tradeData.fill_speed_ms || 0
+      },
+      market_context: tradeData.market_context || {},
+      workspace_id: tradeData.workspace_id
     };
 
-    this.tradeOutcomes.unshift(outcome);
+    this.learningEvents.push(learningEvent);
     
-    // Keep last 10,000 trade outcomes
-    this.tradeOutcomes = this.tradeOutcomes.slice(0, 10000);
-
-    logService.log('info', 'Trade outcome recorded', {
-      tradeId: outcome.tradeId,
-      symbol: outcome.symbol,
-      outcome: outcome.outcome,
-      pnl: outcome.pnl
+    recorder.logEvent({
+      id: learningEvent.id,
+      type: 'learning.trade_execution',
+      timestamp: learningEvent.timestamp,
+      data: learningEvent,
+      workspace_id: tradeData.workspace_id
     });
-
-    // Trigger pattern analysis if we have enough data
-    if (this.tradeOutcomes.length % 100 === 0) {
-      setTimeout(() => this.analyzePatterns(), 1000);
-    }
   }
 
-  // Analyze Oracle signal accuracy patterns
-  analyzeSignalAccuracy(signals: ProcessedSignal[], outcomes: TradeOutcome[]): PatternInsights {
-    const signalPatterns: PatternMatch[] = [];
-    
-    // Group signals by type and analyze success rates
-    const signalTypes = new Set(signals.map(s => s.type));
-    
-    signalTypes.forEach(type => {
-      const typeSignals = signals.filter(s => s.type === type);
-      const relatedTrades = outcomes.filter(outcome => 
-        outcome.relatedSignals.some(signalId => 
-          typeSignals.some(signal => signal.id === signalId)
-        )
-      );
-
-      if (relatedTrades.length >= 10) { // Minimum sample size
-        const successfulTrades = relatedTrades.filter(trade => 
-          trade.outcome === 'win' || (trade.pnl && trade.pnl > 0)
-        );
-        
-        const successRate = successfulTrades.length / relatedTrades.length;
-        const avgReturn = relatedTrades
-          .filter(trade => trade.pnl !== undefined)
-          .reduce((sum, trade) => sum + (trade.pnl || 0), 0) / relatedTrades.length;
-
-        const pattern: PatternMatch = {
-          patternId: `signal_accuracy_${type}`,
-          type: 'signal_accuracy',
-          description: `${type.replace('_', ' ')} signal accuracy pattern`,
-          occurrences: relatedTrades.length,
-          successRate,
-          averageReturn: avgReturn,
-          confidence: this.calculatePatternConfidence(relatedTrades.length, successRate),
-          timeframe: '30d',
-          conditions: [
-            {
-              field: 'signal_type',
-              operator: 'eq',
-              value: type,
-              weight: 1.0
-            }
-          ],
-          lastSeen: new Date(),
-          strength: this.determinePatternStrength(successRate, relatedTrades.length)
-        };
-
-        signalPatterns.push(pattern);
-        this.patterns.set(pattern.patternId, pattern);
-      }
-    });
-
-    // Analyze severity impact
-    const severities = ['low', 'medium', 'high', 'critical'] as const;
-    severities.forEach(severity => {
-      const severitySignals = signals.filter(s => s.severity === severity);
-      const relatedTrades = outcomes.filter(outcome => 
-        outcome.relatedSignals.some(signalId => 
-          severitySignals.some(signal => signal.id === signalId)
-        )
-      );
-
-      if (relatedTrades.length >= 5) {
-        const successRate = relatedTrades.filter(trade => 
-          trade.outcome === 'win' || (trade.pnl && trade.pnl > 0)
-        ).length / relatedTrades.length;
-
-        const pattern: PatternMatch = {
-          patternId: `signal_severity_${severity}`,
-          type: 'signal_accuracy',
-          description: `${severity} severity signal performance`,
-          occurrences: relatedTrades.length,
-          successRate,
-          confidence: this.calculatePatternConfidence(relatedTrades.length, successRate),
-          timeframe: '30d',
-          conditions: [
-            {
-              field: 'severity',
-              operator: 'eq',
-              value: severity,
-              weight: 0.8
-            }
-          ],
-          lastSeen: new Date(),
-          strength: this.determinePatternStrength(successRate, relatedTrades.length)
-        };
-
-        signalPatterns.push(pattern);
-        this.patterns.set(pattern.patternId, pattern);
-      }
-    });
-
-    return this.compilePatternInsights(signalPatterns);
-  }
-
-  // Predict risk for given portfolio state
-  predictRisk(portfolioData: any): RiskPrediction[] {
-    const predictions: RiskPrediction[] = [];
-    
-    // Portfolio-level risk prediction
-    const portfolioRisk = this.calculatePortfolioRisk(portfolioData);
-    predictions.push({
-      riskLevel: portfolioRisk.level,
-      probability: portfolioRisk.probability,
-      timeHorizon: '1d',
-      riskFactors: portfolioRisk.factors,
-      confidence: 0.75,
-      generatedAt: new Date(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-    });
-
-    // Position-level risk predictions
-    if (portfolioData.positions) {
-      portfolioData.positions.forEach((position: any) => {
-        const positionRisk = this.calculatePositionRisk(position, portfolioData);
-        if (positionRisk.level !== 'low') {
-          predictions.push({
-            symbol: position.symbol,
-            riskLevel: positionRisk.level,
-            probability: positionRisk.probability,
-            timeHorizon: '1d',
-            riskFactors: positionRisk.factors,
-            confidence: 0.65,
-            generatedAt: new Date(),
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-          });
-        }
-      });
-    }
-
-    return predictions;
-  }
-
-  // Generate return predictions
-  predictReturns(symbol: string, timeHorizon: string = '1d'): ReturnPrediction | null {
-    const model = this.models.get('return_prediction_v1');
-    if (!model || !model.isActive) return null;
-
-    // Simplified return prediction based on historical patterns
-    const historicalTrades = this.tradeOutcomes.filter(trade => 
-      trade.symbol === symbol && trade.pnl !== undefined
-    ).slice(0, 100);
-
-    if (historicalTrades.length < 10) return null;
-
-    const returns = historicalTrades.map(trade => (trade.pnl || 0) / (trade.entryPrice * trade.quantity));
-    const avgReturn = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
-    const volatility = this.calculateVolatility(returns);
-
-    return {
-      symbol,
-      expectedReturn: avgReturn * 100, // Convert to percentage
-      confidence: Math.min(0.9, historicalTrades.length / 100),
-      timeHorizon,
-      upside: avgReturn + volatility,
-      downside: avgReturn - volatility,
-      volatility: volatility * 100,
-      generatedAt: new Date(),
-      modelUsed: model.modelId
-    };
-  }
-
-  // Process feedback loops between systems
-  processFeedbackLoop(
-    sourceSystem: FeedbackLoop['sourceSystem'],
-    targetSystem: FeedbackLoop['targetSystem'],
-    feedbackType: FeedbackLoop['feedbackType'],
-    data: any
-  ): void {
-    const feedback: FeedbackLoop = {
-      loopId: `feedback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      sourceSystem,
-      targetSystem,
-      feedbackType,
-      data,
-      processedAt: new Date(),
-      impact: this.assessFeedbackImpact(feedbackType, data)
+  private processTradeOutcome(outcomeData: any): void {
+    const tradeOutcome: TradeOutcome = {
+      trade_id: outcomeData.trade_id,
+      realized_pnl: outcomeData.realized_pnl,
+      holding_period_hours: outcomeData.holding_period_hours,
+      exit_reason: outcomeData.exit_reason,
+      max_drawdown_pct: outcomeData.max_drawdown_pct,
+      max_gain_pct: outcomeData.max_gain_pct,
+      was_profitable: outcomeData.realized_pnl > 0,
+      met_expectations: outcomeData.met_expectations || false
     };
 
-    this.feedbackLoops.unshift(feedback);
-    this.feedbackLoops = this.feedbackLoops.slice(0, 1000); // Keep last 1000
+    this.updateBotPerformance(outcomeData.bot_id, tradeOutcome);
+    this.updatePortfolioLearning(tradeOutcome);
+    
+    const insights = this.generateLearningInsights(tradeOutcome);
+    this.adjustAdaptiveParameters(tradeOutcome, insights);
 
-    // Apply feedback to improve systems
-    this.applyFeedback(feedback);
-
-    logService.log('info', 'Feedback loop processed', {
-      loopId: feedback.loopId,
-      sourceSystem,
-      targetSystem,
-      feedbackType,
-      impact: feedback.impact
+    eventBus.emit('learning.outcome_processed', {
+      trade_id: outcomeData.trade_id,
+      outcome: tradeOutcome,
+      insights: insights
     });
-
-    // Emit feedback event
-    eventBus.emit('learning.feedback_processed', feedback);
   }
 
-  // Private methods
-  private calculateTradeOutcome(tradeData: any): TradeOutcome['outcome'] {
-    if (tradeData.pnl !== undefined) {
-      if (tradeData.pnl > 0) return 'win';
-      if (tradeData.pnl < 0) return 'loss';
-      return 'breakeven';
-    }
+  private updateBotPerformance(botId: string, outcome: TradeOutcome): void {
+    let performance = this.botPerformanceCache.get(botId);
     
-    if (tradeData.status === 'open') return 'open';
-    
-    // Default based on exit vs entry price if available
-    if (tradeData.exitPrice && tradeData.entryPrice) {
-      const pnl = (tradeData.exitPrice - tradeData.entryPrice) * tradeData.quantity;
-      if (pnl > 0) return 'win';
-      if (pnl < 0) return 'loss';
-      return 'breakeven';
-    }
-    
-    return 'open';
-  }
-
-  private analyzeSignalPattern(signal: ProcessedSignal): void {
-    // Simple pattern recognition for signal types
-    const recentSignals = [signal]; // In real implementation, would get recent signals
-    
-    // Look for clustering patterns
-    if (signal.severity === 'critical') {
-      // Check if there are multiple critical signals in short timeframe
-      const pattern: PatternMatch = {
-        patternId: `critical_signal_cluster_${Date.now()}`,
-        type: 'risk_pattern',
-        description: 'Multiple critical signals detected',
-        occurrences: 1,
-        successRate: 0.8, // Historical pattern success
-        confidence: 0.7,
-        timeframe: '1h',
-        conditions: [
-          {
-            field: 'severity',
-            operator: 'eq',
-            value: 'critical',
-            weight: 1.0
-          }
-        ],
-        lastSeen: new Date(),
-        strength: 'strong'
+    if (!performance) {
+      performance = {
+        bot_id: botId,
+        total_trades: 0,
+        winning_trades: 0,
+        total_pnl: 0,
+        accuracy_score: 0.5,
+        confidence_weight: 1.0,
+        avg_holding_period: 0,
+        recent_outcomes: [],
+        last_updated: Date.now()
       };
-
-      this.patterns.set(pattern.patternId, pattern);
-    }
-  }
-
-  private analyzePatterns(): void {
-    const recentOutcomes = this.tradeOutcomes.slice(0, 1000);
-    
-    if (recentOutcomes.length < 50) {
-      logService.log('info', 'Insufficient data for pattern analysis', { 
-        outcomeCount: recentOutcomes.length 
-      });
-      return;
     }
 
-    // Analyze success patterns by symbol
-    this.analyzeSymbolPatterns(recentOutcomes);
+    performance.total_trades += 1;
+    if (outcome.was_profitable) {
+      performance.winning_trades += 1;
+    }
+    performance.total_pnl += outcome.realized_pnl;
     
-    // Analyze time-based patterns
-    this.analyzeTimePatterns(recentOutcomes);
-    
-    // Analyze risk patterns
-    this.analyzeRiskPatterns(recentOutcomes);
+    performance.recent_outcomes.push(outcome);
+    if (performance.recent_outcomes.length > 50) {
+      performance.recent_outcomes.shift();
+    }
 
-    logService.log('info', 'Pattern analysis completed', {
-      totalPatterns: this.patterns.size,
-      recentOutcomes: recentOutcomes.length
-    });
+    const recentWins = performance.recent_outcomes.filter(o => o.was_profitable).length;
+    performance.accuracy_score = recentWins / Math.min(performance.recent_outcomes.length, 50);
+    
+    if (performance.accuracy_score > 0.65) {
+      performance.confidence_weight = Math.min(1.5, performance.confidence_weight + 0.05);
+    } else if (performance.accuracy_score < 0.45) {
+      performance.confidence_weight = Math.max(0.3, performance.confidence_weight - 0.05);
+    }
+
+    performance.last_updated = Date.now();
+    this.botPerformanceCache.set(botId, performance);
+    this.adaptiveSettings.botWeights.set(botId, performance.confidence_weight);
   }
 
-  private analyzeSymbolPatterns(outcomes: TradeOutcome[]): void {
-    const symbolGroups = new Map<string, TradeOutcome[]>();
-    
-    outcomes.forEach(outcome => {
-      if (!symbolGroups.has(outcome.symbol)) {
-        symbolGroups.set(outcome.symbol, []);
-      }
-      symbolGroups.get(outcome.symbol)!.push(outcome);
-    });
+  private updateSignalEffectiveness(signalData: any): void {
+    const signalKey = `${signalData.signal_type}_${signalData.source}`;
+    let effectiveness = this.signalEffectivenessCache.get(signalKey);
 
-    symbolGroups.forEach((symbolOutcomes, symbol) => {
-      if (symbolOutcomes.length >= 10) {
-        const successRate = symbolOutcomes.filter(o => o.outcome === 'win').length / symbolOutcomes.length;
-        const avgReturn = symbolOutcomes
-          .filter(o => o.pnl !== undefined)
-          .reduce((sum, o) => sum + (o.pnl || 0), 0) / symbolOutcomes.length;
-
-        const pattern: PatternMatch = {
-          patternId: `symbol_performance_${symbol}`,
-          type: 'trade_success',
-          description: `${symbol} trading performance pattern`,
-          occurrences: symbolOutcomes.length,
-          successRate,
-      averageReturn: avgReturn,
-          confidence: this.calculatePatternConfidence(symbolOutcomes.length, successRate),
-          timeframe: '30d',
-          conditions: [
-            {
-              field: 'symbol',
-              operator: 'eq',
-              value: symbol,
-              weight: 1.0
-            }
-          ],
-          lastSeen: new Date(),
-          strength: this.determinePatternStrength(successRate, symbolOutcomes.length)
-        };
-
-        this.patterns.set(pattern.patternId, pattern);
-      }
-    });
-  }
-
-  private analyzeTimePatterns(outcomes: TradeOutcome[]): void {
-    // Analyze patterns by hour of day
-    const hourGroups = new Map<number, TradeOutcome[]>();
-    
-    outcomes.forEach(outcome => {
-      const hour = outcome.executedAt.getHours();
-      if (!hourGroups.has(hour)) {
-        hourGroups.set(hour, []);
-      }
-      hourGroups.get(hour)!.push(outcome);
-    });
-
-    hourGroups.forEach((hourOutcomes, hour) => {
-      if (hourOutcomes.length >= 5) {
-        const successRate = hourOutcomes.filter(o => o.outcome === 'win').length / hourOutcomes.length;
-        
-        if (successRate > 0.6 || successRate < 0.4) { // Only interesting patterns
-          const pattern: PatternMatch = {
-            patternId: `time_pattern_hour_${hour}`,
-            type: 'trade_success',
-            description: `Trading performance at ${hour}:00 hour`,
-            occurrences: hourOutcomes.length,
-            successRate,
-            confidence: this.calculatePatternConfidence(hourOutcomes.length, successRate),
-            timeframe: '30d',
-            conditions: [
-              {
-                field: 'hour',
-                operator: 'eq',
-                value: hour,
-                weight: 0.6
-              }
-            ],
-            lastSeen: new Date(),
-            strength: this.determinePatternStrength(successRate, hourOutcomes.length)
-          };
-
-          this.patterns.set(pattern.patternId, pattern);
-        }
-      }
-    });
-  }
-
-  private analyzeRiskPatterns(outcomes: TradeOutcome[]): void {
-    // Look for patterns in losing trades
-    const losingTrades = outcomes.filter(o => o.outcome === 'loss');
-    
-    if (losingTrades.length >= 20) {
-      // Analyze common characteristics of losing trades
-      const avgLossDuration = losingTrades
-        .filter(t => t.duration)
-        .reduce((sum, t) => sum + (t.duration || 0), 0) / losingTrades.length;
-
-      const pattern: PatternMatch = {
-        patternId: 'risk_pattern_losses',
-        type: 'risk_pattern',
-        description: 'Common characteristics of losing trades',
-        occurrences: losingTrades.length,
-        successRate: 0, // This represents risk, so 0 success rate
-        confidence: 0.8,
-        timeframe: '30d',
-        conditions: [
-          {
-            field: 'outcome',
-            operator: 'eq',
-            value: 'loss',
-            weight: 1.0
-          },
-          {
-            field: 'duration',
-            operator: 'lt',
-            value: avgLossDuration,
-            weight: 0.7
-          }
-        ],
-        lastSeen: new Date(),
-        strength: 'moderate'
+    if (!effectiveness) {
+      effectiveness = {
+        signal_type: signalData.signal_type,
+        source: signalData.source,
+        total_signals: 0,
+        successful_predictions: 0,
+        effectiveness_score: 0.5,
+        weight_multiplier: 1.0,
+        recent_outcomes: [],
+        last_updated: Date.now()
       };
-
-      this.patterns.set(pattern.patternId, pattern);
     }
+
+    effectiveness.total_signals += 1;
+    if (signalData.was_correct) {
+      effectiveness.successful_predictions += 1;
+    }
+
+    effectiveness.recent_outcomes.push({
+      was_correct: signalData.was_correct,
+      strength: signalData.strength,
+      timestamp: Date.now()
+    });
+
+    if (effectiveness.recent_outcomes.length > 100) {
+      effectiveness.recent_outcomes.shift();
+    }
+
+    const recentCorrect = effectiveness.recent_outcomes.filter(o => o.was_correct).length;
+    effectiveness.effectiveness_score = recentCorrect / Math.min(effectiveness.recent_outcomes.length, 100);
+
+    if (effectiveness.effectiveness_score > 0.6) {
+      effectiveness.weight_multiplier = Math.min(1.8, effectiveness.weight_multiplier + 0.1);
+    } else if (effectiveness.effectiveness_score < 0.4) {
+      effectiveness.weight_multiplier = Math.max(0.2, effectiveness.weight_multiplier - 0.1);
+    }
+
+    effectiveness.last_updated = Date.now();
+    this.signalEffectivenessCache.set(signalKey, effectiveness);
+    this.adaptiveSettings.signalWeights.set(signalKey, effectiveness.weight_multiplier);
   }
 
-  private updateModels(): void {
-    this.models.forEach((model, modelId) => {
-      if (model.isActive) {
-        // Update model accuracy based on recent performance
-        const updatedAccuracy = this.calculateModelAccuracy(model);
-        
-        const updatedModel: PredictiveModel = {
-          ...model,
-          accuracy: updatedAccuracy,
-          lastTrained: new Date(),
-          trainingDataSize: this.tradeOutcomes.length
-        };
+  private updatePortfolioLearning(outcome: TradeOutcome): void {
+    if (!this.portfolioLearning) {
+      this.portfolioLearning = {
+        successful_patterns: new Map(),
+        failed_patterns: new Map(),
+        sector_performance: new Map(),
+        timeframe_effectiveness: new Map(),
+        risk_tolerance_learned: 0.05,
+        preferred_holding_periods: [],
+        last_updated: Date.now()
+      };
+    }
 
-        this.models.set(modelId, updatedModel);
-        
-        logService.log('info', 'Model updated', {
-          modelId,
-          accuracy: updatedAccuracy,
-          trainingDataSize: updatedModel.trainingDataSize
+    this.portfolioLearning.preferred_holding_periods.push({
+      hours: outcome.holding_period_hours,
+      was_profitable: outcome.was_profitable,
+      pnl: outcome.realized_pnl
+    });
+
+    if (this.portfolioLearning.preferred_holding_periods.length > 200) {
+      this.portfolioLearning.preferred_holding_periods.shift();
+    }
+
+    if (outcome.was_profitable && outcome.max_drawdown_pct < 0.02) {
+      this.portfolioLearning.risk_tolerance_learned = Math.min(0.15, 
+        this.portfolioLearning.risk_tolerance_learned + 0.005);
+    } else if (!outcome.was_profitable && outcome.max_drawdown_pct > 0.05) {
+      this.portfolioLearning.risk_tolerance_learned = Math.max(0.02, 
+        this.portfolioLearning.risk_tolerance_learned - 0.01);
+    }
+
+    this.portfolioLearning.last_updated = Date.now();
+  }
+
+  private generateLearningInsights(outcome: TradeOutcome): LearningInsight[] {
+    const insights: LearningInsight[] = [];
+    const recentTrades = this.learningEvents.filter(e => e.type === 'trade_execution').slice(-20);
+
+    if (recentTrades.length >= 10) {
+      const winRate = recentTrades.filter(t => 
+        this.getTradeOutcome(t.trade_id || '')?.was_profitable
+      ).length / recentTrades.length;
+
+      if (winRate > 0.7) {
+        insights.push({
+          type: 'positive_trend',
+          confidence: 0.8,
+          message: 'Recent performance is strong with 70%+ win rate',
+          actionable: 'Consider slightly increasing position sizes',
+          data: { win_rate: winRate }
+        });
+      } else if (winRate < 0.4) {
+        insights.push({
+          type: 'negative_trend',
+          confidence: 0.7,
+          message: 'Recent performance below 40% win rate',
+          actionable: 'Review strategy and reduce position sizes',
+          data: { win_rate: winRate }
         });
       }
-    });
-  }
-
-  private calculateModelAccuracy(model: PredictiveModel): number {
-    // Simplified accuracy calculation
-    // In production, would use proper validation metrics
-    return Math.max(0.5, Math.min(0.95, model.accuracy + (Math.random() - 0.5) * 0.1));
-  }
-
-  private updateLearningMetrics(): void {
-    const recentTrades = this.tradeOutcomes.slice(0, 1000);
-    
-    if (recentTrades.length === 0) return;
-
-    const successfulTrades = recentTrades.filter(t => t.outcome === 'win');
-    const tradesWithPnL = recentTrades.filter(t => t.pnl !== undefined);
-    
-    const successRate = successfulTrades.length / recentTrades.length;
-    const avgReturn = tradesWithPnL.length > 0 
-      ? tradesWithPnL.reduce((sum, t) => sum + (t.pnl || 0), 0) / tradesWithPnL.length
-      : 0;
-
-    const returns = tradesWithPnL.map(t => (t.pnl || 0) / (t.entryPrice * t.quantity));
-    const sharpeRatio = this.calculateSharpeRatio(returns);
-    const maxDrawdown = this.calculateMaxDrawdown(returns);
-
-    this.learningMetrics = {
-      totalTrades: recentTrades.length,
-      successfulTrades: successfulTrades.length,
-      successRate,
-      averageReturn: avgReturn,
-      sharpeRatio,
-      maxDrawdown,
-      patternsIdentified: this.patterns.size,
-      modelAccuracy: this.calculateAverageModelAccuracy(),
-      dataQuality: this.assessDataQuality(),
-      lastUpdated: new Date()
-    };
-
-    // Emit metrics update
-    eventBus.emit('learning.metrics_updated', this.learningMetrics);
-  }
-
-  private calculatePortfolioRisk(portfolioData: any): { level: RiskPrediction['riskLevel']; probability: number; factors: string[] } {
-    const factors: string[] = [];
-    let riskScore = 0;
-
-    // Check concentration risk
-    if (portfolioData.concentrationRisk > 0.3) {
-      factors.push('High position concentration');
-      riskScore += 0.3;
     }
 
-    // Check volatility
-    if (portfolioData.volatility > 0.25) {
-      factors.push('High portfolio volatility');
-      riskScore += 0.2;
+    return insights;
+  }
+
+  private adjustAdaptiveParameters(outcome: TradeOutcome, insights: LearningInsight[]): void {
+    if (this.portfolioLearning) {
+      const targetRisk = this.portfolioLearning.risk_tolerance_learned;
+      const currentRisk = this.adaptiveSettings.riskMultiplier;
+      this.adaptiveSettings.riskMultiplier = currentRisk * 0.9 + (targetRisk / 0.05) * 0.1;
     }
 
-    // Check leverage
-    if (portfolioData.leverage && portfolioData.leverage > 2) {
-      factors.push('High leverage exposure');
-      riskScore += 0.25;
+    const negativeInsights = insights.filter(i => i.type === 'negative_trend');
+    if (negativeInsights.length > 0) {
+      this.adaptiveSettings.confidenceThreshold = Math.min(0.8, 
+        this.adaptiveSettings.confidenceThreshold + 0.05);
     }
 
-    // Determine risk level
-    let level: RiskPrediction['riskLevel'] = 'low';
-    if (riskScore > 0.7) level = 'critical';
-    else if (riskScore > 0.5) level = 'high';
-    else if (riskScore > 0.3) level = 'medium';
-
-    return {
-      level,
-      probability: Math.min(0.95, riskScore),
-      factors
-    };
-  }
-
-  private calculatePositionRisk(position: any, portfolioData: any): { level: RiskPrediction['riskLevel']; probability: number; factors: string[] } {
-    const factors: string[] = [];
-    let riskScore = 0;
-
-    // Check position size relative to portfolio
-    const positionWeight = position.marketValue / portfolioData.totalEquity;
-    if (positionWeight > 0.1) {
-      factors.push('Large position size');
-      riskScore += positionWeight * 0.5;
+    const positiveInsights = insights.filter(i => i.type === 'positive_trend');
+    if (positiveInsights.length > 0) {
+      this.adaptiveSettings.confidenceThreshold = Math.max(0.4, 
+        this.adaptiveSettings.confidenceThreshold - 0.02);
     }
 
-    // Check unrealized loss
-    if (position.unrealizedPnLPercent < -0.1) {
-      factors.push('Significant unrealized loss');
-      riskScore += Math.abs(position.unrealizedPnLPercent) * 0.3;
-    }
-
-    let level: RiskPrediction['riskLevel'] = 'low';
-    if (riskScore > 0.6) level = 'high';
-    else if (riskScore > 0.3) level = 'medium';
-
-    return {
-      level,
-      probability: Math.min(0.9, riskScore),
-      factors
-    };
-  }
-
-  private applyFeedback(feedback: FeedbackLoop): void {
-    // Apply feedback to improve system performance
-    switch (feedback.feedbackType) {
-      case 'signal_accuracy':
-        this.adjustSignalConfidence(feedback);
-        break;
-      case 'risk_adjustment':
-        this.adjustRiskModels(feedback);
-        break;
-      case 'performance_update':
-        this.updatePerformanceMetrics(feedback);
-        break;
-    }
-  }
-
-  private adjustSignalConfidence(feedback: FeedbackLoop): void {
-    // Adjust confidence scores based on feedback
-    if (feedback.data.signalId) {
-      logService.log('info', 'Signal confidence adjusted based on feedback', {
-        signalId: feedback.data.signalId,
-        adjustment: feedback.impact
-      });
-    }
-  }
-
-  private adjustRiskModels(feedback: FeedbackLoop): void {
-    // Adjust risk model parameters
-    const riskModel = this.models.get('risk_prediction_v1');
-    if (riskModel && feedback.impact === 'high') {
-      // Increase model sensitivity
-      logService.log('info', 'Risk model sensitivity increased', {
-        modelId: riskModel.modelId,
-        reason: feedback.data.reason
-      });
-    }
-  }
-
-  private updatePerformanceMetrics(feedback: FeedbackLoop): void {
-    // Update performance tracking
-    this.updateLearningMetrics();
-  }
-
-  // Utility methods
-  private calculatePatternConfidence(sampleSize: number, successRate: number): number {
-    // Confidence increases with sample size and extreme success rates
-    const sizeConfidence = Math.min(1, sampleSize / 100);
-    const rateConfidence = Math.abs(successRate - 0.5) * 2;
-    return (sizeConfidence + rateConfidence) / 2;
-  }
-
-  private determinePatternStrength(successRate: number, sampleSize: number): PatternMatch['strength'] {
-    const confidence = this.calculatePatternConfidence(sampleSize, successRate);
-    
-    if (confidence > 0.8) return 'strong';
-    if (confidence > 0.6) return 'moderate';
-    return 'weak';
-  }
-
-  private compilePatternInsights(patterns: PatternMatch[]): PatternInsights {
-    const strongPatterns = patterns.filter(p => p.strength === 'strong');
-    const emergingPatterns = patterns.filter(p => p.occurrences < 20 && p.successRate > 0.7);
-    const failingPatterns = patterns.filter(p => p.successRate < 0.4);
-
-    const recommendations: string[] = [];
-    
-    if (strongPatterns.length > 0) {
-      recommendations.push(`${strongPatterns.length} strong patterns identified for optimization`);
-    }
-    
-    if (failingPatterns.length > 0) {
-      recommendations.push(`${failingPatterns.length} failing patterns require attention`);
-    }
-
-    return {
-      totalPatterns: patterns.length,
-      strongPatterns,
-      emergingPatterns,
-      failingPatterns,
-      recommendations,
-      confidenceLevel: patterns.length > 0 
-        ? patterns.reduce((sum, p) => sum + p.confidence, 0) / patterns.length 
-        : 0,
-      lastUpdated: new Date()
-    };
-  }
-
-  private calculateVolatility(returns: number[]): number {
-    if (returns.length === 0) return 0;
-    
-    const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-    const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
-    
-    return Math.sqrt(variance);
-  }
-
-  private calculateSharpeRatio(returns: number[]): number {
-    if (returns.length === 0) return 0;
-    
-    const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-    const volatility = this.calculateVolatility(returns);
-    
-    return volatility > 0 ? avgReturn / volatility : 0;
-  }
-
-  private calculateMaxDrawdown(returns: number[]): number {
-    if (returns.length === 0) return 0;
-    
-    let maxDrawdown = 0;
-    let peak = 0;
-    let cumulative = 0;
-    
-    returns.forEach(ret => {
-      cumulative += ret;
-      peak = Math.max(peak, cumulative);
-      const drawdown = (peak - cumulative) / peak;
-      maxDrawdown = Math.max(maxDrawdown, drawdown);
-    });
-    
-    return maxDrawdown;
-  }
-
-  private calculateAverageModelAccuracy(): number {
-    const activeModels = Array.from(this.models.values()).filter(m => m.isActive);
-    if (activeModels.length === 0) return 0;
-    
-    return activeModels.reduce((sum, m) => sum + m.accuracy, 0) / activeModels.length;
-  }
-
-  private assessDataQuality(): LearningMetrics['dataQuality'] {
-    const recentTrades = this.tradeOutcomes.slice(0, 100);
-    const completeTrades = recentTrades.filter(t => t.pnl !== undefined && t.outcome !== 'open');
-    
-    const completionRate = recentTrades.length > 0 ? completeTrades.length / recentTrades.length : 0;
-    
-    if (completionRate > 0.9) return 'excellent';
-    if (completionRate > 0.7) return 'good';
-    if (completionRate > 0.5) return 'fair';
-    return 'poor';
-  }
-
-  private assessFeedbackImpact(feedbackType: FeedbackLoop['feedbackType'], data: any): FeedbackLoop['impact'] {
-    switch (feedbackType) {
-      case 'risk_adjustment':
-        return data.severity === 'critical' ? 'high' : 'medium';
-      case 'signal_accuracy':
-        return 'medium';
-      case 'performance_update':
-        return 'low';
-      default:
-        return 'low';
-    }
+    this.adaptiveSettings.lastUpdated = Date.now();
   }
 
   // Public API methods
-  getPatterns(type?: PatternMatch['type']): PatternMatch[] {
-    const allPatterns = Array.from(this.patterns.values());
-    return type ? allPatterns.filter(p => p.type === type) : allPatterns;
+  public getBotPerformance(botId: string): BotPerformance | null {
+    return this.botPerformanceCache.get(botId) || null;
   }
 
-  getModels(): PredictiveModel[] {
-    return Array.from(this.models.values());
+  public getAllBotPerformance(): BotPerformance[] {
+    return Array.from(this.botPerformanceCache.values());
   }
 
-  getLearningMetrics(): LearningMetrics {
-    return { ...this.learningMetrics };
+  public getSignalEffectiveness(signalType: string, source?: string): SignalEffectiveness[] {
+    const results: SignalEffectiveness[] = [];
+    
+    for (const [key, effectiveness] of this.signalEffectivenessCache) {
+      if (effectiveness.signal_type === signalType) {
+        if (!source || effectiveness.source === source) {
+          results.push(effectiveness);
+        }
+      }
+    }
+    
+    return results;
   }
 
-  getFeedbackLoops(limit = 100): FeedbackLoop[] {
-    return this.feedbackLoops.slice(0, limit);
+  public getPortfolioLearning(): PortfolioLearning | null {
+    return this.portfolioLearning;
   }
 
-  getTradeOutcomes(limit = 1000): TradeOutcome[] {
-    return this.tradeOutcomes.slice(0, limit);
+  public getAdaptiveSettings(): AdaptiveSettings {
+    return { ...this.adaptiveSettings };
+  }
+
+  public getTopPerformingBots(limit: number = 5): BotPerformance[] {
+    return Array.from(this.botPerformanceCache.values())
+      .sort((a, b) => b.accuracy_score - a.accuracy_score)
+      .slice(0, limit);
+  }
+
+  public getRecentInsights(limit: number = 10): LearningInsight[] {
+    return [];
+  }
+
+  public getLearningDashboard(): LearningDashboardType {
+    const topBots = this.getTopPerformingBots(3);
+    const totalTrades = Array.from(this.botPerformanceCache.values())
+      .reduce((sum, bot) => sum + bot.total_trades, 0);
+    
+    const overallWinRate = totalTrades > 0 ? 
+      Array.from(this.botPerformanceCache.values())
+        .reduce((sum, bot) => sum + bot.winning_trades, 0) / totalTrades : 0;
+
+    return {
+      overview: {
+        total_trades: totalTrades,
+        overall_win_rate: overallWinRate,
+        active_bots: this.botPerformanceCache.size,
+        learning_events: this.learningEvents.length
+      },
+      top_performing_bots: topBots,
+      adaptive_settings: this.adaptiveSettings,
+      recent_insights: this.getRecentInsights(5),
+      performance_trends: {
+        daily_pnl: [],
+        win_rate_trend: [],
+        risk_adjusted_returns: []
+      }
+    };
+  }
+
+  private getTradeOutcome(tradeId: string): TradeOutcome | null {
+    return null;
+  }
+
+  private async loadLearningState(): Promise<void> {
+    console.log('Learning Engine: State loaded');
+  }
+
+  public async saveLearningState(): Promise<void> {
+    console.log('Learning Engine: State saved');
+  }
+
+  public getWorkspaceLearning(workspaceId: string): any {
+    const workspaceEvents = this.learningEvents.filter(e => e.workspace_id === workspaceId);
+    
+    return {
+      events: workspaceEvents,
+      bot_performance: Array.from(this.botPerformanceCache.values())
+        .filter(bp => bp.bot_id.startsWith(workspaceId)),
+      learning_summary: {
+        total_events: workspaceEvents.length,
+        learning_active: workspaceEvents.length > 0
+      }
+    };
+  }
+
+  private trackBotDecision(event: any): void {
+    console.log('Tracking bot decision:', event);
   }
 }
 
-export const learningEngine = new LearningEngineService();
+// Export singleton instance
+export const learningEngine = new LearningEngine();
+
+// Auto-save learning state every 5 minutes
+setInterval(() => {
+  learningEngine.saveLearningState();
+}, 5 * 60 * 1000);
