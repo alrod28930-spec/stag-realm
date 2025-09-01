@@ -1,6 +1,7 @@
 import { logService } from './logging';
 import { eventBus } from './eventBus';
 import { CleanedSnapshot, CleanedMarketData } from './repository';
+import { ProcessedSignal, OracleAlert } from './oracle';
 
 // BID - Business Intelligence Database (single source of truth)
 export interface BIDPosition {
@@ -308,7 +309,56 @@ export class BID {
     return this.marketSentiment;
   }
 
-  // Feature flags
+  // Oracle signal management
+  addOracleSignal(signal: ProcessedSignal): void {
+    this.oracleSignals.unshift(signal);
+    this.oracleSignals = this.oracleSignals.slice(0, 100); // Keep last 100 signals
+    
+    logService.log('debug', 'Oracle signal added to BID', {
+      id: signal.id,
+      type: signal.type,
+      severity: signal.severity
+    });
+
+    // Emit update event
+    eventBus.emit('bid.oracle_signal_added', signal);
+  }
+
+  addOracleAlert(alert: OracleAlert): void {
+    this.oracleAlerts.unshift(alert);
+    this.oracleAlerts = this.oracleAlerts.slice(0, 50); // Keep last 50 alerts
+    
+    logService.log('debug', 'Oracle alert added to BID', {
+      id: alert.id,
+      type: alert.type,
+      severity: alert.severity
+    });
+
+    // Emit update event
+    eventBus.emit('bid.oracle_alert_added', alert);
+  }
+
+  getOracleSignals(limit = 20): ProcessedSignal[] {
+    return this.oracleSignals.slice(0, limit);
+  }
+
+  getOracleAlerts(limit = 10): OracleAlert[] {
+    return this.oracleAlerts.slice(0, limit);
+  }
+
+  getOracleSignalsBySymbol(symbol: string, limit = 10): ProcessedSignal[] {
+    return this.oracleSignals
+      .filter(signal => signal.symbol === symbol)
+      .slice(0, limit);
+  }
+
+  getOracleSignalsBySeverity(severity: ProcessedSignal['severity'], limit = 10): ProcessedSignal[] {
+    return this.oracleSignals
+      .filter(signal => signal.severity === severity)
+      .slice(0, limit);
+  }
+
+  // Feature flag management
   isFeatureEnabled(feature: string): boolean {
     return this.featureFlags.get(feature) || false;
   }
