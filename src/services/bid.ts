@@ -1,7 +1,9 @@
 import { logService } from './logging';
 import { eventBus } from './eventBus';
 import { CleanedSnapshot, CleanedMarketData } from './repository';
-import type { ProcessedSignal, OracleAlert } from '@/types/oracle';
+import { dataCompression } from './dataCompression';
+import { learningEngine } from './learningEngine';
+import { storageManager } from './storageManager';
 
 // BID - Business Intelligence Database (single source of truth)
 export interface BIDPosition {
