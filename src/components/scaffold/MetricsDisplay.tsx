@@ -173,7 +173,7 @@ export function MetricsDisplay() {
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Last Refresh</span>
             <span className="text-sm">
-              {metrics.last_refresh.toLocaleTimeString()}
+              {new Date(metrics.last_refresh).toLocaleTimeString()}
             </span>
           </div>
         </CardContent>

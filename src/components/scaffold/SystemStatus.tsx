@@ -88,7 +88,7 @@ export function SystemStatus() {
               {systemState.market_state.replace('_', ' ')}
             </Badge>
             <p className="text-xs text-muted-foreground mt-1">
-              Updated {systemState.last_refresh.toLocaleTimeString()}
+              Updated {new Date(systemState.last_refresh).toLocaleTimeString()}
             </p>
           </CardContent>
         </Card>
@@ -161,7 +161,7 @@ export function SystemStatus() {
               <span className="font-medium">BID</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              Last update: {logicState.bid.last_snapshot.toLocaleTimeString()}
+              Last update: {new Date(logicState.bid.last_snapshot).toLocaleTimeString()}
             </div>
           </div>
 
