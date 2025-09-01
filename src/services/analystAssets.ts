@@ -247,7 +247,7 @@ class AnalystAssets {
         id: 'explain_position',
         name: 'Position Explanation',
         category: 'portfolio',
-        template: \`
+        template: `
 **{symbol} Position Analysis:**
 
 • **Current Status**: {quantity} shares at {avg_price} average cost ({current_value} current value)
@@ -257,7 +257,7 @@ class AnalystAssets {
 • **Risk Consideration**: {risk_summary}
 
 *This is informational analysis, not investment advice.*
-        \`,
+        `,
         variables: ['symbol', 'quantity', 'avg_price', 'current_value', 'unrealized_pnl', 'pnl_percent', 'beta', 'sector', 'technical_summary', 'risk_summary'],
         example: 'AAPL position explanation with current metrics'
       },
@@ -265,7 +265,7 @@ class AnalystAssets {
         id: 'post_trade_debrief',
         name: 'Post-Trade Debrief',
         category: 'execution',
-        template: \`
+        template: `
 **Trade Debrief: {symbol}**
 
 • **Execution**: {side} {quantity} shares at {execution_price} (vs expected {target_price})
@@ -276,7 +276,7 @@ class AnalystAssets {
 • **Lessons Learned**: {lessons}
 
 *All decisions logged for learning and compliance.*
-        \`,
+        `,
         variables: ['symbol', 'side', 'quantity', 'execution_price', 'target_price', 'entry_thesis', 'market_conditions', 'slippage_amount', 'slippage_percent', 'stop_price', 'position_percent', 'lessons'],
         example: 'Post-execution analysis of TSLA buy order'
       },
@@ -615,7 +615,7 @@ class AnalystAssets {
     
     // Replace variables in template
     Object.entries(variables).forEach(([key, value]) => {
-      const regex = new RegExp(`{${key}}`, 'g');
+      const regex = new RegExp(`\\{${key}\\}`, 'g');
       rendered = rendered.replace(regex, String(value));
     });
 
