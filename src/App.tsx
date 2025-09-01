@@ -13,6 +13,7 @@ import Analyst from "@/pages/Analyst";
 import TradeBots from "@/pages/TradeBots";
 import Recorder from "@/pages/Recorder";
 import Cradle from "@/pages/Cradle";
+import About from "@/pages/About";
 import Settings from "@/pages/Settings";
 import SystemMonitor from "@/pages/SystemMonitor";
 import AdminPortal from "@/pages/AdminPortal";
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/trade-bots" element={<TradeBots />} />
                 <Route path="/recorder" element={<Recorder />} />
                 <Route path="/cradle" element={<Cradle />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/system-monitor" element={<SystemMonitor />} />
                 <Route path="/admin" element={<AdminPortal />} />

@@ -9,7 +9,8 @@ import {
   Baby,
   Settings,
   Shield,
-  Monitor
+  Monitor,
+  Info
 } from 'lucide-react';
 import {
   Sidebar,
@@ -36,6 +37,7 @@ const navigationItems = [
 ];
 
 const adminItems = [
+  { title: 'About', url: '/about', icon: Info, description: 'Platform overview' },
   { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
   { title: 'System Monitor', url: '/system-monitor', icon: Monitor, description: 'Core scaffold health' },
   { title: 'Admin Portal', url: '/admin', icon: Shield, description: 'Admin controls', adminOnly: true },
