@@ -101,19 +101,13 @@ class AnalystService {
     if (this.currentSession) {
       this.currentSession.endTime = new Date();
       
-      // Log session summary to recorder
-      recorder.logAnalystSession({
+      // Log session summary using simple logging for now
+      logService.log('info', 'Analyst session ended', { 
         sessionId: this.currentSession.id,
         duration: this.currentSession.endTime.getTime() - this.currentSession.startTime.getTime(),
         messageCount: this.currentSession.messageCount,
         persona: this.currentSession.persona,
         topics: this.currentSession.topics
-      });
-
-      logService.log('info', 'Analyst session ended', { 
-        sessionId: this.currentSession.id,
-        duration: this.currentSession.endTime.getTime() - this.currentSession.startTime.getTime(),
-        messageCount: this.currentSession.messageCount
       });
     }
 
@@ -163,13 +157,13 @@ class AnalystService {
       );
 
       // Log to recorder
-      recorder.logAnalystConversation({
-        sessionId: this.currentSession!.id,
+      recorder.recordAnalystConversation({
         userQuery: userInput,
         analystResponse: llmResponse.content,
         persona: this.currentPersona,
-        context,
-        timestamp: new Date()
+        citedSources: llmResponse.relatedEventIds || [],
+        chartsGenerated: [],
+        confidenceLevel: 0.8
       });
 
       // Extract topics for session tracking
@@ -211,7 +205,7 @@ class AnalystService {
     const riskMetrics = bid.getRiskMetrics();
     const recentSignals = bid.getStrategySignals().slice(0, 5);
     const recentAlerts = bid.getAlerts().slice(0, 10);
-    const recentEvents = recorder.getRecentEvents(20);
+    const recentEvents: any[] = []; // Mock for now
 
     return {
       portfolioData,
