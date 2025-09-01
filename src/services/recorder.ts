@@ -618,9 +618,27 @@ export class Recorder {
     return this.entries.length;
   }
 
-  getSessionId(): string {
-    return this.currentSessionId;
+  // Record risk alert
+  recordRiskAlert(alert: any): void {
+    this.createEntry(
+      'alert',
+      'risk_alert',
+      alert.title,
+      {
+        alertId: alert.id,
+        type: alert.type,
+        severity: alert.severity,
+        message: alert.message,
+        symbol: alert.symbol,
+        sector: alert.sector,
+        governor: alert.governor,
+        recommendedAction: alert.recommendedAction,
+        currentValue: alert.currentValue,
+        thresholdValue: alert.thresholdValue
+      }
+    );
   }
+}
 }
 
 // Export singleton instance
