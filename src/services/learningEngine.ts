@@ -461,7 +461,7 @@ class LearningEngineService {
           description: `${symbol} trading performance pattern`,
           occurrences: symbolOutcomes.length,
           successRate,
-          averageReturn: avgReturn,
+      averageReturn: avgReturn,
           confidence: this.calculatePatternConfidence(symbolOutcomes.length, successRate),
           timeframe: '30d',
           conditions: [
@@ -615,7 +615,7 @@ class LearningEngineService {
       totalTrades: recentTrades.length,
       successfulTrades: successfulTrades.length,
       successRate,
-      averageReturn,
+      averageReturn: avgReturn,
       sharpeRatio,
       maxDrawdown,
       patternsIdentified: this.patterns.size,

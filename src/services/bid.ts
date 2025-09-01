@@ -4,6 +4,7 @@ import { CleanedSnapshot, CleanedMarketData } from './repository';
 import { dataCompression } from './dataCompression';
 import { learningEngine } from './learningEngine';
 import { storageManager } from './storageManager';
+import { ProcessedSignal, OracleAlert } from '../types/oracle';
 
 // BID - Business Intelligence Database (single source of truth)
 export interface BIDPosition {
