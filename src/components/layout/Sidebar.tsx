@@ -10,7 +10,8 @@ import {
   Settings,
   Shield,
   Monitor,
-  Info
+  Info,
+  CreditCard
 } from 'lucide-react';
 import {
   Sidebar,
@@ -38,6 +39,7 @@ const navigationItems = [
 
 const adminItems = [
   { title: 'About', url: '/about', icon: Info, description: 'Platform overview' },
+  { title: 'Subscription', url: '/subscription', icon: CreditCard, description: 'Manage your plan' },
   { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
   { title: 'System Monitor', url: '/system-monitor', icon: Monitor, description: 'Core scaffold health' },
   { title: 'Admin Portal', url: '/admin', icon: Shield, description: 'Admin controls', adminOnly: true },
