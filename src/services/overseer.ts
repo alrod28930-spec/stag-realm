@@ -73,7 +73,7 @@ export class Overseer {
       const decision = await this.makePositionDecision(approvedTrade);
       
       // Record decision
-      await recorder.recordGovernanceDecision(decision);
+      await recorder.recordGovernanceDecisionNew(decision);
       
       // Emit decision
       eventBus.emit('governance.decision', decision);

@@ -95,7 +95,7 @@ export class Monarch {
       const decision = await this.makeGovernanceDecision(intent);
       
       // Record decision
-      await recorder.recordGovernanceDecision(decision);
+      await recorder.recordGovernanceDecisionNew(decision);
       
       // Emit decision
       eventBus.emit('governance.decision', decision);

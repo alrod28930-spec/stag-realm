@@ -618,6 +618,26 @@ export class Recorder {
     return this.entries.length;
   }
 
+  // Record governance decision (new format)
+  recordGovernanceDecisionNew(decision: any): void {
+    this.createEntry(
+      'risk',
+      'governance_decision',
+      `${decision.governor} ${decision.action}: ${decision.reasoning}`,
+      {
+        decisionId: decision.id,
+        tradeIntentId: decision.tradeIntentId,
+        governor: decision.governor,
+        action: decision.action,
+        reasoning: decision.reasoning,
+        riskFactors: decision.riskFactors,
+        modifications: decision.modifications,
+        confidence: decision.confidence,
+        processingTime: decision.processingTimeMs
+      }
+    );
+  }
+
   // Record risk alert
   recordRiskAlert(alert: any): void {
     this.createEntry(
@@ -638,7 +658,6 @@ export class Recorder {
       }
     );
   }
-}
 }
 
 // Export singleton instance
