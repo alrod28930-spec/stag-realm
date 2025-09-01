@@ -13,7 +13,8 @@ import {
   Zap,
   Clock
 } from 'lucide-react';
-import { oracle, ProcessedSignal, OracleAlert, SectorHeatmap } from '@/services/oracle';
+import { oracle } from '@/services/oracle';
+import type { ProcessedSignal, OracleAlert, SectorHeatmap } from '@/types/oracle';
 import { eventBus } from '@/services/eventBus';
 
 interface OraclePanelProps {
@@ -38,7 +39,6 @@ export function OraclePanel({ onViewFull }: OraclePanelProps) {
     const interval = setInterval(loadOracleData, 30000);
 
     return () => {
-      if (unsubscribe) unsubscribe();
       clearInterval(interval);
     };
   }, []);
@@ -71,12 +71,12 @@ export function OraclePanel({ onViewFull }: OraclePanelProps) {
 
   const getSeverityBadgeVariant = (severity: ProcessedSignal['severity']) => {
     switch (severity) {
-      case 'critical': return 'destructive';
-      case 'high': return 'secondary';
-      case 'medium': return 'outline';
-      case 'low': return 'secondary';
-      default: return 'outline';
-    } as const;
+      case 'critical': return 'destructive' as const;
+      case 'high': return 'secondary' as const;
+      case 'medium': return 'outline' as const;
+      case 'low': return 'secondary' as const;
+      default: return 'outline' as const;
+    }
   };
 
   const getDirectionIcon = (direction: ProcessedSignal['direction']) => {

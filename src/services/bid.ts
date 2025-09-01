@@ -1,7 +1,7 @@
 import { logService } from './logging';
 import { eventBus } from './eventBus';
 import { CleanedSnapshot, CleanedMarketData } from './repository';
-import { ProcessedSignal, OracleAlert } from './oracle';
+import type { ProcessedSignal, OracleAlert } from '@/types/oracle';
 
 // BID - Business Intelligence Database (single source of truth)
 export interface BIDPosition {
@@ -94,6 +94,8 @@ export class BID {
   private alerts: BIDAlert[] = [];
   private marketSentiment: BIDMarketSentiment | null = null;
   private featureFlags: Map<string, boolean> = new Map();
+  private oracleSignals: ProcessedSignal[] = [];
+  private oracleAlerts: OracleAlert[] = [];
   
   constructor() {
     // Initialize feature flags

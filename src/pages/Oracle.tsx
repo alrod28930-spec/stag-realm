@@ -19,7 +19,8 @@ import {
   Eye,
   Signal
 } from 'lucide-react';
-import { oracle, ProcessedSignal, OracleAlert, SectorHeatmap } from '@/services/oracle';
+import { oracle } from '@/services/oracle';
+import type { ProcessedSignal, OracleAlert, SectorHeatmap } from '@/types/oracle';
 import { eventBus } from '@/services/eventBus';
 
 export default function Oracle() {
@@ -50,9 +51,7 @@ export default function Oracle() {
     });
 
     return () => {
-      if (unsubscribeRefresh) unsubscribeRefresh();
-      if (unsubscribeSignal) unsubscribeSignal();  
-      if (unsubscribeAlert) unsubscribeAlert();
+      // Cleanup event listeners if needed
     };
   }, []);
 
@@ -129,12 +128,12 @@ export default function Oracle() {
 
   const getSeverityBadgeVariant = (severity: ProcessedSignal['severity']) => {
     switch (severity) {
-      case 'critical': return 'destructive';
-      case 'high': return 'secondary';
-      case 'medium': return 'outline';
-      case 'low': return 'secondary';
-      default: return 'outline';
-    } as const;
+      case 'critical': return 'destructive' as const;
+      case 'high': return 'secondary' as const;
+      case 'medium': return 'outline' as const;
+      case 'low': return 'secondary' as const;
+      default: return 'outline' as const;
+    }
   };
 
   const getDirectionIcon = (direction: ProcessedSignal['direction']) => {

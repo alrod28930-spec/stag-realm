@@ -559,6 +559,46 @@ export class Recorder {
     return summary;
   }
 
+  // Oracle-specific logging
+  recordOracleSignal(signal: any) {
+    this.createEntry(
+      'system',
+      'oracle_signal',
+      `Oracle signal: ${signal.signal}`,
+      {
+        signalId: signal.id,
+        type: signal.type,
+        severity: signal.severity,
+        symbol: signal.symbol,
+        sector: signal.sector,
+        confidence: signal.confidence,
+        direction: signal.direction
+      }
+    );
+  }
+
+  recordOracleAlert(alert: any) {
+    this.createEntry(
+      'alert',
+      'oracle_alert',
+      `Oracle alert: ${alert.title}`,
+      {
+        alertId: alert.id,
+        type: alert.type,
+        severity: alert.severity,
+        affectedSymbols: alert.affectedSymbols,
+        affectedSectors: alert.affectedSectors,
+        actionRequired: alert.actionRequired,
+        relatedSignals: alert.relatedSignals
+      }
+    );
+  }
+
+  // Get recent events for context
+  getRecentEvents(limit: number = 20): RecorderEntry[] {
+    return this.entries.slice(0, limit);
+  }
+
   // Utility methods
   private generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

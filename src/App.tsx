@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
 import Portfolio from "@/pages/Portfolio";
 import Analyst from "@/pages/Analyst";
+import Oracle from "@/pages/Oracle";
 import TradeBots from "@/pages/TradeBots";
 import Recorder from "@/pages/Recorder";
 import Cradle from "@/pages/Cradle";
@@ -30,7 +31,8 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/market" element={<Market />} />
               <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/analyst" element={<Analyst />} />
+            <Route path="/analyst" element={<Analyst />} />
+            <Route path="/oracle" element={<Oracle />} />
               <Route path="/trade-bots" element={<TradeBots />} />
               <Route path="/recorder" element={<Recorder />} />
               <Route path="/cradle" element={<Cradle />} />

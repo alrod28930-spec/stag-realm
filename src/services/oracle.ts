@@ -1,69 +1,11 @@
 import { logService } from './logging';
 import { eventBus } from './eventBus';
 import { repository } from './repository';
-import { bid } from './bid';
 import { recorder } from './recorder';
+import type { ProcessedSignal, OracleAlert, SectorHeatmap, OracleContext, MarketFeed } from '@/types/oracle';
 
-// Oracle data structures
-export interface MarketFeed {
-  source: string;
-  symbol?: string;
-  sector?: string;
-  dataType: 'price' | 'volume' | 'news' | 'options' | 'macro';
-  rawData: any;
-  timestamp: Date;
-}
-
-export interface ProcessedSignal {
-  id: string;
-  type: 'volatility_spike' | 'volume_surge' | 'sector_rotation' | 'earnings_beat' | 
-        'news_sentiment' | 'options_flow' | 'macro_shift' | 'technical_breakout';
-  symbol?: string;
-  sector?: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  direction: 'bullish' | 'bearish' | 'neutral';
-  confidence: number; // 0-1
-  signal: string;
-  description: string;
-  data: Record<string, any>;
-  timestamp: Date;
-  expiresAt?: Date;
-  sources: string[];
-}
-
-export interface OracleAlert {
-  id: string;
-  type: 'risk_warning' | 'sector_crash' | 'volatility_spike' | 'earnings_surprise' | 
-        'macro_event' | 'unusual_activity';
-  title: string;
-  message: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  affectedSymbols: string[];
-  affectedSectors: string[];
-  timestamp: Date;
-  actionRequired: boolean;
-  relatedSignals: string[];
-}
-
-export interface SectorHeatmap {
-  [sector: string]: {
-    performance: number; // % change
-    volume: number;
-    volatility: number;
-    sentiment: 'positive' | 'negative' | 'neutral';
-    signals: number; // count of active signals
-    lastUpdated: Date;
-  };
-}
-
-export interface OracleContext {
-  symbol?: string;
-  recentSignals: ProcessedSignal[];
-  marketSummary: string;
-  keyFactors: string[];
-  volatilityLevel: 'low' | 'medium' | 'high';
-  timestamp: Date;
-}
+// Re-export types for backward compatibility
+export type { ProcessedSignal, OracleAlert, SectorHeatmap, OracleContext, MarketFeed };
 
 class OracleService {
   private signals: ProcessedSignal[] = [];
@@ -294,7 +236,8 @@ class OracleService {
     this.signals = this.signals.slice(0, 100);
     
     // Store in BID for consumption by other services
-    bid.addOracleSignal(signal);
+    // Note: Removed BID import to avoid circular dependency
+    // BID will be notified via events instead
     
     // Log to Recorder
     recorder.recordOracleSignal(signal);
