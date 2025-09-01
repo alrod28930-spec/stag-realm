@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
+import stagLogo from '@/assets/stag-logo.png';
 
 const navigationItems = [
   { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
@@ -56,10 +57,10 @@ export function AppSidebar() {
   const getNavClassName = (path: string) => {
     const isCurrentlyActive = isActive(path);
     return cn(
-      "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+      "flex items-center gap-3 px-3 py-2 rounded-md transition-smooth group",
       isCurrentlyActive 
-        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-        : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-gold border border-primary/30" 
+        : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:shadow-gold hover:border hover:border-primary/20"
     );
   };
 
@@ -71,8 +72,25 @@ export function AppSidebar() {
   });
 
   return (
-    <Sidebar className={cn("border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
+    <Sidebar className={cn("border-r border-sidebar-border starfield", collapsed ? "w-16" : "w-64")}>
       <SidebarContent className="py-4">
+        {/* Logo Section */}
+        <div className="px-4 mb-8">
+          <div className="flex items-center gap-3">
+            <img 
+              src={stagLogo} 
+              alt="StagAlgo" 
+              className="w-10 h-10 object-contain filter brightness-0 invert opacity-90"
+            />
+            {!collapsed && (
+              <div>
+                <h2 className="text-xl font-bold text-primary font-serif">StagAlgo</h2>
+                <p className="text-xs text-sidebar-foreground/60 uppercase tracking-wider">Trading Platform</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wide">
@@ -84,7 +102,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} className={getNavClassName(item.url)}>
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      <item.icon className="w-4 h-4 flex-shrink-0 group-hover:text-primary-glow transition-colors" />
                       {!collapsed && (
                         <div className="flex flex-col min-w-0">
                           <span className="text-sm font-medium truncate">{item.title}</span>
@@ -112,7 +130,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} className={getNavClassName(item.url)}>
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      <item.icon className="w-4 h-4 flex-shrink-0 group-hover:text-primary-glow transition-colors" />
                       {!collapsed && (
                         <div className="flex flex-col min-w-0">
                           <span className="text-sm font-medium truncate">{item.title}</span>
@@ -133,7 +151,7 @@ export function AppSidebar() {
         {collapsed && user && (
           <SidebarGroup className="mt-auto">
             <div className="px-3 py-2 text-center">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center mx-auto">
+              <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center mx-auto shadow-gold">
                 <span className="text-xs font-semibold text-primary-foreground">
                   {user.name.charAt(0).toUpperCase()}
                 </span>

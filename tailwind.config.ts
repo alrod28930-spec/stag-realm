@@ -73,16 +73,19 @@ export default {
 				'gradient-primary': 'var(--gradient-primary)',
 				'gradient-success': 'var(--gradient-success)',
 				'gradient-card': 'var(--gradient-card)',
-				'gradient-hero': 'var(--gradient-hero)'
+				'gradient-hero': 'var(--gradient-hero)',
+				'gradient-starfield': 'var(--gradient-starfield)'
 			},
 			boxShadow: {
 				'glow': 'var(--shadow-glow)',
+				'gold': 'var(--shadow-gold)',
 				'card': 'var(--shadow-card)',
 				'elevated': 'var(--shadow-elevated)'
 			},
 			transitionTimingFunction: {
 				'smooth': 'var(--transition-smooth)',
-				'bounce': 'var(--transition-bounce)'
+				'bounce': 'var(--transition-bounce)',
+				'glow': 'var(--transition-glow)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

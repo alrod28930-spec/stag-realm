@@ -2,6 +2,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
+import { usePortfolioStore } from '@/stores/portfolioStore';
+import { TradeOrder } from '@/adapters/BrokerAdapter';
+import { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -9,77 +13,93 @@ import {
   PieChart,
   Eye,
   X,
-  Plus
+  Plus,
+  RefreshCw,
+  Link
 } from 'lucide-react';
 
 export default function Portfolio() {
-  const portfolioOverview = {
+  const { 
+    portfolio, 
+    isConnected, 
+    connectionStatus, 
+    isLoading, 
+    error, 
+    connectBroker, 
+    refreshPortfolio,
+    executeTrade,
+    clearError 
+  } = usePortfolioStore();
+  
+  const [apiKey, setApiKey] = useState('');
+  const [showConnectForm, setShowConnectForm] = useState(false);
+  const { toast } = useToast();
+
+  // Auto-refresh when connected
+  useEffect(() => {
+    if (isConnected && !portfolio) {
+      refreshPortfolio();
+    }
+  }, [isConnected, portfolio, refreshPortfolio]);
+
+  const handleConnect = async () => {
+    try {
+      const success = await connectBroker(apiKey || 'demo-key-12345');
+      if (success) {
+        toast({
+          title: "Connected Successfully",
+          description: "Your broker account has been connected.",
+        });
+        setShowConnectForm(false);
+        setApiKey('');
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Failed",
+        description: error instanceof Error ? error.message : "Failed to connect to broker",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTrade = async (symbol: string, side: 'buy' | 'sell') => {
+    try {
+      const order: TradeOrder = {
+        symbol,
+        side,
+        quantity: 1,
+        orderType: 'market'
+      };
+      
+      const result = await executeTrade(order);
+      
+      toast({
+        title: "Trade Executed",
+        description: `${side.toUpperCase()} order for ${symbol} ${result.status}`,
+        variant: result.status === 'filled' ? 'default' : 'destructive',
+      });
+    } catch (error) {
+      toast({
+        title: "Trade Failed",
+        description: error instanceof Error ? error.message : "Failed to execute trade",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Use portfolio data if connected, otherwise fallback to mock data
+  const portfolioData = portfolio || {
     totalValue: 125432.50,
     dayChange: 3245.20,
     dayChangePercent: 2.67,
     totalGainLoss: 12543.75,
     totalGainLossPercent: 11.12,
-    availableCash: 25000.00
+    availableCash: 25000.00,
+    positions: []
   };
 
-  const holdings = [
-    {
-      symbol: 'AAPL',
-      name: 'Apple Inc.',
-      shares: 100,
-      avgPrice: 165.30,
-      currentPrice: 175.50,
-      marketValue: 17550.00,
-      gainLoss: 1020.00,
-      gainLossPercent: 6.17,
-      allocation: 13.97
-    },
-    {
-      symbol: 'GOOGL',
-      name: 'Alphabet Inc.',
-      shares: 50,
-      avgPrice: 145.80,
-      currentPrice: 142.30,
-      marketValue: 7115.00,
-      gainLoss: -175.00,
-      gainLossPercent: -2.40,
-      allocation: 5.67
-    },
-    {
-      symbol: 'MSFT',
-      name: 'Microsoft Corp.',
-      shares: 75,
-      avgPrice: 350.25,
-      currentPrice: 378.90,
-      marketValue: 28417.50,
-      gainLoss: 2149.75,
-      gainLossPercent: 8.18,
-      allocation: 22.66
-    },
-    {
-      symbol: 'TSLA',
-      name: 'Tesla Inc.',
-      shares: 25,
-      avgPrice: 275.60,
-      currentPrice: 248.75,
-      marketValue: 6218.75,
-      gainLoss: -671.25,
-      gainLossPercent: -9.73,
-      allocation: 4.96
-    },
-    {
-      symbol: 'NVDA',
-      name: 'NVIDIA Corp.',
-      shares: 40,
-      avgPrice: 825.45,
-      currentPrice: 875.30,
-      marketValue: 35012.00,
-      gainLoss: 1994.00,
-      gainLossPercent: 6.04,
-      allocation: 27.91
-    }
-  ];
-
+  const holdings = portfolio?.positions || [];
+  
   const assetAllocation = [
     { category: 'Technology', value: 68.24, color: 'bg-primary' },
     { category: 'Healthcare', value: 12.15, color: 'bg-accent' },
@@ -98,11 +118,85 @@ export default function Portfolio() {
             Track and manage your investment positions
           </p>
         </div>
-        <Button className="bg-gradient-primary hover:opacity-90">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Position
-        </Button>
+        <div className="flex items-center gap-4">
+          {!isConnected ? (
+            <Button 
+              onClick={() => setShowConnectForm(true)}
+              className="bg-gradient-primary hover:opacity-90 shadow-gold"
+            >
+              <Link className="w-4 h-4 mr-2" />
+              Connect Broker
+            </Button>
+          ) : (
+            <Button 
+              onClick={refreshPortfolio}
+              disabled={isLoading}
+              variant="outline"
+              className="border-primary/30 hover:border-primary/50"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          )}
+          <Button className="bg-gradient-primary hover:opacity-90 shadow-gold">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Position
+          </Button>
+        </div>
       </div>
+
+      {/* Connection Form */}
+      {showConnectForm && (
+        <Card className="bg-gradient-card shadow-elevated border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-primary">Connect Broker Account</CardTitle>
+            <CardDescription>
+              Enter your broker API credentials to sync your portfolio
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">API Key</label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your broker API key (or leave empty for demo)"
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowConnectForm(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConnect}
+                disabled={connectionStatus === 'connecting'}
+                className="bg-gradient-primary hover:opacity-90"
+              >
+                {connectionStatus === 'connecting' ? 'Connecting...' : 'Connect'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-destructive/20 bg-destructive/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <p className="text-destructive">{error}</p>
+              <Button variant="ghost" size="sm" onClick={clearError}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Portfolio Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -114,11 +208,11 @@ export default function Portfolio() {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${portfolioOverview.totalValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">${portfolioData.totalValue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-accent flex items-center">
                 <TrendingUp className="w-3 h-3 mr-1" />
-                +${portfolioOverview.dayChange.toLocaleString()} (+{portfolioOverview.dayChangePercent}%) today
+                +${portfolioData.dayChange.toLocaleString()} (+{portfolioData.dayChangePercent}%) today
               </span>
             </p>
           </CardContent>
@@ -133,10 +227,10 @@ export default function Portfolio() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-accent">
-              +${portfolioOverview.totalGainLoss.toLocaleString()}
+              +${portfolioData.totalGainLoss.toLocaleString()}
             </div>
             <p className="text-xs text-accent">
-              +{portfolioOverview.totalGainLossPercent}% all time
+              +{portfolioData.totalGainLossPercent}% all time
             </p>
           </CardContent>
         </Card>
@@ -149,7 +243,7 @@ export default function Portfolio() {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${portfolioOverview.availableCash.toLocaleString()}</div>
+            <div className="text-2xl font-bold">${portfolioData.availableCash.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">Ready to invest</p>
           </CardContent>
         </Card>

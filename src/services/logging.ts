@@ -103,3 +103,37 @@ export const createLogger = (module: string): Logger => {
 
 // Global logger instance
 export const logger = createLogger('StagAlgo');
+
+// Service-style interface for compatibility
+export class LoggingService {
+  log(level: 'debug' | 'info' | 'warn' | 'error' | 'critical', message: string, metadata?: Record<string, any>): void {
+    switch (level) {
+      case 'debug':
+        logger.debug(message, metadata);
+        break;
+      case 'info':
+        logger.info(message, metadata);
+        break;
+      case 'warn':
+        logger.warn(message, metadata);
+        break;
+      case 'error':
+        logger.error(message, metadata);
+        break;
+      case 'critical':
+        logger.critical(message, metadata);
+        break;
+    }
+  }
+
+  getLogs(level?: LogLevel): LogEntry[] {
+    return logger.getLogs(level);
+  }
+
+  clearLogs(): void {
+    logger.clearLogs();
+  }
+}
+
+// Export service instance for compatibility
+export const logService = new LoggingService();

@@ -10,7 +10,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background starfield">
         <AppSidebar />
         
         <div className="flex-1 flex flex-col">
@@ -18,10 +18,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           
           {/* Sidebar toggle for mobile */}
           <div className="lg:hidden p-2">
-            <SidebarTrigger />
+            <SidebarTrigger className="glow-gold" />
           </div>
           
-          <main className="flex-1 p-6 overflow-auto">
+          <main className="flex-1 p-6 overflow-auto tab-transition">
             {children}
           </main>
         </div>
