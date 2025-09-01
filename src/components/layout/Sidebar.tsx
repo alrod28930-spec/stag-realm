@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
-import stagLogo from '@/assets/stag-logo.png';
 
 const navigationItems = [
   { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
@@ -80,9 +79,9 @@ export function AppSidebar() {
         <div className="px-4 mb-8">
           <div className="flex items-center gap-3">
             <img 
-              src={stagLogo} 
+              src="/lovable-uploads/aa502076-83e2-4336-bda8-00b2eaac7a75.png" 
               alt="StagAlgo" 
-              className="w-10 h-10 object-contain filter brightness-0 invert opacity-90"
+              className="w-10 h-10 object-contain"
             />
             {!collapsed && (
               <div>

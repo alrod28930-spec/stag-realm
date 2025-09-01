@@ -53,11 +53,12 @@ export function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
       <Card className="w-full max-w-md bg-card/95 backdrop-blur-sm shadow-elevated">
         <CardHeader className="text-center space-y-4">
-          <div className="flex items-center justify-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-white" />
-            </div>
-            <CardTitle className="text-2xl font-bold">StagAlgo</CardTitle>
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <img 
+              src="/lovable-uploads/51874fc9-b200-43b9-9528-5946c7fbb0d9.png" 
+              alt="StagAlgo" 
+              className="w-48 h-auto object-contain"
+            />
           </div>
           <CardDescription>
             Sign in to your trading platform
