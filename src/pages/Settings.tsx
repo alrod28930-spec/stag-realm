@@ -21,12 +21,16 @@ import {
   FileText,
   Download,
   Clock,
-  CheckCircle
+  CheckCircle,
+  DollarSign,
+  TrendingUp
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { complianceService } from '@/services/compliance';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { RiskToggle } from '@/components/ui/risk-toggle';
+import { toggleService } from '@/services/toggleService';
 
 interface BrokerConfig {
   id: string;
@@ -41,6 +45,7 @@ interface BrokerConfig {
 export default function Settings() {
   const { toast } = useToast();
   const [showApiKeys, setShowApiKeys] = useState<{ [key: string]: boolean }>({});
+  const [toggleState, setToggleState] = useState(toggleService.getToggleState());
   
   // Load compliance data
   const [complianceSettings, setComplianceSettings] = useState(complianceService.getComplianceSettings());
@@ -169,9 +174,11 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="brokers" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="brokers">Brokers</TabsTrigger>
           <TabsTrigger value="risk">Risk Controls</TabsTrigger>
+          <TabsTrigger value="capital">Capital Risk</TabsTrigger>
+          <TabsTrigger value="gains">Gains</TabsTrigger>
           <TabsTrigger value="filters">Trade Filters</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="display">Display</TabsTrigger>
@@ -307,11 +314,188 @@ export default function Settings() {
           <Card className="bg-gradient-card shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" />
-                Risk Management
+                <Shield className="w-5 h-5" />
+                Global Risk Governors
               </CardTitle>
               <CardDescription>
-                Configure risk controls and position limits
+                System-wide risk enforcement controls and safety measures
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <RiskToggle
+                id="risk-governors"
+                label="Risk Governors"
+                description="Master control for all risk checks - Monarch & Overseer enforcement"
+                enabled={toggleState.riskGovernorsEnabled}
+                onChange={(enabled) => toggleService.setRiskToggle('riskGovernorsEnabled', enabled)}
+                riskLevel="critical"
+                requiresConfirmation={true}
+              />
+
+              <RiskToggle
+                id="soft-pull"
+                label="Soft Pull Enforcement"
+                description="Allow risk adjustments (position size, stops) instead of outright blocks"
+                enabled={toggleState.softPullEnabled}
+                onChange={(enabled) => toggleService.setRiskToggle('softPullEnabled', enabled)}
+                riskLevel="medium"
+              />
+
+              <RiskToggle
+                id="hard-pull"
+                label="Hard Pull Enforcement"
+                description="Force block trades or close positions when thresholds breached"
+                enabled={toggleState.hardPullEnabled}
+                onChange={(enabled) => toggleService.setRiskToggle('hardPullEnabled', enabled)}
+                riskLevel="high"
+                requiresConfirmation={true}
+              />
+
+              <RiskToggle
+                id="blacklist-enforcement"
+                label="Blacklist Enforcement"
+                description="Block trades in symbols flagged by risk governors"
+                enabled={toggleState.blacklistEnforced}
+                onChange={(enabled) => toggleService.setRiskToggle('blacklistEnforced', enabled)}
+                riskLevel="medium"
+              />
+
+              <RiskToggle
+                id="exposure-limits"
+                label="Exposure Limits"
+                description="Enforce maximum exposure per ticker, sector, or region"
+                enabled={toggleState.exposureLimitsEnabled}
+                onChange={(enabled) => toggleService.setRiskToggle('exposureLimitsEnabled', enabled)}
+                riskLevel="high"
+              />
+
+              <RiskToggle
+                id="drawdown-guard"
+                label="Daily Drawdown Guard"
+                description="Auto-halt trading if daily losses exceed threshold"
+                enabled={toggleState.dailyDrawdownGuard}
+                onChange={(enabled) => toggleService.setRiskToggle('dailyDrawdownGuard', enabled)}
+                riskLevel="high"
+              />
+
+              <RiskToggle
+                id="minimum-thresholds"
+                label="Minimum Trade Thresholds" 
+                description="Enforce minimum stock price and trade size requirements"
+                enabled={toggleState.minimumTradeThresholds}
+                onChange={(enabled) => toggleService.setRiskToggle('minimumTradeThresholds', enabled)}
+                riskLevel="low"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Risk Status Summary */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="w-5 h-5" />
+                Risk Status Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const riskStatus = toggleService.getRiskStatus();
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Safety Mode</span>
+                      <Badge className={riskStatus.safeModeEnabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                        {riskStatus.safeModeEnabled ? 'Enabled' : 'Disabled'}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Overall Risk Level</span>
+                      <Badge className={
+                        riskStatus.riskLevel === 'low' ? 'bg-green-500/20 text-green-400' :
+                        riskStatus.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-red-500/20 text-red-400'
+                      }>
+                        <span className="capitalize">{riskStatus.riskLevel}</span>
+                      </Badge>
+                    </div>
+
+                    {riskStatus.disabledRiskControls.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Disabled Controls:</span>
+                        <div className="flex flex-wrap gap-2">
+                          {riskStatus.disabledRiskControls.map(control => (
+                            <Badge key={control} variant="outline" className="text-xs">
+                              {control}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Capital Risk Controls */}
+        <TabsContent value="capital" className="space-y-6">
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Capital at Risk Controls
+              </CardTitle>
+              <CardDescription>
+                Define maximum loss limits per trade, sector, and portfolio
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <RiskToggle
+                id="per-trade-risk"
+                label="Per Trade Capital Risk"
+                description="Limit risk exposure per individual trade (e.g., max 2% of equity per trade)"
+                enabled={toggleState.perTradeRiskEnabled}
+                onChange={(enabled) => toggleService.setRiskToggle('perTradeRiskEnabled', enabled)}
+                riskLevel="medium"
+              />
+
+              <RiskToggle
+                id="sector-risk"
+                label="Per Sector Risk Limits"
+                description="Cap exposure to any sector/industry (e.g., max 15% in tech)"
+                enabled={toggleState.sectorRiskEnabled}
+                onChange={(enabled) => toggleService.setRiskToggle('sectorRiskEnabled', enabled)}
+                riskLevel="medium"
+              />
+
+              <RiskToggle
+                id="portfolio-risk"
+                label="Total Portfolio Risk"
+                description="Daily maximum drawdown enforcement (halt trades at -3% daily loss)"
+                enabled={toggleState.portfolioRiskEnabled}
+                onChange={(enabled) => toggleService.setRiskToggle('portfolioRiskEnabled', enabled)}
+                riskLevel="high"
+              />
+
+              <RiskToggle
+                id="leverage-risk"
+                label="Leverage Risk Controls"
+                description="Restrict leverage usage and margin requirements"
+                enabled={toggleState.leverageRiskEnabled}
+                onChange={(enabled) => toggleService.setRiskToggle('leverageRiskEnabled', enabled)}
+                riskLevel="high"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Capital Risk Settings */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle>Capital Risk Parameters</CardTitle>
+              <CardDescription>
+                Configure specific risk limits and thresholds
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -344,6 +528,81 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="maxPositions">Max Open Positions</Label>
+                  <Input
+                    id="maxPositions"
+                    type="number"
+                    value={settings.maxOpenPositions}
+                    onChange={(e) => handleSettingChange('maxOpenPositions', Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Possible Gains Controls */}
+        <TabsContent value="gains" className="space-y-6">
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Possible Gains Controls
+              </CardTitle>
+              <CardDescription>
+                Configure profit targets and reward scaling relative to risk
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <RiskToggle
+                id="take-profit-scaling"
+                label="Take-Profit Scaling"
+                description="Set profit targets as multiples of risk (e.g., 2:1 reward-to-risk ratio)"
+                enabled={toggleState.takeProfitScaling}
+                onChange={(enabled) => toggleService.setRiskToggle('takeProfitScaling', enabled)}
+                riskLevel="low"
+              />
+
+              <RiskToggle
+                id="profit-lock-in"
+                label="Profit Lock-In (Trailing Stops)"
+                description="Trail stop-losses upward to lock in profits as trades move favorably"
+                enabled={toggleState.profitLockIn}
+                onChange={(enabled) => toggleService.setRiskToggle('profitLockIn', enabled)}
+                riskLevel="low"
+              />
+
+              <RiskToggle
+                id="aggressive-gains"
+                label="Aggressive Gains Mode"
+                description="Wider profit targets (3-5x risk) for higher potential returns"
+                enabled={toggleState.aggressiveGains}
+                onChange={(enabled) => toggleService.setRiskToggle('aggressiveGains', enabled)}
+                riskLevel="medium"
+              />
+
+              <RiskToggle
+                id="partial-exits"
+                label="Partial Position Exits"
+                description="Scale out positions at defined profit levels (e.g., 50% off at +10%)"
+                enabled={toggleState.partialExits}
+                onChange={(enabled) => toggleService.setRiskToggle('partialExits', enabled)}
+                riskLevel="low"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Gains Settings */}
+          <Card className="bg-gradient-card shadow-card">  
+            <CardHeader>
+              <CardTitle>Profit Target Parameters</CardTitle>  
+              <CardDescription>
+                Configure specific profit targets and scaling ratios
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
                   <Label htmlFor="takeProfit">Take Profit (%)</Label>
                   <Input
                     id="takeProfit"
@@ -353,13 +612,25 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxPositions">Max Open Positions</Label>
-                  <Input
-                    id="maxPositions"
-                    type="number"
-                    value={settings.maxOpenPositions}
-                    onChange={(e) => handleSettingChange('maxOpenPositions', Number(e.target.value))}
-                  />
+                  <Label htmlFor="rewardRiskRatio">Reward:Risk Ratio</Label>
+                  <Select 
+                    value={`${settings.takeProfitPercentage / settings.stopLossPercentage}`}
+                    onValueChange={(value) => {
+                      const ratio = parseFloat(value);
+                      handleSettingChange('takeProfitPercentage', settings.stopLossPercentage * ratio);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1:1 (Conservative)</SelectItem>
+                      <SelectItem value="1.5">1.5:1 (Balanced)</SelectItem>
+                      <SelectItem value="2">2:1 (Standard)</SelectItem>
+                      <SelectItem value="3">3:1 (Aggressive)</SelectItem>
+                      <SelectItem value="4">4:1 (High Risk)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>

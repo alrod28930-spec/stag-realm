@@ -29,10 +29,13 @@ import { useCompliance } from '@/components/compliance/ComplianceProvider';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
 import { LegalFooter } from '@/components/compliance/LegalFooter';
 import { useToast } from '@/hooks/use-toast';
+import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { toggleService } from '@/services/toggleService';
 
 export default function TradeBots() {
   const [bots, setBots] = useState<TradeBot[]>([]);
   const [metrics, setMetrics] = useState<BotMetrics | null>(null);
+  const [toggleState, setToggleState] = useState(toggleService.getToggleState());
   const { showDisclaimer } = useCompliance();
   const { toast } = useToast();
 
@@ -41,13 +44,19 @@ export default function TradeBots() {
     loadBots();
     loadMetrics();
 
+    // Subscribe to toggle changes
+    const unsubscribe = toggleService.subscribe(setToggleState);
+
     // Refresh every 30 seconds
     const interval = setInterval(() => {
       loadBots();
       loadMetrics();
     }, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, []);
 
   const loadBots = () => {
@@ -60,28 +69,26 @@ export default function TradeBots() {
     setMetrics(currentMetrics);
   };
 
-  const handleStatusToggle = async (botId: string, currentStatus: string) => {
+  const handleStatusToggle = async (botId: string, newStatus: 'off' | 'simulation' | 'live') => {
     const bot = bots.find(b => b.id === botId);
     if (!bot) return;
 
-    let newStatus: 'off' | 'simulation' | 'live';
-    
-    if (currentStatus === 'off') {
-      newStatus = 'simulation';
-    } else if (currentStatus === 'simulation') {
-      // Show disclaimer when switching to live trading
+    const currentStatus = toggleService.getBotStatus(botId);
+
+    // Show disclaimer when switching to live trading
+    if (newStatus === 'live' && currentStatus !== 'live') {
       await showDisclaimer('trade_bots', 'execute', { 
         botId, 
         botName: bot.name, 
         currentStatus, 
-        newStatus: 'live' 
+        newStatus 
       });
-      newStatus = 'live';
-    } else {
-      newStatus = 'off';
     }
 
-    // Update bot status locally and notify system
+    // Update via toggle service
+    toggleService.setBotStatus(botId, newStatus, `User toggled bot ${bot.name}`);
+
+    // Update bot status locally
     const updatedBot = { ...bot, status: newStatus, isActive: newStatus !== 'off' };
     setBots(bots.map(b => b.id === botId ? updatedBot : b));
     
@@ -91,8 +98,6 @@ export default function TradeBots() {
       description: `${bot.name} is now ${getStatusText(newStatus).toLowerCase()}`,
       variant: newStatus === 'live' ? 'default' : 'default',
     });
-    
-    console.log(`Bot ${bot.name} status changed to ${newStatus}`);
   };
 
   const handleCreateBot = () => {
@@ -245,10 +250,16 @@ export default function TradeBots() {
                     <CardDescription className="capitalize">{bot.strategy} Strategy</CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Badge className={getStatusColor(bot.status)}>
-                    {getStatusIcon(bot.status)}
-                    <span className="ml-1">{getStatusText(bot.status)}</span>
+                <div className="flex items-center space-x-3">
+                  <ToggleSwitch
+                    value={toggleService.getBotStatus(bot.id)}
+                    onChange={(status) => handleStatusToggle(bot.id, status)}
+                    size="sm"
+                    showLabels={false}
+                  />
+                  <Badge className={getStatusColor(toggleService.getBotStatus(bot.id))}>
+                    {getStatusIcon(toggleService.getBotStatus(bot.id))}
+                    <span className="ml-1">{getStatusText(toggleService.getBotStatus(bot.id))}</span>
                   </Badge>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -326,34 +337,13 @@ export default function TradeBots() {
 
               {/* Action Buttons */}
               <div className="flex space-x-2">
-                <Button 
-                  variant={bot.status === 'off' ? 'default' : 'outline'}
-                  size="sm" 
-                  className={`flex-1 ${bot.status === 'off' ? 'bg-gradient-primary hover:opacity-90' : ''}`}
-                  onClick={() => handleStatusToggle(bot.id, bot.status)}
-                >
-                  {bot.status === 'off' ? (
-                    <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Start Bot
-                    </>
-                  ) : bot.status === 'simulation' ? (
-                    <>
-                      <Activity className="w-4 h-4 mr-2" />
-                      Go Live
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="w-4 h-4 mr-2" />
-                      Stop Bot
-                    </>
-                  )}
+                <Button variant="outline" size="sm" className="flex-1">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configure
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Settings className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <TrendingUp className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="flex-1">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Analytics
                 </Button>
               </div>
 
