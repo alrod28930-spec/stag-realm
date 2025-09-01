@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               email: credentials.email 
             });
             
-            eventBus.emit(EVENTS.USER_LOGIN, mockUser);
+            eventBus.emit('user-login' as any, { email: credentials.email, timestamp: new Date() });
             return true;
           } else {
             throw new Error('Invalid credentials');
@@ -92,7 +92,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         });
         
         logger.info('User logged out', { userId: user?.id });
-        eventBus.emit(EVENTS.USER_LOGOUT, user);
+        eventBus.emit('user-logout' as any, { userId: user?.id, timestamp: new Date() });
       },
 
       setUser: (user: User | null) => {

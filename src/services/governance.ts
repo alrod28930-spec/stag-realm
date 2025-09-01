@@ -590,7 +590,7 @@ export class Overseer {
   clearEmergencyMode(): void {
     this.emergencyMode = false;
     logService.log('info', 'Emergency mode cleared by user');
-    eventBus.emit('overseer.emergency_mode_cleared');
+    eventBus.emit('overseer.emergency_mode_cleared', {});
   }
 
   isOverseerActive(): boolean {
