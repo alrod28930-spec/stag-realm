@@ -17,9 +17,16 @@ import {
   Plus,
   Trash2,
   Eye,
-  EyeOff
+  EyeOff,
+  FileText,
+  Download,
+  Clock,
+  CheckCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { complianceService } from '@/services/compliance';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 
 interface BrokerConfig {
   id: string;
@@ -34,6 +41,11 @@ interface BrokerConfig {
 export default function Settings() {
   const { toast } = useToast();
   const [showApiKeys, setShowApiKeys] = useState<{ [key: string]: boolean }>({});
+  
+  // Load compliance data
+  const [complianceSettings, setComplianceSettings] = useState(complianceService.getComplianceSettings());
+  const [acknowledgmentHistory, setAcknowledgmentHistory] = useState(complianceService.getAcknowledgmentHistory(20));
+  const [complianceEvents, setComplianceEvents] = useState(complianceService.getComplianceEvents(20));
   
   // Mock broker configurations
   const [brokerConfigs, setBrokerConfigs] = useState<BrokerConfig[]>([
@@ -115,6 +127,37 @@ export default function Settings() {
     });
   };
 
+  const handleUpdateComplianceSettings = (updates: any) => {
+    const newSettings = { ...complianceSettings, ...updates };
+    setComplianceSettings(newSettings);
+    complianceService.updateComplianceSettings(updates);
+    
+    toast({
+      title: "Compliance settings updated",
+      description: "Your compliance preferences have been saved.",
+    });
+  };
+
+  const handleExportComplianceData = () => {
+    const data = complianceService.exportComplianceData();
+    
+    // Create and download JSON file
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `compliance-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Compliance data exported",
+      description: "Your compliance data has been downloaded as JSON.",
+    });
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -126,12 +169,13 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="brokers" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="brokers">Brokers</TabsTrigger>
           <TabsTrigger value="risk">Risk Controls</TabsTrigger>
           <TabsTrigger value="filters">Trade Filters</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="display">Display</TabsTrigger>
+          <TabsTrigger value="legal">Legal</TabsTrigger>
         </TabsList>
 
         {/* Broker API Keys */}
@@ -509,6 +553,257 @@ export default function Settings() {
                   </Select>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Legal & Compliance */}
+        <TabsContent value="legal" className="space-y-6">
+          {/* Full Disclaimers */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Legal Disclaimers
+              </CardTitle>
+              <CardDescription>
+                Complete disclaimer and legal information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 border rounded-lg bg-muted/30">
+                <h3 className="font-semibold mb-3">StagAlgo Platform Disclaimer</h3>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    <strong>IMPORTANT LEGAL NOTICE:</strong> StagAlgo is an educational and portfolio-mirroring assistant. 
+                    It does not provide financial advice, hold funds, or act as a broker. All trades occur through your 
+                    connected brokerage, and you are solely responsible for any investment decisions.
+                  </p>
+                  
+                  <p>
+                    <strong>NOT FINANCIAL ADVICE:</strong> Nothing provided by StagAlgo constitutes financial, investment, 
+                    trading, or other professional advice. All content is for informational and educational purposes only.
+                  </p>
+                  
+                  <p>
+                    <strong>YOUR RESPONSIBILITY:</strong> You are solely responsible for your trading and investment decisions. 
+                    Always conduct your own research and consider consulting with qualified financial advisors before making 
+                    any investment decisions.
+                  </p>
+                  
+                  <p>
+                    <strong>NO GUARANTEES:</strong> Past performance does not guarantee future results. Trading involves 
+                    substantial risk of loss. You should carefully consider your financial situation and risk tolerance 
+                    before using any trading tools or strategies.
+                  </p>
+                  
+                  <p>
+                    <strong>SOFTWARE TOOL:</strong> StagAlgo is a portfolio mirror and analysis tool. We do not custody 
+                    funds, execute trades directly, or act as a broker-dealer. All trades are executed through your 
+                    connected licensed broker.
+                  </p>
+
+                  <p>
+                    <strong>REGULATORY COMPLIANCE:</strong> By using StagAlgo, you acknowledge that trading regulations 
+                    vary by jurisdiction, and it is your responsibility to ensure compliance with applicable laws in 
+                    your region.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Compliance Settings */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Compliance Settings
+              </CardTitle>
+              <CardDescription>
+                Manage how disclaimers and compliance features work
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable Disclaimers</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Show disclaimer prompts when accessing features
+                    </p>
+                  </div>
+                  <Switch
+                    checked={complianceSettings.disclaimersEnabled}
+                    onCheckedChange={(checked) => handleUpdateComplianceSettings({ disclaimersEnabled: checked })}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Require Acknowledgments</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Require user confirmation for important disclaimers
+                    </p>
+                  </div>
+                  <Switch
+                    checked={complianceSettings.requireAcknowledgments}
+                    onCheckedChange={(checked) => handleUpdateComplianceSettings({ requireAcknowledgments: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Log All Interactions</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Keep detailed logs for compliance auditing
+                    </p>
+                  </div>
+                  <Switch
+                    checked={complianceSettings.logAllInteractions}
+                    onCheckedChange={(checked) => handleUpdateComplianceSettings({ logAllInteractions: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Broker Compliance Mode</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enhanced compliance for broker-dealer requirements
+                    </p>
+                  </div>
+                  <Switch
+                    checked={complianceSettings.brokerComplianceMode}
+                    onCheckedChange={(checked) => handleUpdateComplianceSettings({ brokerComplianceMode: checked })}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Current Subscription Tier</Label>
+                  <div className="mt-2 p-3 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium">{complianceSettings.subscriptionTier.name}</span>
+                        <Badge className="ml-2" variant="outline">
+                          {complianceSettings.subscriptionTier.level.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        Compliance Level: {complianceSettings.subscriptionTier.complianceLevel}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Acknowledgment History */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Acknowledgment History
+                </CardTitle>
+                <CardDescription>
+                  Recent disclaimer acknowledgments and compliance events
+                </CardDescription>
+              </div>
+              <Button variant="outline" onClick={handleExportComplianceData}>
+                <Download className="w-4 h-4 mr-2" />
+                Export Data
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-64">
+                <div className="space-y-3">
+                  {acknowledgmentHistory.length > 0 ? (
+                    acknowledgmentHistory.map((ack) => (
+                      <div key={ack.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-accent" />
+                            <span className="text-sm font-medium">Disclaimer Acknowledged</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            ID: {ack.disclaimerId} • Session: {ack.sessionId.slice(0, 8)}...
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            {ack.acknowledgedAt.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No disclaimer acknowledgments recorded yet</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Compliance Events Log */}
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Recent Compliance Events
+              </CardTitle>
+              <CardDescription>
+                System compliance events and activities
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-64">
+                <div className="space-y-3">
+                  {complianceEvents.length > 0 ? (
+                    complianceEvents.map((event) => (
+                      <div key={event.id} className="p-3 border rounded-lg bg-muted/30">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium capitalize">
+                            {event.type.replace(/_/g, ' ')}
+                          </span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            {event.timestamp.toLocaleString()}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Context: {event.context}
+                        </p>
+                        {event.details && Object.keys(event.details).length > 0 && (
+                          <div className="mt-2 text-xs">
+                            <details className="cursor-pointer">
+                              <summary className="text-muted-foreground hover:text-foreground">
+                                View details
+                              </summary>
+                              <pre className="mt-1 text-xs bg-muted/50 p-2 rounded overflow-x-auto">
+                                {JSON.stringify(event.details, null, 2)}
+                              </pre>
+                            </details>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No compliance events recorded yet</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>

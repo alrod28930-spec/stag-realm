@@ -27,6 +27,8 @@ import { eventBus } from '@/services/eventBus';
 import { useToast } from '@/hooks/use-toast';
 import { useCompliance } from '@/components/compliance/ComplianceProvider';
 import { ResearchRail } from '@/components/research/ResearchRail';
+import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
+import { LegalFooter } from '@/components/compliance/LegalFooter';
 
 export default function Analyst() {
   const [messages, setMessages] = useState<AnalystMessage[]>([]);
@@ -215,6 +217,7 @@ export default function Analyst() {
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5" />
                 Chat with {currentPersona?.name}
+                <DisclaimerBadge variant="minimal" component="analyst" />
               </CardTitle>
               <CardDescription>
                 {currentPersona?.description}
@@ -329,24 +332,27 @@ export default function Analyst() {
 
               {/* Input Area */}
               <div className="flex-shrink-0 p-6 border-t">
-                <div className="flex gap-2">
-                  <Textarea
-                    ref={inputRef}
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Ask about your portfolio, market conditions, or recent trades..."
-                    className="flex-1 min-h-[60px] max-h-32 resize-none"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isLoading}
-                    size="lg"
-                    className="px-6"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
+                <div className="space-y-3">
+                  <LegalFooter component="analyst" variant="standard" />
+                  <div className="flex gap-2">
+                    <Textarea
+                      ref={inputRef}
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Ask about your portfolio, market conditions, or recent trades..."
+                      className="flex-1 min-h-[60px] max-h-32 resize-none"
+                      disabled={isLoading}
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!inputMessage.trim() || isLoading}
+                      size="lg"
+                      className="px-6"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>

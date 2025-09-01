@@ -12,9 +12,19 @@ import {
   Volume2,
   BarChart3
 } from 'lucide-react';
+import { useCompliance } from '@/components/compliance/ComplianceProvider';
+import { LegalFooter } from '@/components/compliance/LegalFooter';
+import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
+import { useEffect } from 'react';
 
 export default function Market() {
   const [searchTerm, setSearchTerm] = useState('');
+  const { showDisclaimer } = useCompliance();
+
+  useEffect(() => {
+    // Trigger market search disclaimer on component access
+    showDisclaimer('market_search', 'view');
+  }, [showDisclaimer]);
 
   const marketData = [
     { symbol: 'AAPL', name: 'Apple Inc.', price: 175.50, change: +2.25, changePercent: +1.30, volume: '52.3M', marketCap: '2.75T' },
@@ -53,7 +63,10 @@ export default function Market() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Market Data</h1>
+        <h1 className="text-3xl font-bold flex items-center gap-3">
+          Market Data
+          <DisclaimerBadge variant="minimal" component="market_search" />
+        </h1>
         <p className="text-muted-foreground mt-2">
           Real-time market data and analysis tools
         </p>
@@ -204,6 +217,9 @@ export default function Market() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Legal Footer */}
+      <LegalFooter component="market_search" variant="standard" />
     </div>
   );
 }

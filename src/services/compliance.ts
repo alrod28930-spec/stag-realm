@@ -498,7 +498,7 @@ Please review your risk tolerance and position sizing carefully. Consider consul
     return this.acknowledgments.slice(0, limit);
   }
 
-  getComplianceEvents(limit = 100): ComplianceEvent[] {
+  getComplianceEvents(limit = 50): ComplianceEvent[] {
     return this.complianceEvents.slice(0, limit);
   }
 
@@ -506,32 +506,33 @@ Please review your risk tolerance and position sizing carefully. Consider consul
     return this.currentSessionId;
   }
 
-  // Export compliance data for audit
-  async exportComplianceData(startDate?: Date, endDate?: Date): Promise<{
-    acknowledgments: DisclaimerAcknowledgment[];
-    events: ComplianceEvent[];
-    settings: ComplianceSettings;
-    exportedAt: Date;
-  }> {
-    let filteredAcks = this.acknowledgments;
-    let filteredEvents = this.complianceEvents;
-
-    if (startDate || endDate) {
-      if (startDate) {
-        filteredAcks = filteredAcks.filter(ack => ack.acknowledgedAt >= startDate);
-        filteredEvents = filteredEvents.filter(event => event.timestamp >= startDate);
-      }
-      if (endDate) {
-        filteredAcks = filteredAcks.filter(ack => ack.acknowledgedAt <= endDate);
-        filteredEvents = filteredEvents.filter(event => event.timestamp <= endDate);
-      }
-    }
+  exportComplianceData(startDate?: Date, endDate?: Date): any {
+    const filterByDate = (items: any[], dateField: string) => {
+      if (!startDate && !endDate) return items;
+      
+      return items.filter(item => {
+        const itemDate = new Date(item[dateField]);
+        if (startDate && itemDate < startDate) return false;
+        if (endDate && itemDate > endDate) return false;
+        return true;
+      });
+    };
 
     return {
-      acknowledgments: filteredAcks,
-      events: filteredEvents,
+      exportDate: new Date().toISOString(),
+      sessionId: this.currentSessionId,
       settings: this.settings,
-      exportedAt: new Date()
+      acknowledgments: filterByDate(this.acknowledgments, 'acknowledgedAt'),
+      complianceEvents: filterByDate(this.complianceEvents, 'timestamp'),
+      disclaimers: this.disclaimers.map(d => ({
+        id: d.id,
+        type: d.type,
+        title: d.title,
+        severity: d.severity,
+        requiresAcknowledgment: d.requiresAcknowledgment,
+        frequency: d.frequency,
+        contexts: d.contexts
+      }))
     };
   }
 }

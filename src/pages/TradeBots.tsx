@@ -25,10 +25,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { tradeBotSystem } from '@/services/tradeBots';
 import { TradeBot, BotMetrics } from '@/types/tradeBots';
+import { useCompliance } from '@/components/compliance/ComplianceProvider';
+import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
+import { LegalFooter } from '@/components/compliance/LegalFooter';
+import { useToast } from '@/hooks/use-toast';
 
 export default function TradeBots() {
   const [bots, setBots] = useState<TradeBot[]>([]);
   const [metrics, setMetrics] = useState<BotMetrics | null>(null);
+  const { showDisclaimer } = useCompliance();
+  const { toast } = useToast();
 
   useEffect(() => {
     // Load initial data
@@ -54,7 +60,7 @@ export default function TradeBots() {
     setMetrics(currentMetrics);
   };
 
-  const handleStatusToggle = (botId: string, currentStatus: string) => {
+  const handleStatusToggle = async (botId: string, currentStatus: string) => {
     const bot = bots.find(b => b.id === botId);
     if (!bot) return;
 
@@ -63,6 +69,13 @@ export default function TradeBots() {
     if (currentStatus === 'off') {
       newStatus = 'simulation';
     } else if (currentStatus === 'simulation') {
+      // Show disclaimer when switching to live trading
+      await showDisclaimer('trade_bots', 'execute', { 
+        botId, 
+        botName: bot.name, 
+        currentStatus, 
+        newStatus: 'live' 
+      });
       newStatus = 'live';
     } else {
       newStatus = 'off';
@@ -71,6 +84,13 @@ export default function TradeBots() {
     // Update bot status locally and notify system
     const updatedBot = { ...bot, status: newStatus, isActive: newStatus !== 'off' };
     setBots(bots.map(b => b.id === botId ? updatedBot : b));
+    
+    // Show confirmation toast
+    toast({
+      title: `Bot ${newStatus === 'live' ? 'Activated' : newStatus === 'simulation' ? 'Started in Simulation' : 'Stopped'}`,
+      description: `${bot.name} is now ${getStatusText(newStatus).toLowerCase()}`,
+      variant: newStatus === 'live' ? 'default' : 'default',
+    });
     
     console.log(`Bot ${bot.name} status changed to ${newStatus}`);
   };
@@ -123,7 +143,10 @@ export default function TradeBots() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Trade Bots</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            Trade Bots
+            <DisclaimerBadge variant="minimal" component="trade_bots" />
+          </h1>
           <p className="text-muted-foreground mt-2">
             Automated trading strategies with governance oversight
           </p>
@@ -342,6 +365,9 @@ export default function TradeBots() {
           </Card>
         ))}
       </div>
+
+      {/* Legal Footer */}
+      <LegalFooter component="trade_bots" variant="detailed" />
 
       {/* Empty State */}
       {bots.length === 0 && (
