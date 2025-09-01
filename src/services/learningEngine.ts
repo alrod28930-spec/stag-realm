@@ -70,13 +70,11 @@ export class LearningEngine {
 
     this.learningEvents.push(learningEvent);
     
-    recorder.logEvent({
-      id: learningEvent.id,
-      type: 'learning.trade_execution',
-      timestamp: learningEvent.timestamp,
-      data: learningEvent,
-      workspace_id: tradeData.workspace_id
-    });
+    recorder.recordSystemEvent(
+      'export', // Using 'export' as the closest system event type for learning data
+      learningEvent,
+      true
+    );
   }
 
   private processTradeOutcome(outcomeData: any): void {
