@@ -103,49 +103,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
         
         try {
-          // Handle demo account specially
-          if (credentials.email === 'demo@stagalgo.com') {
-            // Create demo user if it doesn't exist
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email: 'demo@stagalgo.com',
-              password: 'demo123',
-              options: {
-                emailRedirectTo: `${window.location.origin}/`,
-                data: {
-                  display_name: 'Demo User'
-                }
-              }
-            });
-            
-            // If user already exists, try to sign in
-            if (signUpError?.message?.includes('already registered')) {
-              const { data, error } = await supabase.auth.signInWithPassword({
-                email: credentials.email,
-                password: credentials.password
-              });
-              
-              if (error) {
-                return { error, data: null };
-              }
-              
-              return { data, error: null };
-            }
-            
-            if (signUpError) {
-              return { error: signUpError, data: null };
-            }
-            
-            // For demo, we'll auto-confirm the email by signing them in
-            const { data, error } = await supabase.auth.signInWithPassword({
-              email: credentials.email,
-              password: credentials.password
-            });
-            
-            if (data.user) {
-              return { data, error: null };
-            }
-          }
-
+          // Simple sign-in for all accounts including demo
           const { data, error } = await supabase.auth.signInWithPassword({
             email: credentials.email,
             password: credentials.password
