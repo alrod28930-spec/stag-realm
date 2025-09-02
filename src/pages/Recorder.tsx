@@ -265,12 +265,12 @@ export default function Recorder() {
                   </PopoverContent>
                 </Popover>
 
-                <Select onValueChange={(value) => setSelectedEventTypes(value ? [value] : [])}>
+                <Select onValueChange={(value) => setSelectedEventTypes(value === "all" ? [] : [value])}>
                   <SelectTrigger className="w-[150px]">
                     <SelectValue placeholder="Event Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="all">All Types</SelectItem>
                     {EVENT_TYPES.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
