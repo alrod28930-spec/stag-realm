@@ -18,6 +18,7 @@ import Subscription from "@/pages/Subscription";
 import Settings from "@/pages/Settings";
 import SystemMonitor from "@/pages/SystemMonitor";
 import AdminPortal from "@/pages/AdminPortal";
+import VerifyEmail from "@/pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,25 +30,33 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AuthGuard>
-            <DashboardLayout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/market" element={<Market />} />
-                <Route path="/portfolio" element={<Portfolio />} />
-                <Route path="/analyst" element={<Analyst />} />
-                <Route path="/trade-bots" element={<TradeBots />} />
-                <Route path="/recorder" element={<Recorder />} />
-                <Route path="/cradle" element={<Cradle />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/subscription" element={<Subscription />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/system-monitor" element={<SystemMonitor />} />
-                <Route path="/admin" element={<AdminPortal />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </DashboardLayout>
-          </AuthGuard>
+          <Routes>
+            {/* Public routes (no auth required) */}
+            <Route path="/auth/verify" element={<VerifyEmail />} />
+            
+            {/* Protected routes */}
+            <Route path="/*" element={
+              <AuthGuard>
+                <DashboardLayout>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/market" element={<Market />} />
+                    <Route path="/portfolio" element={<Portfolio />} />
+                    <Route path="/analyst" element={<Analyst />} />
+                    <Route path="/trade-bots" element={<TradeBots />} />
+                    <Route path="/recorder" element={<Recorder />} />
+                    <Route path="/cradle" element={<Cradle />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/subscription" element={<Subscription />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/system-monitor" element={<SystemMonitor />} />
+                    <Route path="/admin" element={<AdminPortal />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </DashboardLayout>
+              </AuthGuard>
+            } />
+          </Routes>
         </BrowserRouter>
       </ComplianceProvider>
     </TooltipProvider>
