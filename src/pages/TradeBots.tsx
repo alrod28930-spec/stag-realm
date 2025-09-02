@@ -32,13 +32,17 @@ import { useToast } from '@/hooks/use-toast';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { toggleService } from '@/services/toggleService';
 import { RiskGoalsCard } from '@/components/tradebots/RiskGoalsCard';
+import { StrategyLibraryCard } from '@/components/tradebots/StrategyLibraryCard';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { getBotProfile } from '@/services/botProfile';
+import { DailyTargetMode } from '@/types/botProfile';
 
 export default function TradeBots() {
   const [bots, setBots] = useState<TradeBot[]>([]);
   const [metrics, setMetrics] = useState<BotMetrics | null>(null);
   const [toggleState, setToggleState] = useState(toggleService.getToggleState());
+  const [currentMode, setCurrentMode] = useState<DailyTargetMode>('1p');
   const { showDisclaimer } = useCompliance();
   const { toast } = useToast();
   
@@ -50,6 +54,7 @@ export default function TradeBots() {
     // Load initial data
     loadBots();
     loadMetrics();
+    loadCurrentMode();
 
     // Subscribe to toggle changes
     const unsubscribe = toggleService.subscribe(setToggleState);
@@ -58,13 +63,27 @@ export default function TradeBots() {
     const interval = setInterval(() => {
       loadBots();
       loadMetrics();
+      loadCurrentMode();
     }, 30000);
 
     return () => {
       clearInterval(interval);
       unsubscribe();
     };
-  }, []);
+  }, [currentWorkspace]);
+
+  const loadCurrentMode = async () => {
+    if (!currentWorkspace) return;
+    
+    try {
+      const profile = await getBotProfile(currentWorkspace.id);
+      if (profile?.daily_target_mode) {
+        setCurrentMode(profile.daily_target_mode);
+      }
+    } catch (error) {
+      console.error('Error loading current mode:', error);
+    }
+  };
 
   const loadBots = () => {
     const allBots = tradeBotSystem.getBots();
@@ -171,10 +190,15 @@ export default function TradeBots() {
 
       {/* Risk & Goals Panel */}
       {user && currentWorkspace && (
-        <div className="max-w-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RiskGoalsCard 
             workspaceId={currentWorkspace.id} 
-            userId={user.id} 
+            userId={user.id}
+            onModeChange={(mode) => setCurrentMode(mode)}
+          />
+          <StrategyLibraryCard
+            mode={currentMode}
+            workspaceId={currentWorkspace.id}
           />
         </div>
       )}

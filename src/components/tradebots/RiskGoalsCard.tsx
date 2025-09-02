@@ -18,13 +18,15 @@ import {
 } from "@/services/botProfile";
 import { BotProfile, RiskGoalsSettings, DailyTargetMode } from "@/types/botProfile";
 import { RiskDisclaimerModal } from "./RiskDisclaimerModal";
+import { AggressiveModeDisclaimer } from "./AggressiveModeDisclaimer";
 
 interface RiskGoalsCardProps {
   workspaceId: string;
   userId: string;
+  onModeChange?: (mode: DailyTargetMode) => void;
 }
 
-export function RiskGoalsCard({ workspaceId, userId }: RiskGoalsCardProps) {
+export function RiskGoalsCard({ workspaceId, userId, onModeChange }: RiskGoalsCardProps) {
   const [profile, setProfile] = useState<BotProfile | null>(null);
   const [settings, setSettings] = useState<RiskGoalsSettings>({
     capitalRisk: 0.05,
@@ -41,6 +43,7 @@ export function RiskGoalsCard({ workspaceId, userId }: RiskGoalsCardProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [showAggressiveDisclaimer, setShowAggressiveDisclaimer] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<RiskGoalsSettings | null>(null);
   const { toast } = useToast();
 
@@ -90,7 +93,17 @@ export function RiskGoalsCard({ workspaceId, userId }: RiskGoalsCardProps) {
 
   // Handle save with disclaimer check
   const handleSave = () => {
-    // Show disclaimer if changing execution mode or significant risk changes
+    // Check if switching to aggressive mode
+    const isAggressiveMode = settings.dailyTargetMode === '5p' || settings.dailyTargetMode === '10p';
+    const wasAggressiveMode = originalSettings.dailyTargetMode === '5p' || originalSettings.dailyTargetMode === '10p';
+    
+    if (isAggressiveMode && !wasAggressiveMode) {
+      setPendingChanges(settings);
+      setShowAggressiveDisclaimer(true);
+      return;
+    }
+
+    // Show standard disclaimer if changing execution mode or significant risk changes
     const needsDisclaimer = settings.executionMode !== originalSettings.executionMode ||
                            settings.dailyTargetMode !== originalSettings.dailyTargetMode ||
                            Math.abs(settings.capitalRisk - originalSettings.capitalRisk) >= 0.05;
@@ -117,21 +130,26 @@ export function RiskGoalsCard({ workspaceId, userId }: RiskGoalsCardProps) {
       const updateWithPresets = applyTargetModePresets(newSettings.dailyTargetMode, baseUpdate);
       
       const saved = await saveBotProfile(workspaceId, updateWithPresets);
-      if (saved) {
-        setProfile(saved);
-        setOriginalSettings(newSettings);
+        if (saved) {
+          setProfile(saved);
+          setOriginalSettings(newSettings);
+          
+          // Notify parent of mode change
+          onModeChange?.(newSettings.dailyTargetMode);
 
-        // Log the change
-        await logSettingsChange(
-          workspaceId,
-          'daily_target_mode.changed',
-          { 
-            from: originalSettings.dailyTargetMode, 
-            to: newSettings.dailyTargetMode,
-            presets: TARGET_MODE_PRESETS[newSettings.dailyTargetMode]
-          },
-          newSettings.executionMode === 'automated' ? 2 : 1
-        );
+          // Log the change with appropriate severity
+          const isAggressiveMode = newSettings.dailyTargetMode === '5p' || newSettings.dailyTargetMode === '10p';
+          await logSettingsChange(
+            workspaceId,
+            'daily_target_mode.changed',
+            { 
+              from: originalSettings.dailyTargetMode, 
+              to: newSettings.dailyTargetMode,
+              presets: TARGET_MODE_PRESETS[newSettings.dailyTargetMode],
+              is_aggressive: isAggressiveMode
+            },
+            isAggressiveMode ? 3 : (newSettings.executionMode === 'automated' ? 2 : 1)
+          );
 
         toast({
           title: "Settings Updated",
@@ -166,9 +184,41 @@ export function RiskGoalsCard({ workspaceId, userId }: RiskGoalsCardProps) {
     setPendingChanges(null);
   };
 
+  // Handle aggressive mode disclaimer acceptance
+  const handleAggressiveDisclaimerAccept = async () => {
+    if (!pendingChanges) return;
+    
+    // Log aggressive mode acknowledgment
+    await acknowledgeRiskToggle(workspaceId, userId);
+    
+    // Additional logging for aggressive mode
+    await logSettingsChange(
+      workspaceId,
+      'compliance.aggressive_mode.acknowledged',
+      { 
+        mode: pendingChanges.dailyTargetMode,
+        timestamp: new Date().toISOString(),
+        user_id: userId
+      },
+      3
+    );
+    
+    // Save the changes
+    await saveChanges(pendingChanges);
+    
+    setShowAggressiveDisclaimer(false);
+    setPendingChanges(null);
+  };
+
   // Handle disclaimer cancel
   const handleDisclaimerCancel = () => {
     setShowDisclaimer(false);
+    setPendingChanges(null);
+  };
+
+  // Handle aggressive mode disclaimer cancel
+  const handleAggressiveDisclaimerCancel = () => {
+    setShowAggressiveDisclaimer(false);
     setPendingChanges(null);
   };
 
@@ -288,13 +338,20 @@ export function RiskGoalsCard({ workspaceId, userId }: RiskGoalsCardProps) {
         </CardContent>
       </Card>
 
-      {/* Disclaimer Modal */}
+      {/* Disclaimer Modals */}
       <RiskDisclaimerModal
         open={showDisclaimer}
         settings={pendingChanges || settings}
         riskIndicator={riskIndicator}
         onAccept={handleDisclaimerAccept}
         onCancel={handleDisclaimerCancel}
+      />
+      
+      <AggressiveModeDisclaimer
+        open={showAggressiveDisclaimer}
+        mode={pendingChanges?.dailyTargetMode || settings.dailyTargetMode}
+        onAccept={handleAggressiveDisclaimerAccept}
+        onCancel={handleAggressiveDisclaimerCancel}
       />
     </>
   );
