@@ -1416,21 +1416,27 @@ export type Database = {
           id: string
           name: string
           owner_id: string
+          safe_name: string | null
           updated_at: string
+          wtype: Database["public"]["Enums"]["workspace_type"]
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           owner_id: string
+          safe_name?: string | null
           updated_at?: string
+          wtype?: Database["public"]["Enums"]["workspace_type"]
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           owner_id?: string
+          safe_name?: string | null
           updated_at?: string
+          wtype?: Database["public"]["Enums"]["workspace_type"]
         }
         Relationships: []
       }
@@ -1442,6 +1448,21 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      create_workspace_safely: {
+        Args: {
+          p_name: string
+          p_wtype: Database["public"]["Enums"]["workspace_type"]
+        }
+        Returns: string
+      }
+      gen_workspace_safe_name: {
+        Args: {
+          p_display: string
+          p_name: string
+          p_wtype: Database["public"]["Enums"]["workspace_type"]
+        }
+        Returns: string
       }
       gtrgm_compress: {
         Args: { "": unknown }
@@ -1555,6 +1576,10 @@ export type Database = {
         Args: { "": unknown[] }
         Returns: number
       }
+      validate_workspace_name: {
+        Args: { p_name: string }
+        Returns: boolean
+      }
       vector_avg: {
         Args: { "": number[] }
         Returns: string
@@ -1583,6 +1608,7 @@ export type Database = {
     Enums: {
       plan_tier: "lite" | "standard" | "pro" | "elite"
       workspace_role: "owner" | "admin" | "member" | "viewer"
+      workspace_type: "personal" | "business" | "team"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1712,6 +1738,7 @@ export const Constants = {
     Enums: {
       plan_tier: ["lite", "standard", "pro", "elite"],
       workspace_role: ["owner", "admin", "member", "viewer"],
+      workspace_type: ["personal", "business", "team"],
     },
   },
 } as const
