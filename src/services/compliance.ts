@@ -142,7 +142,7 @@ Please review your risk tolerance and position sizing carefully. Consider consul
         content: 'This search tool provides market data for research purposes. Results are not investment recommendations.',
         severity: 'info',
         requiresAcknowledgment: false,
-        frequency: 'per_session',
+        frequency: 'once', // Changed from 'per_session' to 'once' so it only shows once ever
         contexts: [
           { component: 'market_search', action: 'view', priority: 2 }
         ]
@@ -282,7 +282,7 @@ Please review your risk tolerance and position sizing carefully. Consider consul
     }
   }
 
-  // Handle disclaimer acknowledgment
+  // Handle disclaimer acknowledgment (also handles non-acknowledgment disclaimer dismissals)
   async acknowledgeDisclaimer(disclaimerId: string, eventId: string, context?: any): Promise<void> {
     const disclaimer = this.disclaimers.find(d => d.id === disclaimerId);
     if (!disclaimer) return;
@@ -301,14 +301,15 @@ Please review your risk tolerance and position sizing carefully. Consider consul
     // Log compliance event
     const event: ComplianceEvent = {
       id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: 'disclaimer_acknowledged',
+      type: disclaimer.requiresAcknowledgment ? 'disclaimer_acknowledged' : 'disclaimer_dismissed',
       sessionId: this.currentSessionId,
       timestamp: new Date(),
       context: JSON.stringify(context || {}),
       details: {
         disclaimerId,
         acknowledgmentId: acknowledgment.id,
-        originalEventId: eventId
+        originalEventId: eventId,
+        wasRequired: disclaimer.requiresAcknowledgment
       }
     };
 
@@ -316,11 +317,12 @@ Please review your risk tolerance and position sizing carefully. Consider consul
 
     // Record in Recorder
     recorder.recordOracleSignal({
-      type: 'compliance_disclaimer_acknowledged',
-      signal: `Disclaimer acknowledged: ${disclaimer.title}`,
+      type: disclaimer.requiresAcknowledgment ? 'compliance_disclaimer_acknowledged' : 'compliance_disclaimer_dismissed',
+      signal: `Disclaimer ${disclaimer.requiresAcknowledgment ? 'acknowledged' : 'dismissed'}: ${disclaimer.title}`,
       data: {
         disclaimerId,
-        acknowledgmentId: acknowledgment.id
+        acknowledgmentId: acknowledgment.id,
+        wasRequired: disclaimer.requiresAcknowledgment
       }
     });
 
@@ -331,9 +333,10 @@ Please review your risk tolerance and position sizing carefully. Consider consul
       eventId: event.id
     });
 
-    logService.log('info', 'Disclaimer acknowledged', {
+    logService.log('info', `Disclaimer ${disclaimer.requiresAcknowledgment ? 'acknowledged' : 'dismissed'}`, {
       disclaimerId,
-      acknowledgmentId: acknowledgment.id
+      acknowledgmentId: acknowledgment.id,
+      wasRequired: disclaimer.requiresAcknowledgment
     });
   }
 

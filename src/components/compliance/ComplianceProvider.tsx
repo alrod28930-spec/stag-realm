@@ -86,6 +86,14 @@ export function ComplianceProvider({ children }: ComplianceProviderProps) {
   };
 
   const handleDisclaimerClose = () => {
+    if (currentDisclaimer && !currentDisclaimer.disclaimer.requiresAcknowledgment) {
+      // For non-acknowledgment disclaimers, still track them as "acknowledged" to prevent re-showing
+      complianceService.acknowledgeDisclaimer(
+        currentDisclaimer.disclaimer.id,
+        currentDisclaimer.eventId,
+        currentDisclaimer.context
+      );
+    }
     setCurrentDisclaimer(null);
   };
 

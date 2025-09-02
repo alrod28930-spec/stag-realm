@@ -65,7 +65,7 @@ export interface TierLimits {
 
 export interface ComplianceEvent {
   id: string;
-  type: 'disclaimer_shown' | 'disclaimer_acknowledged' | 'risk_warning' | 'feature_accessed' | 'limit_reached';
+  type: 'disclaimer_shown' | 'disclaimer_acknowledged' | 'disclaimer_dismissed' | 'risk_warning' | 'feature_accessed' | 'limit_reached';
   userId?: string;
   sessionId: string;
   timestamp: Date;

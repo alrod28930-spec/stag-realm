@@ -70,11 +70,17 @@ export function DisclaimerModal({
     (acknowledged && (disclaimer.content.length < 500 || hasScrolledToBottom));
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open && !disclaimer.requiresAcknowledgment) {
+        onClose();
+      }
+    }}>
       <DialogContent 
         className={`max-w-2xl ${getSeverityColor()}`}
         onEscapeKeyDown={(e) => {
-          if (!disclaimer.requiresAcknowledgment || disclaimer.severity !== 'critical') {
+          if (!disclaimer.requiresAcknowledgment) {
+            onClose();
+          } else if (disclaimer.severity !== 'critical') {
             onClose();
           } else {
             e.preventDefault();
