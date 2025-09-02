@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
@@ -9,7 +10,9 @@ import {
   DollarSign, 
   BarChart3, 
   Activity,
-  Building2
+  Building2,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { ComplianceStatus } from '@/components/compliance/ComplianceStatus';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';

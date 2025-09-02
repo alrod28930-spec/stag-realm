@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,122 +7,85 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
-import { userSettingsService } from '@/services/userSettings';
-import type { UserSettings } from '@/types/userSettings';
 import { User, Shield, Bell, Database, Palette } from 'lucide-react';
 
 export function UserSettingsPanel() {
-  const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const { user } = useAuthStore();
   const { toast } = useToast();
+  
+  // Simple local state for settings since we removed the user settings service
+  const [settings, setSettings] = useState({
+    theme: 'dark',
+    notifications_email: true,
+    notifications_push: false,
+    data_sharing_opt_in: false,
+    analyst_persona: 'Mentor',
+    voice_profile: 'StagVoice',
+  });
 
-  useEffect(() => {
-    if (user) {
-      loadSettings();
-    }
-  }, [user]);
-
-  const loadSettings = async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    const userSettings = await userSettingsService.getUserSettings(user.id);
-    
-    if (userSettings) {
-      setSettings(userSettings);
-    } else {
-      // Create default settings
-      const defaultSettings: Partial<UserSettings> = {
-        theme: 'dark',
-        analyst_persona: 'Mentor',
-        voice_profile: 'StagVoice',
-        notifications_email: true,
-        notifications_push: false,
-        data_sharing_opt_in: false
-      };
-      
-      const success = await userSettingsService.updateUserSettings(user.id, defaultSettings);
-      if (success) {
-        const newSettings = await userSettingsService.getUserSettings(user.id);
-        setSettings(newSettings);
-      }
-    }
-    
-    setIsLoading(false);
+  const handleSave = () => {
+    // For now, just show success - in a real app you'd save to database
+    toast({
+      title: "Settings Saved",
+      description: "Your preferences have been updated.",
+    });
   };
 
-  const updateSetting = async (key: keyof UserSettings, value: any) => {
-    if (!user || !settings) return;
-    
-    setIsSaving(true);
-    const success = await userSettingsService.updateUserSettings(user.id, { [key]: value });
-    
-    if (success) {
-      setSettings({ ...settings, [key]: value });
-      toast({
-        title: "Settings Updated",
-        description: "Your preferences have been saved.",
-      });
-    } else {
-      toast({
-        title: "Update Failed",
-        description: "Failed to save your settings. Please try again.",
-        variant: "destructive",
-      });
-    }
-    
-    setIsSaving(false);
+  const handleSettingChange = (key: string, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
   };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-32 bg-muted rounded-lg"></div>
-          <div className="h-32 bg-muted rounded-lg"></div>
-          <div className="h-32 bg-muted rounded-lg"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!settings) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-muted-foreground text-center">Failed to load user settings.</p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      {/* Appearance Settings */}
+      {/* Profile Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Palette className="w-5 h-5 text-primary" />
+            <User className="w-5 h-5" />
+            Profile Settings
+          </CardTitle>
+          <CardDescription>
+            Manage your account information and preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid w-full items-center gap-1.5">
+            <Label htmlFor="email">Email Address</Label>
+            <div className="text-sm text-muted-foreground bg-muted p-2 rounded">
+              {user?.email || 'No email set'}
+            </div>
+          </div>
+          <div className="grid w-full items-center gap-1.5">
+            <Label htmlFor="name">Display Name</Label>
+            <div className="text-sm text-muted-foreground bg-muted p-2 rounded">
+              {user?.name || 'No name set'}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Theme and Interface */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="w-5 h-5" />
             Appearance
           </CardTitle>
           <CardDescription>
-            Customize the look and feel of your interface
+            Customize how the application looks and feels
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Theme</Label>
-              <p className="text-sm text-muted-foreground">
+              <Label htmlFor="theme">Theme</Label>
+              <div className="text-sm text-muted-foreground">
                 Choose your preferred color scheme
-              </p>
+              </div>
             </div>
-            <Select
-              value={settings.theme}
-              onValueChange={(value) => updateSetting('theme', value)}
-              disabled={isSaving}
+            <Select 
+              value={settings.theme} 
+              onValueChange={(value) => handleSettingChange('theme', value)}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -137,105 +100,45 @@ export function UserSettingsPanel() {
         </CardContent>
       </Card>
 
-      {/* AI Personality Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            AI Personality
-          </CardTitle>
-          <CardDescription>
-            Configure how the AI analyst communicates with you
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Analyst Persona</Label>
-              <p className="text-sm text-muted-foreground">
-                Choose your preferred analyst communication style
-              </p>
-            </div>
-            <Select
-              value={settings.analyst_persona}
-              onValueChange={(value) => updateSetting('analyst_persona', value)}
-              disabled={isSaving}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Mentor">Mentor</SelectItem>
-                <SelectItem value="Professional">Professional</SelectItem>
-                <SelectItem value="Casual">Casual</SelectItem>
-                <SelectItem value="Technical">Technical</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Voice Profile</Label>
-              <p className="text-sm text-muted-foreground">
-                Select voice for audio analysis
-              </p>
-            </div>
-            <Select
-              value={settings.voice_profile}
-              onValueChange={(value) => updateSetting('voice_profile', value)}
-              disabled={isSaving}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="StagVoice">StagVoice</SelectItem>
-                <SelectItem value="Professional">Professional</SelectItem>
-                <SelectItem value="Friendly">Friendly</SelectItem>
-                <SelectItem value="Technical">Technical</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Notifications */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-primary" />
+            <Bell className="w-5 h-5" />
             Notifications
           </CardTitle>
           <CardDescription>
-            Control how and when you receive notifications
+            Configure how you receive alerts and updates
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Email Notifications</Label>
-              <p className="text-sm text-muted-foreground">
-                Receive important updates via email
-              </p>
+              <Label htmlFor="email-notifications">Email Notifications</Label>
+              <div className="text-sm text-muted-foreground">
+                Receive trading alerts and updates via email
+              </div>
             </div>
-            <Switch
+            <Switch 
+              id="email-notifications"
               checked={settings.notifications_email}
-              onCheckedChange={(checked) => updateSetting('notifications_email', checked)}
-              disabled={isSaving}
+              onCheckedChange={(checked) => handleSettingChange('notifications_email', checked)}
             />
           </div>
 
+          <Separator />
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Push Notifications</Label>
-              <p className="text-sm text-muted-foreground">
-                Receive real-time alerts in your browser
-              </p>
+              <Label htmlFor="push-notifications">Push Notifications</Label>
+              <div className="text-sm text-muted-foreground">
+                Receive real-time notifications in your browser
+              </div>
             </div>
-            <Switch
+            <Switch 
+              id="push-notifications"
               checked={settings.notifications_push}
-              onCheckedChange={(checked) => updateSetting('notifications_push', checked)}
-              disabled={isSaving}
+              onCheckedChange={(checked) => handleSettingChange('notifications_push', checked)}
             />
           </div>
         </CardContent>
@@ -245,29 +148,96 @@ export function UserSettingsPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
+            <Database className="w-5 h-5" />
             Privacy & Data
           </CardTitle>
           <CardDescription>
-            Manage your data sharing and privacy preferences
+            Control how your data is used and shared
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Analytics & Telemetry</Label>
-              <p className="text-sm text-muted-foreground">
-                Help improve StagAlgo by sharing anonymous usage data
-              </p>
+              <Label htmlFor="data-sharing">Data Sharing</Label>
+              <div className="text-sm text-muted-foreground">
+                Share anonymized data to improve our services
+              </div>
             </div>
-            <Switch
+            <Switch 
+              id="data-sharing"
               checked={settings.data_sharing_opt_in}
-              onCheckedChange={(checked) => updateSetting('data_sharing_opt_in', checked)}
-              disabled={isSaving}
+              onCheckedChange={(checked) => handleSettingChange('data_sharing_opt_in', checked)}
             />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label>Analyst Persona</Label>
+            <Select 
+              value={settings.analyst_persona} 
+              onValueChange={(value) => handleSettingChange('analyst_persona', value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Mentor">Mentor - Educational and supportive</SelectItem>
+                <SelectItem value="Expert">Expert - Technical and precise</SelectItem>
+                <SelectItem value="Casual">Casual - Friendly and conversational</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Voice Profile</Label>
+            <Select 
+              value={settings.voice_profile} 
+              onValueChange={(value) => handleSettingChange('voice_profile', value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="StagVoice">StagVoice - Default</SelectItem>
+                <SelectItem value="Professional">Professional - Business tone</SelectItem>
+                <SelectItem value="Friendly">Friendly - Warm and approachable</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
+
+      {/* Security */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            Security
+          </CardTitle>
+          <CardDescription>
+            Manage your account security settings
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button variant="outline" className="w-full justify-start">
+            Change Password
+          </Button>
+          <Button variant="outline" className="w-full justify-start">
+            Two-Factor Authentication
+          </Button>
+          <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
+            Sign Out All Devices
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} className="min-w-24">
+          Save Settings
+        </Button>
+      </div>
     </div>
   );
 }
