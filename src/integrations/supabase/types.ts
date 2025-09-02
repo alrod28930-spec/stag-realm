@@ -14,6 +14,79 @@ export type Database = {
   }
   public: {
     Tables: {
+      analyst_outputs: {
+        Row: {
+          id: string
+          input_json: Json | null
+          input_kind: string | null
+          model: string | null
+          output_text: string | null
+          ts: string | null
+          tts_url: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          id?: string
+          input_json?: Json | null
+          input_kind?: string | null
+          model?: string | null
+          output_text?: string | null
+          ts?: string | null
+          tts_url?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          id?: string
+          input_json?: Json | null
+          input_kind?: string | null
+          model?: string | null
+          output_text?: string | null
+          ts?: string | null
+          tts_url?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyst_outputs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analyst_prompts: {
+        Row: {
+          persona: string
+          style_notes: string | null
+          system_text: string
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          persona: string
+          style_notes?: string | null
+          system_text: string
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          persona?: string
+          style_notes?: string | null
+          system_text?: string
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyst_prompts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blacklists: {
         Row: {
           created_at: string
@@ -167,6 +240,85 @@ export type Database = {
           },
         ]
       }
+      oracle_news: {
+        Row: {
+          headline: string | null
+          id: string
+          sentiment: number | null
+          source: string | null
+          symbol: string | null
+          topics: Json | null
+          ts: string
+          url: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          headline?: string | null
+          id?: string
+          sentiment?: number | null
+          source?: string | null
+          symbol?: string | null
+          topics?: Json | null
+          ts: string
+          url?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          headline?: string | null
+          id?: string
+          sentiment?: number | null
+          source?: string | null
+          symbol?: string | null
+          topics?: Json | null
+          ts?: string
+          url?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oracle_news_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oracle_scores: {
+        Row: {
+          drivers: Json | null
+          id: string
+          score: number | null
+          symbol: string
+          ts: string
+          workspace_id: string | null
+        }
+        Insert: {
+          drivers?: Json | null
+          id?: string
+          score?: number | null
+          symbol: string
+          ts?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          drivers?: Json | null
+          id?: string
+          score?: number | null
+          symbol?: string
+          ts?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oracle_scores_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       oracle_signals: {
         Row: {
           direction: number
@@ -211,6 +363,44 @@ export type Database = {
           },
           {
             foreignKeyName: "oracle_signals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oracle_sources: {
+        Row: {
+          api_key_ref: string | null
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          kind: string
+          provider: string
+          workspace_id: string | null
+        }
+        Insert: {
+          api_key_ref?: string | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          kind: string
+          provider: string
+          workspace_id?: string | null
+        }
+        Update: {
+          api_key_ref?: string | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          kind?: string
+          provider?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oracle_sources_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -750,6 +940,41 @@ export type Database = {
           },
         ]
       }
+      voice_profiles: {
+        Row: {
+          name: string
+          pitch: number | null
+          speaking_rate: number | null
+          tts_provider: string
+          tts_voice_id: string
+          workspace_id: string
+        }
+        Insert: {
+          name: string
+          pitch?: number | null
+          speaking_rate?: number | null
+          tts_provider: string
+          tts_voice_id: string
+          workspace_id: string
+        }
+        Update: {
+          name?: string
+          pitch?: number | null
+          speaking_rate?: number | null
+          tts_provider?: string
+          tts_voice_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_profiles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           created_at: string
@@ -808,6 +1033,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       gtrgm_compress: {
         Args: { "": unknown }
         Returns: unknown
@@ -828,9 +1057,61 @@ export type Database = {
         Args: { "": unknown }
         Returns: unknown
       }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       is_member_of_workspace: {
         Args: { w_id: string }
         Returns: boolean
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: unknown
       }
       recorder_log: {
         Args: {
@@ -855,6 +1136,42 @@ export type Database = {
       show_trgm: {
         Args: { "": string }
         Returns: string[]
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
     }
     Enums: {
