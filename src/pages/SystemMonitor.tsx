@@ -25,18 +25,21 @@ export default function SystemMonitor() {
 
       {/* Monitoring Tabs */}
       <Tabs defaultValue="status" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="status" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-3 h-12">
+          <TabsTrigger value="status" className="flex items-center gap-2 text-sm">
             <Activity className="w-4 h-4" />
-            System Status
+            <span className="hidden sm:inline">System Status</span>
+            <span className="sm:hidden">Status</span>
           </TabsTrigger>
-          <TabsTrigger value="metrics" className="flex items-center gap-2">
+          <TabsTrigger value="metrics" className="flex items-center gap-2 text-sm">
             <BarChart3 className="w-4 h-4" />
-            Performance Metrics
+            <span className="hidden sm:inline">Performance Metrics</span>
+            <span className="sm:hidden">Metrics</span>
           </TabsTrigger>
-          <TabsTrigger value="config" className="flex items-center gap-2">
+          <TabsTrigger value="config" className="flex items-center gap-2 text-sm">
             <Settings className="w-4 h-4" />
-            Configuration
+            <span className="hidden sm:inline">Configuration</span>
+            <span className="sm:hidden">Config</span>
           </TabsTrigger>
         </TabsList>
 

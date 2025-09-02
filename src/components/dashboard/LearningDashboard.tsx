@@ -102,7 +102,7 @@ export const LearningDashboard: React.FC = () => {
       </div>
 
       <Tabs defaultValue="performance" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="performance">Bot Performance</TabsTrigger>
           <TabsTrigger value="insights">Learning Insights</TabsTrigger>
           <TabsTrigger value="adaptive">Adaptive Settings</TabsTrigger>

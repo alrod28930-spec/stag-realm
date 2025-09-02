@@ -172,20 +172,20 @@ export function ResearchRail() {
   };
 
   return (
-    <div className="w-80 bg-background border-l border-border flex flex-col h-full">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Research</h2>
+    <div className="w-80 min-w-[320px] max-w-[400px] bg-background border-l border-border flex flex-col h-full">
+      <div className="p-3 border-b border-border flex-shrink-0">
+        <h2 className="text-lg font-semibold text-foreground mb-3">Research</h2>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="search">Search</TabsTrigger>
-            <TabsTrigger value="oracle">Oracle</TabsTrigger>
-            <TabsTrigger value="recommendations">Recs</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 h-9">
+            <TabsTrigger value="search" className="text-xs">Search</TabsTrigger>
+            <TabsTrigger value="oracle" className="text-xs">Oracle</TabsTrigger>
+            <TabsTrigger value="recommendations" className="text-xs">Recs</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="search" className="space-y-4 mt-0">
+          <TabsContent value="search" className="space-y-3 mt-3 flex-1 overflow-hidden">
             {/* Search Interface */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex gap-2">
                 <Input
                   placeholder="Search markets, news, signals..."
@@ -206,16 +206,16 @@ export function ResearchRail() {
               {/* Quick Filters */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Quick Filters</span>
+                  <Filter className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Filters</span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <Select
                     value={filters.sentiment || ''}
                     onValueChange={(value) => setFilters(f => ({ ...f, sentiment: value as any }))}
                   >
-                    <SelectTrigger className="h-8">
+                    <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Sentiment" />
                     </SelectTrigger>
                     <SelectContent>
@@ -229,7 +229,7 @@ export function ResearchRail() {
                     value={filters.timeframe || ''}
                     onValueChange={(value) => setFilters(f => ({ ...f, timeframe: value as any }))}
                   >
-                    <SelectTrigger className="h-8">
+                    <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Timeframe" />
                     </SelectTrigger>
                     <SelectContent>
@@ -241,10 +241,11 @@ export function ResearchRail() {
                   </Select>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <Button 
                     variant="outline" 
                     size="sm"
+                    className="h-7 text-xs flex-1"
                     onClick={() => setShowSaveDialog(true)}
                     disabled={!searchQuery.trim()}
                   >
@@ -254,9 +255,10 @@ export function ResearchRail() {
                   <Button 
                     variant="outline" 
                     size="sm"
+                    className="h-7 text-xs flex-1"
                     onClick={() => setSearchMode(searchMode === 'simple' ? 'advanced' : 'simple')}
                   >
-                    {searchMode === 'simple' ? 'Advanced' : 'Simple'}
+                    {searchMode === 'simple' ? 'Adv' : 'Simple'}
                   </Button>
                 </div>
 
@@ -272,9 +274,9 @@ export function ResearchRail() {
 
             {/* Search Results */}
             {searchResults.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-foreground">Results ({searchResults.length})</h3>
-                <ScrollArea className="h-48">
+              <div className="space-y-2 flex-1 min-h-0">
+                <h3 className="text-xs font-medium text-foreground">Results ({searchResults.length})</h3>
+                <ScrollArea className="h-full max-h-64">
                   <div className="space-y-2">
                     {searchResults.map((result) => (
                       <Card key={result.id} className="p-3">
@@ -310,8 +312,8 @@ export function ResearchRail() {
 
             {/* Saved Searches */}
             {savedSearches.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-foreground">Saved Searches</h3>
+              <div className="space-y-2 flex-shrink-0">
+                <h3 className="text-xs font-medium text-foreground">Saved Searches</h3>
                 <div className="space-y-1">
                   {savedSearches.slice(0, 3).map((saved) => (
                     <div key={saved.id} className="flex items-center justify-between p-2 bg-muted/20 rounded">
@@ -335,21 +337,21 @@ export function ResearchRail() {
             )}
           </TabsContent>
 
-          <TabsContent value="oracle" className="mt-0">
+          <TabsContent value="oracle" className="mt-3 flex-1 overflow-hidden">
             <OraclePanel />
           </TabsContent>
 
-          <TabsContent value="recommendations" className="space-y-4 mt-0">
+          <TabsContent value="recommendations" className="space-y-3 mt-3 flex-1 overflow-hidden">
             {/* Recommendations */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-foreground">Recommendations</h3>
+            <div className="space-y-2 h-full flex flex-col">
+              <div className="flex items-center justify-between flex-shrink-0">
+                <h3 className="text-xs font-medium text-foreground">Recommendations</h3>
                 <Badge variant="outline" className="text-xs">
                   Updated {new Date().toLocaleTimeString()}
                 </Badge>
               </div>
 
-              <ScrollArea className="h-96">
+              <ScrollArea className="flex-1 min-h-0">
                 <div className="space-y-3">
                   {recommendations.slice(0, 8).map((rec) => (
                     <Card key={rec.id} className="p-3">
