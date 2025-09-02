@@ -168,23 +168,23 @@ export default function Analyst() {
   const currentPersona = ANALYST_PERSONAS.find(p => p.id === selectedPersona);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Left side - Chat with personas */}
-      <div className="flex-1 h-full flex flex-col space-y-4 p-6">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Crown className="w-8 h-8 text-accent" />
-            <div>
-              <h1 className="text-2xl font-bold">The Analyst</h1>
-              <p className="text-muted-foreground">
+        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b">
+          <div className="flex items-center space-x-3 min-w-0">
+            <Crown className="w-6 h-6 text-accent flex-shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold truncate">The Analyst</h1>
+              <p className="text-sm text-muted-foreground truncate">
                 AI-powered portfolio intelligence and market insights
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             <Select value={selectedPersona} onValueChange={handlePersonaChange}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -210,24 +210,24 @@ export default function Analyst() {
           </div>
         </div>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 min-h-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 p-4 min-h-0 overflow-hidden">
           {/* Main Chat Area */}
-          <Card className="lg:col-span-3 bg-gradient-card shadow-card flex flex-col">
-            <CardHeader className="flex-shrink-0 pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
+          <Card className="lg:col-span-3 bg-gradient-card shadow-card flex flex-col min-h-0">
+            <CardHeader className="flex-shrink-0 pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MessageSquare className="w-4 h-4" />
                 Chat with {currentPersona?.name}
                 <DisclaimerBadge variant="minimal" component="analyst" />
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 {currentPersona?.description}
               </CardDescription>
             </CardHeader>
             
-            <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+            <CardContent className="flex-1 flex flex-col min-h-0 p-0 overflow-hidden">
               {/* Messages Area */}
-              <ScrollArea className="flex-1 px-6">
-                <div className="space-y-4 pb-4">
+              <ScrollArea className="flex-1 px-4">
+                <div className="space-y-3 py-4">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -331,8 +331,8 @@ export default function Analyst() {
               </ScrollArea>
 
               {/* Input Area */}
-              <div className="flex-shrink-0 p-6 border-t">
-                <div className="space-y-3">
+              <div className="flex-shrink-0 p-4 border-t">
+                <div className="space-y-2">
                   <LegalFooter component="analyst" variant="standard" />
                   <div className="flex gap-2">
                     <Textarea
@@ -341,14 +341,14 @@ export default function Analyst() {
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Ask about your portfolio, market conditions, or recent trades..."
-                      className="flex-1 min-h-[60px] max-h-32 resize-none"
+                      className="flex-1 min-h-[50px] max-h-24 resize-none text-sm"
                       disabled={isLoading}
                     />
                     <Button
                       onClick={handleSendMessage}
                       disabled={!inputMessage.trim() || isLoading}
-                      size="lg"
-                      className="px-6"
+                      size="default"
+                      className="px-4"
                     >
                       <Send className="w-4 h-4" />
                     </Button>
@@ -359,7 +359,7 @@ export default function Analyst() {
           </Card>
 
           {/* Context Rail */}
-          <div className="space-y-4">
+          <div className="space-y-3 overflow-y-auto min-h-0">
             {/* Quick Actions */}
             {showQuickActions && (
               <Card className="bg-gradient-card shadow-card">

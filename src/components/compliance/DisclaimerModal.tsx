@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, Info, ShieldAlert, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -71,7 +71,16 @@ export function DisclaimerModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`max-w-2xl ${getSeverityColor()}`}>
+      <DialogContent 
+        className={`max-w-2xl ${getSeverityColor()}`}
+        onEscapeKeyDown={(e) => {
+          if (!disclaimer.requiresAcknowledgment || disclaimer.severity !== 'critical') {
+            onClose();
+          } else {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <div className="flex items-center gap-3">
             {getSeverityIcon()}
@@ -79,6 +88,10 @@ export function DisclaimerModal({
               <DialogTitle className="text-lg font-semibold">
                 {disclaimer.title}
               </DialogTitle>
+              <DialogDescription>
+                {disclaimer.type.replace('_', ' ').toUpperCase()} - 
+                {disclaimer.requiresAcknowledgment ? ' Acknowledgment Required' : ' Information'}
+              </DialogDescription>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-xs">
                   {disclaimer.type.replace('_', ' ').toUpperCase()}

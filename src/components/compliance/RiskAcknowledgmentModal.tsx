@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,8 +67,13 @@ export function RiskAcknowledgmentModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl border-red-400/20 bg-red-400/5">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent 
+        className="max-w-2xl border-red-400/20 bg-red-400/5"
+        onEscapeKeyDown={(e) => {
+          e.preventDefault(); // Prevent closing on escape for high-risk modals
+        }}
+      >
         <DialogHeader>
           <div className="flex items-center gap-3">
             {getRiskTypeIcon()}
@@ -76,6 +81,9 @@ export function RiskAcknowledgmentModal({
               <DialogTitle className="text-lg font-semibold text-red-400">
                 {riskAcknowledgment.title}
               </DialogTitle>
+              <DialogDescription>
+                High-risk trading activity requires explicit acknowledgment and confirmation
+              </DialogDescription>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="destructive" className="text-xs">
                   HIGH RISK
