@@ -9,7 +9,7 @@ import type { Session } from '@supabase/supabase-js';
 const logger = createLogger('AuthStore');
 
 interface AuthActions {
-  login: (credentials: LoginCredentials) => Promise<boolean>;
+  login: (credentials: LoginCredentials) => Promise<{ data: any; error: any }>;
   signUp: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<boolean>;
@@ -103,12 +103,63 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
         
         try {
+          // Handle demo account specially
+          if (credentials.email === 'demo@stagalgo.com') {
+            // Create demo user if it doesn't exist
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              email: 'demo@stagalgo.com',
+              password: 'demo123',
+              options: {
+                emailRedirectTo: `${window.location.origin}/`,
+                data: {
+                  display_name: 'Demo User'
+                }
+              }
+            });
+            
+            // If user already exists, try to sign in
+            if (signUpError?.message?.includes('already registered')) {
+              const { data, error } = await supabase.auth.signInWithPassword({
+                email: credentials.email,
+                password: credentials.password
+              });
+              
+              if (error) {
+                return { error, data: null };
+              }
+              
+              logger.info('Demo user logged in successfully');
+              return { data, error: null };
+            }
+            
+            if (signUpError) {
+              return { error: signUpError, data: null };
+            }
+            
+            // For demo, we'll auto-confirm the email by signing them in
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email: credentials.email,
+              password: credentials.password
+            });
+            
+            if (data.user) {
+              logger.info('Demo user created and logged in');
+              return { data, error: null };
+            }
+          }
+
           const { data, error } = await supabase.auth.signInWithPassword({
             email: credentials.email,
             password: credentials.password
           });
 
-          if (error) throw error;
+          if (error) {
+            logger.error('Login failed', { 
+              email: credentials.email,
+              error: error.message
+            });
+            return { error, data: null };
+          }
 
           if (data.user) {
             // Create profile if it doesn't exist
@@ -128,10 +179,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               email: credentials.email 
             });
             
-            return true;
+            return { data, error: null };
           }
           
-          return false;
+          return { data: null, error: new Error('Login failed') };
         } catch (error) {
           logger.error('Login failed', { 
             email: credentials.email,
@@ -139,7 +190,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
           
           set({ isLoading: false });
-          return false;
+          return { 
+            error: error instanceof Error ? error : new Error('Login failed'), 
+            data: null 
+          };
         }
       },
 

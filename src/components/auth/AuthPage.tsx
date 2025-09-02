@@ -31,8 +31,32 @@ export function AuthPage() {
 
     setIsLoading(true);
     try {
-      const success = await login({ email, password });
-      if (!success) {
+      const { data, error } = await useAuthStore.getState().login({ email, password });
+      
+      if (error) {
+        // Handle specific error cases
+        if (error.message === 'Email not confirmed') {
+          toast({
+            title: "Email Not Confirmed",
+            description: "Please check your email and click the confirmation link, or sign up again to resend.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (error.message === 'Invalid login credentials') {
+          toast({
+            title: "Account Not Found",
+            description: "This account doesn't exist. Please sign up or use the demo account.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        throw error;
+      }
+      
+      if (!data) {
         toast({
           title: "Login Failed",
           description: "Invalid email or password. Please try again.",
@@ -40,6 +64,7 @@ export function AuthPage() {
         });
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Login Error",
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
@@ -175,6 +200,24 @@ export function AuthPage() {
                     ) : (
                       'Sign In'
                     )}
+                  </Button>
+                  
+                  {/* Demo Access Button */}
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setEmail('demo@stagalgo.com');
+                      setPassword('demo123');
+                      toast({
+                        title: "Demo Mode",
+                        description: "Demo credentials loaded. Click Sign In to continue.",
+                      });
+                    }}
+                    disabled={isLoading}
+                  >
+                    Use Demo Account
                   </Button>
                   
                   <div className="text-center">
