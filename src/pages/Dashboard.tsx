@@ -12,6 +12,8 @@ import {
   Activity,
   Building2
 } from 'lucide-react';
+import { ComplianceStatus } from '@/components/compliance/ComplianceStatus';
+import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
 
 export default function Dashboard() {
   const { portfolio, positions, loadPortfolio, subscribeToUpdates } = useRealPortfolioStore();
@@ -230,6 +232,12 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Compliance Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ComplianceStatus />
+        <ComplianceDashboard />
       </div>
     </div>
   );
