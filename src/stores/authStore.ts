@@ -28,9 +28,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       isAuthenticated: false,
 
       initializeAuth: async () => {
+        console.log('AuthStore - Initializing auth...');
         try {
           // Get initial session
           const { data: { session } } = await supabase.auth.getSession();
+          console.log('AuthStore - Got session:', !!session?.user);
           
           if (session?.user) {
             const { data: profile } = await supabase
@@ -51,12 +53,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               lastLogin: new Date()
             };
 
+            console.log('AuthStore - Setting authenticated user');
             set({
               user,
               isAuthenticated: true,
               isLoading: false
             });
           } else {
+            console.log('AuthStore - No session, setting unauthenticated');
             set({ isLoading: false });
           }
 
