@@ -460,11 +460,10 @@ class SeekerService {
       this.findings.set(finding.id, finding);
 
       // Use recorder createEntry method instead of recordEvent
-      recorder.createEntry(
-        'system',
-        'seeker.finding',
-        `Seeker found ${finding.type}: ${finding.reasoning[0]}`,
-        finding
+      recorder.recordSystemEvent(
+        'feature_flag_change',
+        finding,
+        true
       );
 
       // Emit event for other systems to pick up

@@ -317,7 +317,7 @@ class LearningBotService {
         if (effectivenessScore < 0.4) {
           // Suppress noisy signal type
           const update: LearningUpdate = {
-            id: generateULID('learn_'),
+            id: generateULID('evt_'),
             type: 'signal_suppression',
             module: 'oracle',
             targetId: type,
@@ -362,7 +362,7 @@ class LearningBotService {
 
       if (engagementData.averageListenTime < 30 || engagementData.replayRate < 0.1) {
         const update: LearningUpdate = {
-          id: generateULID('learn_'),
+          id: generateULID('evt_'),
           type: 'explanation_improvement',
           module: 'analyst',
           changes: {
@@ -403,7 +403,7 @@ class LearningBotService {
         if (avgDrawdown < 0.02) {
           // Risk parameters might be too conservative
           const update: LearningUpdate = {
-            id: generateULID('learn_'),
+            id: generateULID('evt_'),
             type: 'parameter_adjustment',
             module: 'risk_settings',
             changes: {
@@ -442,7 +442,7 @@ class LearningBotService {
         
         for (const bot of bots) {
           const update: LearningUpdate = {
-            id: generateULID('learn_'),
+            id: generateULID('evt_'),
             type: 'parameter_adjustment',
             module: 'trade_bots',
             targetId: bot.id,
@@ -491,7 +491,7 @@ class LearningBotService {
       for (const [type, count] of signalCounts) {
         if (count > 10) { // More than 10 signals per hour
           const update: LearningUpdate = {
-            id: generateULID('learn_'),
+            id: generateULID('evt_'),
             type: 'signal_suppression',
             module: 'oracle',
             targetId: type,
@@ -547,7 +547,7 @@ class LearningBotService {
 
           if (Math.abs(adjustment) > 0.02) { // Only apply significant adjustments
             const update: LearningUpdate = {
-              id: generateULID('learn_'),
+            id: generateULID('evt_'),
               type: 'parameter_adjustment',
               module: 'trade_bots',
               targetId: bot.id,
@@ -598,7 +598,7 @@ class LearningBotService {
       // If engagement is consistently low, suggest improvements
       if (engagement.duration < 15 && !engagement.replay) {
         const update: LearningUpdate = {
-          id: generateULID('learn_'),
+          id: generateULID('evt_'),
           type: 'explanation_improvement',
           module: 'analyst',
           changes: {
@@ -635,7 +635,7 @@ class LearningBotService {
         if (effectiveness < 0.3) {
           // Signal type is not effective
           const update: LearningUpdate = {
-            id: generateULID('learn_'),
+            id: generateULID('evt_'),
             type: 'signal_suppression',
             module: 'oracle',
             targetId: outcome.signal.type,
@@ -684,7 +684,7 @@ class LearningBotService {
       // Optimize how Seeker findings are processed
       if (finding.confidence > 0.8 && finding.type === 'niche_ticker') {
         const update: LearningUpdate = {
-          id: generateULID('learn_'),
+          id: generateULID('evt_'),
           type: 'parameter_adjustment',
           module: 'bid',
           changes: {
