@@ -126,6 +126,41 @@ export type Database = {
           },
         ]
       }
+      bot_profiles: {
+        Row: {
+          capital_risk_pct: number
+          daily_return_target_pct: number
+          execution_mode: string
+          risk_indicator: string
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          capital_risk_pct?: number
+          daily_return_target_pct?: number
+          execution_mode?: string
+          risk_indicator?: string
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          capital_risk_pct?: number
+          daily_return_target_pct?: number
+          execution_mode?: string
+          risk_indicator?: string
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_profiles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candles: {
         Row: {
           c: number | null

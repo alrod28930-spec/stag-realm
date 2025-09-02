@@ -31,6 +31,9 @@ import { LegalFooter } from '@/components/compliance/LegalFooter';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { toggleService } from '@/services/toggleService';
+import { RiskGoalsCard } from '@/components/tradebots/RiskGoalsCard';
+import { useAuthStore } from '@/stores/authStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 
 export default function TradeBots() {
   const [bots, setBots] = useState<TradeBot[]>([]);
@@ -38,6 +41,10 @@ export default function TradeBots() {
   const [toggleState, setToggleState] = useState(toggleService.getToggleState());
   const { showDisclaimer } = useCompliance();
   const { toast } = useToast();
+  
+  // Get current user and workspace
+  const user = useAuthStore((state) => state.user);
+  const currentWorkspace = useWorkspaceStore((state) => state.currentWorkspace);
 
   useEffect(() => {
     // Load initial data
@@ -161,6 +168,16 @@ export default function TradeBots() {
           Create Bot
         </Button>
       </div>
+
+      {/* Risk & Goals Panel */}
+      {user && currentWorkspace && (
+        <div className="max-w-2xl">
+          <RiskGoalsCard 
+            workspaceId={currentWorkspace.id} 
+            userId={user.id} 
+          />
+        </div>
+      )}
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
