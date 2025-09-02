@@ -3,38 +3,19 @@ import { persist } from 'zustand/middleware';
 import type { AuthState, User, Organization, LoginCredentials } from '@/types/auth';
 import { createLogger } from '@/services/logging';
 import { eventBus } from '@/services/eventBus';
+import { supabase } from '@/integrations/supabase/client';
+import type { Session } from '@supabase/supabase-js';
 
 const logger = createLogger('AuthStore');
 
-// Mock data for development
-const mockUser: User = {
-  id: '1',
-  email: 'demo@stagalgo.com',
-  name: 'John Trader',
-  role: 'Owner',
-  organizationId: 'org-1',
-  avatar: undefined,
-  isActive: true,
-  createdAt: new Date('2024-01-01'),
-  lastLogin: new Date()
-};
-
-const mockOrganization: Organization = {
-  id: 'org-1',
-  name: 'StagAlgo Demo',
-  slug: 'stagalgo-demo',
-  plan: 'Professional',
-  isActive: true,
-  createdAt: new Date('2024-01-01'),
-  memberCount: 5
-};
-
 interface AuthActions {
   login: (credentials: LoginCredentials) => Promise<boolean>;
-  logout: () => void;
+  signUp: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   setUser: (user: User | null) => void;
   setOrganization: (org: Organization | null) => void;
   hasPermission: (action: string) => boolean;
+  initializeAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -42,34 +23,114 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     (set, get) => ({
       user: null,
       organization: null,
-      isLoading: false,
+      isLoading: true,
       isAuthenticated: false,
+
+      initializeAuth: async () => {
+        try {
+          // Get initial session
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            const user: User = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name: profile?.display_name || session.user.email || '',
+              role: 'Member',
+              organizationId: 'default',
+              avatar: undefined,
+              isActive: true,
+              createdAt: new Date(session.user.created_at),
+              lastLogin: new Date()
+            };
+
+            set({
+              user,
+              isAuthenticated: true,
+              isLoading: false
+            });
+          } else {
+            set({ isLoading: false });
+          }
+
+          // Listen for auth changes
+          supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+              const user: User = {
+                id: session.user.id,
+                email: session.user.email || '',
+                name: session.user.email || '',
+                role: 'Member',
+                organizationId: 'default',
+                avatar: undefined,
+                isActive: true,
+                createdAt: new Date(session.user.created_at),
+                lastLogin: new Date()
+              };
+
+              set({
+                user,
+                isAuthenticated: true,
+                isLoading: false
+              });
+              
+              eventBus.emit('user-login' as any, { email: user.email, timestamp: new Date() });
+            } else if (event === 'SIGNED_OUT') {
+              set({
+                user: null,
+                organization: null,
+                isAuthenticated: false,
+                isLoading: false
+              });
+              
+              eventBus.emit('user-logout' as any, { timestamp: new Date() });
+            }
+          });
+        } catch (error) {
+          logger.error('Auth initialization failed', { error });
+          set({ isLoading: false });
+        }
+      },
 
       login: async (credentials: LoginCredentials) => {
         set({ isLoading: true });
         
         try {
-          // Mock authentication - replace with real Supabase auth
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          if (credentials.email === 'demo@stagalgo.com' && credentials.password === 'password') {
-            set({
-              user: mockUser,
-              organization: mockOrganization,
-              isAuthenticated: true,
-              isLoading: false
-            });
-            
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: credentials.email,
+            password: credentials.password
+          });
+
+          if (error) throw error;
+
+          if (data.user) {
+            // Create profile if it doesn't exist
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .upsert({
+                id: data.user.id,
+                display_name: data.user.email
+              });
+
+            if (profileError) {
+              logger.warn('Profile creation failed', { error: profileError });
+            }
+
             logger.info('User logged in successfully', { 
-              userId: mockUser.id,
+              userId: data.user.id,
               email: credentials.email 
             });
             
-            eventBus.emit('user-login' as any, { email: credentials.email, timestamp: new Date() });
             return true;
-          } else {
-            throw new Error('Invalid credentials');
           }
+          
+          return false;
         } catch (error) {
           logger.error('Login failed', { 
             email: credentials.email,
@@ -81,18 +142,51 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }
       },
 
-      logout: () => {
+      signUp: async (email: string, password: string) => {
+        set({ isLoading: true });
+        
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/`
+            }
+          });
+
+          if (error) throw error;
+
+          if (data.user) {
+            logger.info('User signed up successfully', { 
+              userId: data.user.id,
+              email 
+            });
+            
+            return true;
+          }
+          
+          return false;
+        } catch (error) {
+          logger.error('Sign up failed', { 
+            email,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          
+          set({ isLoading: false });
+          return false;
+        }
+      },
+
+      logout: async () => {
         const { user } = get();
         
-        set({
-          user: null,
-          organization: null,
-          isAuthenticated: false,
-          isLoading: false
-        });
-        
-        logger.info('User logged out', { userId: user?.id });
-        eventBus.emit('user-logout' as any, { userId: user?.id, timestamp: new Date() });
+        try {
+          await supabase.auth.signOut();
+          
+          logger.info('User logged out', { userId: user?.id });
+        } catch (error) {
+          logger.error('Logout failed', { error });
+        }
       },
 
       setUser: (user: User | null) => {

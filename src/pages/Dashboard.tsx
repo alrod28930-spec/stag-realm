@@ -1,36 +1,57 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useEffect } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
   BarChart3, 
   Activity,
-  Users
+  Building2
 } from 'lucide-react';
 
 export default function Dashboard() {
-  // Mock data for the dashboard
+  const { portfolio, positions, loadPortfolio, subscribeToUpdates } = useRealPortfolioStore();
+  const { currentWorkspace } = useWorkspaceStore();
+
+  // Load portfolio data and subscribe to updates
+  useEffect(() => {
+    if (currentWorkspace) {
+      loadPortfolio();
+      const unsubscribe = subscribeToUpdates();
+      return unsubscribe;
+    }
+  }, [currentWorkspace, loadPortfolio, subscribeToUpdates]);
+
+  // Calculate real-time stats
+  const portfolioValue = portfolio?.equity || 0;
+  const availableCash = portfolio?.cash || 0;
+  const totalPositions = positions.length;
+  const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + (pos.unr_pnl || 0), 0);
+
+  // Mock data for other stats that would come from trading bots, etc.
   const stats = [
     {
       title: 'Portfolio Value',
-      value: '$125,432.50',
-      change: '+2.5%',
-      trend: 'up',
+      value: `$${portfolioValue.toLocaleString()}`,
+      change: totalUnrealizedPnL >= 0 ? `+$${totalUnrealizedPnL.toFixed(2)}` : `-$${Math.abs(totalUnrealizedPnL).toFixed(2)}`,
+      trend: totalUnrealizedPnL >= 0 ? 'up' : 'down',
       icon: DollarSign,
     },
     {
-      title: 'Daily P&L',
-      value: '$3,245.20',
-      change: '+15.2%',
-      trend: 'up',
+      title: 'Available Cash',
+      value: `$${availableCash.toLocaleString()}`,
+      change: 'Ready to invest',
+      trend: 'neutral',
       icon: TrendingUp,
     },
     {
       title: 'Active Positions',
-      value: '12',
-      change: '+3',
+      value: totalPositions.toString(),
+      change: `${totalPositions} holdings`,
       trend: 'up',
       icon: BarChart3,
     },
@@ -43,12 +64,15 @@ export default function Dashboard() {
     },
   ];
 
-  const positions = [
-    { symbol: 'AAPL', side: 'Long', qty: 100, price: '$175.50', pnl: '+$1,250.00', pnlPercent: '+7.2%' },
-    { symbol: 'GOOGL', side: 'Long', qty: 50, price: '$142.30', pnl: '-$125.50', pnlPercent: '-1.8%' },
-    { symbol: 'MSFT', side: 'Short', qty: 75, price: '$378.90', pnl: '+$892.75', pnlPercent: '+3.1%' },
-    { symbol: 'TSLA', side: 'Long', qty: 25, price: '$248.75', pnl: '+$625.00', pnlPercent: '+10.1%' },
-  ];
+  // Use real positions or show empty state
+  const displayPositions = positions.slice(0, 4).map(pos => ({
+    symbol: pos.symbol,
+    side: pos.qty > 0 ? 'Long' : 'Short',
+    qty: Math.abs(pos.qty),
+    price: `$${pos.avg_cost.toFixed(2)}`,
+    pnl: pos.unr_pnl >= 0 ? `+$${pos.unr_pnl.toFixed(2)}` : `-$${Math.abs(pos.unr_pnl).toFixed(2)}`,
+    pnlPercent: pos.mv > 0 ? `${((pos.unr_pnl / (pos.mv - pos.unr_pnl)) * 100).toFixed(1)}%` : '0.0%'
+  }));
 
   return (
     <div className="space-y-8">
@@ -57,6 +81,12 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold">Trading Dashboard</h1>
         <p className="text-muted-foreground mt-2">
           Welcome back! Here's an overview of your trading activity.
+          {currentWorkspace && (
+            <span className="flex items-center mt-1">
+              <Building2 className="w-4 h-4 mr-1" />
+              {currentWorkspace.name}
+            </span>
+          )}
         </p>
       </div>
 
@@ -101,41 +131,50 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {positions.map((position, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <Badge 
-                      variant={position.side === 'Long' ? 'default' : 'secondary'}
-                      className="w-14 justify-center"
-                    >
-                      {position.side}
-                    </Badge>
-                    <div>
-                      <p className="font-semibold">{position.symbol}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {position.qty} shares @ {position.price}
+            {displayPositions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No positions found</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Your portfolio positions will appear here once you have investments
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {displayPositions.map((position, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <Badge 
+                        variant={position.side === 'Long' ? 'default' : 'secondary'}
+                        className="w-14 justify-center"
+                      >
+                        {position.side}
+                      </Badge>
+                      <div>
+                        <p className="font-semibold">{position.symbol}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {position.qty} shares @ {position.price}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-semibold ${
+                        position.pnl.startsWith('+') ? 'text-accent' : 'text-destructive'
+                      }`}>
+                        {position.pnl}
+                      </p>
+                      <p className={`text-sm ${
+                        position.pnlPercent.startsWith('+') ? 'text-accent' : 'text-destructive'
+                      }`}>
+                        {position.pnlPercent}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      position.pnl.startsWith('+') ? 'text-accent' : 'text-destructive'
-                    }`}>
-                      {position.pnl}
-                    </p>
-                    <p className={`text-sm ${
-                      position.pnlPercent.startsWith('+') ? 'text-accent' : 'text-destructive'
-                    }`}>
-                      {position.pnlPercent}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

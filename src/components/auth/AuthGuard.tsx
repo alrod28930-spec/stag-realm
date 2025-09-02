@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { LoginForm } from './LoginForm';
 import { Loader2 } from 'lucide-react';
 
@@ -8,7 +9,20 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated, isLoading, user } = useAuthStore();
+  const { isAuthenticated, isLoading, user, initializeAuth } = useAuthStore();
+  const { loadWorkspaces } = useWorkspaceStore();
+
+  // Initialize auth on mount
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // Load workspaces when authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadWorkspaces();
+    }
+  }, [isAuthenticated, user, loadWorkspaces]);
 
   // Show loading state
   if (isLoading) {
