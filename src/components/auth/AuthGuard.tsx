@@ -1,7 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { LoginForm } from './LoginForm';
-import { userSettingsService } from '@/services/userSettings';
 import { Loader2 } from 'lucide-react';
 
 interface AuthGuardProps {
@@ -15,21 +14,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
-
-  // Initialize user settings when authenticated
-  useEffect(() => {
-    const setupUserSettings = async () => {
-      if (isAuthenticated && user && !isLoading) {
-        try {
-          await userSettingsService.updateUserSettings(user.id, {});
-        } catch (error) {
-          console.error('Failed to initialize user settings:', error);
-        }
-      }
-    };
-
-    setupUserSettings();
-  }, [isAuthenticated, user, isLoading]);
 
   // Show loading state during authentication
   if (isLoading) {

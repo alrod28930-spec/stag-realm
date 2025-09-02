@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Shield, Users, FileText, AlertTriangle, Download, Eye, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { complianceService } from '@/services/compliance';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { toast } from 'sonner';
 
 interface ComplianceDashboardProps {
@@ -14,7 +14,6 @@ interface ComplianceDashboardProps {
 }
 
 export function ComplianceDashboard({ className }: ComplianceDashboardProps) {
-  const { currentWorkspace } = useWorkspaceStore();
   const [verificationStatus, setVerificationStatus] = useState<any>(null);
   const [acknowledgments, setAcknowledgments] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
@@ -23,21 +22,19 @@ export function ComplianceDashboard({ className }: ComplianceDashboardProps) {
   const [generatingReport, setGeneratingReport] = useState(false);
 
   useEffect(() => {
-    if (currentWorkspace?.id) {
-      loadComplianceData();
-    }
-  }, [currentWorkspace?.id]);
+    loadComplianceData();
+  }, []);
 
   const loadComplianceData = async () => {
-    if (!currentWorkspace?.id) return;
+    const workspaceId = 'default-workspace'; // Default workspace for now
 
     try {
       setLoading(true);
       const [verification, acks, reportsData, suspicious] = await Promise.all([
-        complianceService.getVerificationStatus(currentWorkspace.id),
-        complianceService.getAcknowledgments(currentWorkspace.id),
-        complianceService.getReports(currentWorkspace.id),
-        complianceService.getSuspiciousActivities(currentWorkspace.id),
+        complianceService.getVerificationStatus(workspaceId),
+        complianceService.getAcknowledgments(workspaceId),
+        complianceService.getReports(workspaceId),
+        complianceService.getSuspiciousActivities(workspaceId),
       ]);
 
       setVerificationStatus(verification);
@@ -53,10 +50,10 @@ export function ComplianceDashboard({ className }: ComplianceDashboardProps) {
   };
 
   const handleKycVerification = async () => {
-    if (!currentWorkspace?.id) return;
+    const workspaceId = 'default-workspace'; // Default workspace for now
 
     try {
-      const result = await complianceService.verifyKyc(currentWorkspace.id);
+      const result = await complianceService.verifyKyc(workspaceId);
       if (result.success) {
         toast.success('KYC verification initiated successfully');
         await loadComplianceData();
@@ -68,14 +65,14 @@ export function ComplianceDashboard({ className }: ComplianceDashboardProps) {
   };
 
   const handleGenerateReport = async (reportType: string) => {
-    if (!currentWorkspace?.id) return;
+    const workspaceId = 'default-workspace'; // Default workspace for now
 
     try {
       setGeneratingReport(true);
       const endDate = new Date().toISOString().split('T')[0];
       const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
-      const result = await complianceService.generateReport(currentWorkspace.id, reportType, startDate, endDate);
+      const result = await complianceService.generateReport(workspaceId, reportType, startDate, endDate);
       
       if (result.success) {
         toast.success('Report generated successfully');

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
-import { useWorkspaceStore } from './workspaceStore';
 import { eventBus } from '@/services/eventBus';
 import { logService } from '@/services/logging';
 
@@ -41,12 +40,9 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
   lastUpdated: null,
 
   loadPortfolio: async () => {
-    const { currentWorkspace } = useWorkspaceStore.getState();
-    if (!currentWorkspace) {
-      set({ error: 'No workspace selected' });
-      return;
-    }
-
+    // Use a default workspace ID for now
+    const defaultWorkspaceId = 'default-workspace';
+    
     set({ isLoading: true, error: null });
 
     try {
@@ -54,7 +50,7 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
       const { data: portfolioData, error: portfolioError } = await supabase
         .from('portfolio_current')
         .select('*')
-        .eq('workspace_id', currentWorkspace.id)
+        .eq('workspace_id', defaultWorkspaceId)
         .single();
 
       if (portfolioError && portfolioError.code !== 'PGRST116') { // PGRST116 = no rows returned
@@ -65,7 +61,7 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
       const { data: positionsData, error: positionsError } = await supabase
         .from('positions_current')
         .select('*')
-        .eq('workspace_id', currentWorkspace.id)
+        .eq('workspace_id', defaultWorkspaceId)
         .order('mv', { ascending: false });
 
       if (positionsError) throw positionsError;
@@ -101,8 +97,8 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
   },
 
   subscribeToUpdates: () => {
-    const { currentWorkspace } = useWorkspaceStore.getState();
-    if (!currentWorkspace) return () => {};
+    // Use default workspace ID
+    const defaultWorkspaceId = 'default-workspace';
 
     // Subscribe to portfolio changes
     const portfolioChannel = supabase
@@ -113,7 +109,7 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
           event: '*',
           schema: 'public',
           table: 'portfolio_current',
-          filter: `workspace_id=eq.${currentWorkspace.id}`
+          filter: `workspace_id=eq.${defaultWorkspaceId}`
         },
         (payload) => {
           const { portfolio } = get();
@@ -137,7 +133,7 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
           event: '*',
           schema: 'public',
           table: 'positions_current',
-          filter: `workspace_id=eq.${currentWorkspace.id}`
+          filter: `workspace_id=eq.${defaultWorkspaceId}`
         },
         (payload) => {
           const { positions } = get();

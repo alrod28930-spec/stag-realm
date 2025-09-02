@@ -34,7 +34,6 @@ import { toggleService } from '@/services/toggleService';
 import { RiskGoalsCard } from '@/components/tradebots/RiskGoalsCard';
 import { StrategyLibraryCard } from '@/components/tradebots/StrategyLibraryCard';
 import { useAuthStore } from '@/stores/authStore';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { getBotProfile } from '@/services/botProfile';
 import { DailyTargetMode } from '@/types/botProfile';
 
@@ -46,9 +45,8 @@ export default function TradeBots() {
   const { showDisclaimer } = useCompliance();
   const { toast } = useToast();
   
-  // Get current user and workspace for Risk & Goals
+  // Get current user for Risk & Goals
   const user = useAuthStore((state) => state.user);
-  const currentWorkspace = useWorkspaceStore((state) => state.currentWorkspace);
 
   useEffect(() => {
     // Load initial data
@@ -70,13 +68,13 @@ export default function TradeBots() {
       clearInterval(interval);
       unsubscribe();
     };
-  }, [currentWorkspace]);
+  }, []);
 
   const loadCurrentMode = async () => {
-    if (!currentWorkspace) return;
+    const workspaceId = 'default-workspace'; // Default workspace for now
     
     try {
-      const profile = await getBotProfile(currentWorkspace.id);
+      const profile = await getBotProfile(workspaceId);
       if (profile?.daily_target_mode) {
         setCurrentMode(profile.daily_target_mode);
       }
@@ -189,16 +187,16 @@ export default function TradeBots() {
       </div>
 
       {/* Risk & Goals Panel */}
-      {user && currentWorkspace && (
+      {user && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RiskGoalsCard 
-            workspaceId={currentWorkspace.id} 
+            workspaceId="default-workspace" 
             userId={user.id}
             onModeChange={(mode) => setCurrentMode(mode)}
           />
           <StrategyLibraryCard
             mode={currentMode}
-            workspaceId={currentWorkspace.id}
+            workspaceId="default-workspace"
           />
         </div>
       )}

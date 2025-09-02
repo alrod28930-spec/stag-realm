@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Shield, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { complianceService } from '@/services/compliance';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { toast } from 'sonner';
 
 interface ComplianceOnboardingProps {
@@ -23,7 +24,6 @@ interface RequiredDocument {
 }
 
 export function ComplianceOnboarding({ onComplete, className }: ComplianceOnboardingProps) {
-  const { currentWorkspace } = useWorkspaceStore();
   const [documents, setDocuments] = useState<RequiredDocument[]>([]);
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   const [acknowledged, setAcknowledged] = useState<Record<string, boolean>>({});
@@ -317,7 +317,7 @@ By using StagAlgo, you acknowledge understanding and acceptance of this Privacy 
   };
 
   const handleComplete = async () => {
-    if (!currentWorkspace?.id || !canProceed()) return;
+    if (!canProceed()) return;
 
     try {
       setSubmitting(true);
@@ -325,7 +325,7 @@ By using StagAlgo, you acknowledge understanding and acceptance of this Privacy 
       // Record acknowledgments in the database
       for (const doc of documents) {
         await complianceService.recordAcknowledgment(
-          currentWorkspace.id,
+          'default-workspace',
           doc.type,
           doc.version
         );

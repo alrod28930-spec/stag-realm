@@ -128,7 +128,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 return { error, data: null };
               }
               
-              logger.info('Demo user logged in successfully');
               return { data, error: null };
             }
             
@@ -143,7 +142,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             });
             
             if (data.user) {
-              logger.info('Demo user created and logged in');
               return { data, error: null };
             }
           }
@@ -154,10 +152,26 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            logger.error('Login failed', { 
-              email: credentials.email,
-              error: error.message
-            });
+            // Handle email not confirmed error
+            if (error.message === 'Email not confirmed') {
+              // Auto-resend confirmation for better UX
+              await supabase.auth.resend({
+                type: 'signup',
+                email: credentials.email,
+                options: {
+                  emailRedirectTo: `${window.location.origin}/auth/verify`
+                }
+              });
+              
+              return { 
+                error: { 
+                  ...error, 
+                  message: 'Please check your email and click the confirmation link. We\'ve sent a new one just in case.' 
+                }, 
+                data: null 
+              };
+            }
+            
             return { error, data: null };
           }
 
@@ -171,24 +185,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               });
 
             if (profileError) {
-              logger.warn('Profile creation failed', { error: profileError });
+              console.warn('Profile creation failed:', profileError);
             }
-
-            logger.info('User logged in successfully', { 
-              userId: data.user.id,
-              email: credentials.email 
-            });
             
             return { data, error: null };
           }
           
           return { data: null, error: new Error('Login failed') };
         } catch (error) {
-          logger.error('Login failed', { 
-            email: credentials.email,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-          
           set({ isLoading: false });
           return { 
             error: error instanceof Error ? error : new Error('Login failed'), 

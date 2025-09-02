@@ -1,8 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useEffect } from 'react';
 import { 
   TrendingUp, 
@@ -17,16 +16,13 @@ import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard
 
 export default function Dashboard() {
   const { portfolio, positions, loadPortfolio, subscribeToUpdates } = useRealPortfolioStore();
-  const { currentWorkspace } = useWorkspaceStore();
 
   // Load portfolio data and subscribe to updates
   useEffect(() => {
-    if (currentWorkspace) {
-      loadPortfolio();
-      const unsubscribe = subscribeToUpdates();
-      return unsubscribe;
-    }
-  }, [currentWorkspace, loadPortfolio, subscribeToUpdates]);
+    loadPortfolio();
+    const unsubscribe = subscribeToUpdates();
+    return unsubscribe;
+  }, [loadPortfolio, subscribeToUpdates]);
 
   // Calculate real-time stats
   const portfolioValue = portfolio?.equity || 0;
@@ -83,12 +79,6 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold">Trading Dashboard</h1>
         <p className="text-muted-foreground mt-2">
           Welcome back! Here's an overview of your trading activity.
-          {currentWorkspace && (
-            <span className="flex items-center mt-1">
-              <Building2 className="w-4 h-4 mr-1" />
-              {currentWorkspace.name}
-            </span>
-          )}
         </p>
       </div>
 
