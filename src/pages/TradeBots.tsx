@@ -42,7 +42,7 @@ export default function TradeBots() {
   const { showDisclaimer } = useCompliance();
   const { toast } = useToast();
   
-  // Get current user and workspace
+  // Get current user and workspace for Risk & Goals
   const user = useAuthStore((state) => state.user);
   const currentWorkspace = useWorkspaceStore((state) => state.currentWorkspace);
 
