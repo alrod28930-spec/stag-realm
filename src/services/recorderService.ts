@@ -268,7 +268,7 @@ class RecorderService {
   private getWorkspaceId(): string {
     // For now, use a default workspace ID
     // In a real implementation, this would come from user context
-    return 'default-workspace';
+    return '00000000-0000-0000-0000-000000000001';
   }
 
   private generateSummary(eventType: string, data: any): string {

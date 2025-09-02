@@ -26,7 +26,7 @@ export function ComplianceDashboard({ className }: ComplianceDashboardProps) {
   }, []);
 
   const loadComplianceData = async () => {
-    const workspaceId = 'default-workspace'; // Default workspace for now
+    const workspaceId = '00000000-0000-0000-0000-000000000001'; // Default workspace UUID
 
     try {
       setLoading(true);
@@ -50,7 +50,7 @@ export function ComplianceDashboard({ className }: ComplianceDashboardProps) {
   };
 
   const handleKycVerification = async () => {
-    const workspaceId = 'default-workspace'; // Default workspace for now
+    const workspaceId = '00000000-0000-0000-0000-000000000001'; // Default workspace UUID
 
     try {
       const result = await complianceService.verifyKyc(workspaceId);
@@ -65,7 +65,7 @@ export function ComplianceDashboard({ className }: ComplianceDashboardProps) {
   };
 
   const handleGenerateReport = async (reportType: string) => {
-    const workspaceId = 'default-workspace'; // Default workspace for now
+    const workspaceId = '00000000-0000-0000-0000-000000000001'; // Default workspace UUID
 
     try {
       setGeneratingReport(true);

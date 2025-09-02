@@ -71,7 +71,7 @@ export default function TradeBots() {
   }, []);
 
   const loadCurrentMode = async () => {
-    const workspaceId = 'default-workspace'; // Default workspace for now
+    const workspaceId = '00000000-0000-0000-0000-000000000001'; // Default workspace UUID
     
     try {
       const profile = await getBotProfile(workspaceId);
@@ -190,13 +190,13 @@ export default function TradeBots() {
       {user && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RiskGoalsCard 
-            workspaceId="default-workspace" 
+            workspaceId="00000000-0000-0000-0000-000000000001"
             userId={user.id}
             onModeChange={(mode) => setCurrentMode(mode)}
           />
           <StrategyLibraryCard
             mode={currentMode}
-            workspaceId="default-workspace"
+            workspaceId="00000000-0000-0000-0000-000000000001"
           />
         </div>
       )}

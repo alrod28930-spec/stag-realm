@@ -325,7 +325,7 @@ By using StagAlgo, you acknowledge understanding and acceptance of this Privacy 
       // Record acknowledgments in the database
       for (const doc of documents) {
         await complianceService.recordAcknowledgment(
-          'default-workspace',
+          '00000000-0000-0000-0000-000000000001',
           doc.type,
           doc.version
         );

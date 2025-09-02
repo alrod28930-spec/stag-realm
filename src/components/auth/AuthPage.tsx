@@ -208,7 +208,7 @@ export function AuthPage() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      setEmail('demo@stagalgo.com');
+                      setEmail('demo@example.com');
                       setPassword('demo123');
                       toast({
                         title: "Demo Mode",

@@ -41,7 +41,7 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
 
   loadPortfolio: async () => {
     // Use a default workspace ID for now
-    const defaultWorkspaceId = 'default-workspace';
+    const defaultWorkspaceId = '00000000-0000-0000-0000-000000000001';
     
     set({ isLoading: true, error: null });
 
@@ -98,7 +98,7 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
 
   subscribeToUpdates: () => {
     // Use default workspace ID
-    const defaultWorkspaceId = 'default-workspace';
+    const defaultWorkspaceId = '00000000-0000-0000-0000-000000000001';
 
     // Subscribe to portfolio changes
     const portfolioChannel = supabase
