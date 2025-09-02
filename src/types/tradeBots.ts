@@ -1,7 +1,7 @@
 // Trade Bot Types - Automated strategy modules with compliance safeguards
 
 export type BotStatus = 'off' | 'simulation' | 'live';
-export type BotStrategy = 'momentum' | 'breakout' | 'mean_reversion' | 'signal_stacking' | 'volatility';
+export type BotStrategy = 'momentum' | 'breakout' | 'mean_reversion' | 'signal_stacking' | 'volatility' | 'arbitrage' | 'scalping';
 
 export interface TradeBot {
   id: string;
@@ -90,7 +90,7 @@ export interface BotResearchResult {
 }
 
 export interface ResearchSignal {
-  type: 'momentum' | 'volume' | 'volatility' | 'sentiment' | 'technical' | 'fundamental';
+  type: 'momentum' | 'volume' | 'volatility' | 'sentiment' | 'technical' | 'fundamental' | 'arbitrage';
   strength: number; // 0-1
   direction: 'bullish' | 'bearish' | 'neutral';
   timeframe: string;
