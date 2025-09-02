@@ -65,37 +65,97 @@ export class ComplianceService {
   private initializeDisclaimers(): void {
     this.disclaimers = [
       {
-        id: 'session_start_analyst',
+        id: 'portfolio_mirroring_eula',
         type: 'session_start',
-        title: 'Important Disclaimer',
-        content: `StagAlgo is a software tool that provides market insights and analysis for educational purposes only. 
+        title: 'End User License Agreement - Portfolio Mirroring Software',
+        content: `**STAGALGO PORTFOLIO MIRRORING SOFTWARE**
 
-**NOT FINANCIAL ADVICE**: Nothing provided by StagAlgo constitutes financial, investment, trading, or other professional advice. All content is for informational purposes only.
+**CRITICAL UNDERSTANDING**: StagAlgo is exclusively a portfolio mirroring and analytics software tool. By using this software, you acknowledge and agree:
 
-**YOUR RESPONSIBILITY**: You are solely responsible for your trading and investment decisions. Always conduct your own research and consider consulting with qualified financial advisors.
+**SOFTWARE LICENSE ONLY**:
+• You are licensing software, NOT purchasing financial services
+• StagAlgo NEVER holds, custodies, or controls your funds
+• All assets remain in YOUR brokerage account at ALL times
+• We are NOT a broker, dealer, custodian, or investment advisor
 
-**NO GUARANTEES**: Past performance does not guarantee future results. Trading involves substantial risk of loss.
+**PORTFOLIO MIRRORING MODEL**:
+• StagAlgo connects to your external brokerage via YOUR API keys
+• We mirror/analyze your positions for educational purposes only
+• Any trade suggestions are simulated or require YOUR execution at YOUR broker
+• Your brokerage account and funds remain completely separate and safe
 
-**SOFTWARE TOOL**: StagAlgo is a portfolio mirror and analysis tool. We do not custody funds, execute trades directly, or act as a broker-dealer.`,
-        severity: 'warning',
+**NO CUSTODY, NO CONTROL**:
+• We NEVER process deposits, withdrawals, or hold client money
+• If StagAlgo fails, your brokerage account remains unaffected
+• You maintain full control of your actual trading account
+
+**EDUCATIONAL PURPOSE ONLY**:
+• All analysis, recommendations, and insights are educational
+• No guarantees of profitability or trading success
+• Past performance does not predict future results
+• Trading involves substantial risk of capital loss
+
+**YOUR RESPONSIBILITIES**:
+• You are solely responsible for ALL trading decisions
+• You must conduct your own due diligence
+• Consider consulting qualified financial advisors
+• Understand and accept all trading risks
+
+**LIMITATION OF LIABILITY**:
+• StagAlgo owner/operator assumes NO responsibility for:
+  - Trading losses or missed opportunities
+  - System downtime or data inaccuracies  
+  - Market volatility or external factors
+  - User errors or misunderstanding of features
+
+This structure protects both parties: your funds stay safe at your broker while you benefit from our analytical tools.
+
+**BY CONTINUING, YOU CONFIRM**: You understand this is SOFTWARE ONLY and you remain in complete control of your own brokerage account and trading decisions.`,
+        severity: 'critical',
         requiresAcknowledgment: true,
         frequency: 'daily',
         contexts: [
-          { component: 'analyst', priority: 1 }
+          { component: 'analyst', priority: 1 },
+          { component: 'oracle', priority: 1 },
+          { component: 'trade_bots', priority: 1 },
+          { component: 'recommendations', priority: 1 }
         ]
       },
       {
-        id: 'trade_intent_risk',
+        id: 'portfolio_mirroring_confirmation',
         type: 'trade_intent',
-        title: 'Trade Intent Confirmation',
-        content: `You are about to create a trade intent. Please confirm you understand:
+        title: 'Portfolio Mirroring - Trade Intent Confirmation',
+        content: `**IMPORTANT: PORTFOLIO MIRRORING MODEL**
 
-• This is a draft trade idea, not an executed order
-• You must review and approve any actual trades through your broker
-• StagAlgo does not execute trades or custody funds
-• All trading decisions and risks are your responsibility
+You are creating a trade intent in our portfolio mirroring system. Please confirm your understanding:
 
-Trading involves substantial risk and you can lose money.`,
+**THIS IS SIMULATION/ANALYSIS ONLY**:
+• This creates a mirrored position in our analytics system
+• NO actual trade is executed automatically
+• NO money moves from your brokerage account
+• This is for analysis, tracking, and educational purposes
+
+**YOUR BROKERAGE REMAINS SEPARATE**:
+• Your actual funds stay at YOUR chosen broker (Alpaca, OANDA, etc.)
+• To execute this trade, YOU must place it manually at YOUR broker
+• StagAlgo never touches your real money or executes real trades
+• We only mirror the position for analytics and learning
+
+**PORTFOLIO MIRRORING BENEFITS**:
+• Track hypothetical performance alongside your real portfolio
+• Learn from AI analysis without risking real capital
+• Test strategies before committing real funds
+• Compare simulated vs actual performance
+
+**YOUR RESPONSIBILITY**:
+• Any real trades must be executed by YOU at YOUR broker
+• You control all actual money movement and risk
+• Use our analysis as educational input for your decisions
+• All trading risks and outcomes are yours alone
+
+**RISK REMINDER**: Even simulated trades teach real lessons about market volatility and risk. Use this educational tool to improve your trading knowledge.
+
+By proceeding, you confirm this is portfolio mirroring for educational analysis only.`,
         severity: 'warning',
         requiresAcknowledgment: true,
         frequency: 'always',
@@ -104,16 +164,17 @@ Trading involves substantial risk and you can lose money.`,
         ]
       },
       {
-        id: 'recommendation_footer',
+        id: 'portfolio_mirroring_footer',
         type: 'recommendation',
-        title: 'Investment Disclaimer',
-        content: 'Informational insights only. Not financial advice. Conduct your own research.',
+        title: 'Portfolio Mirroring Educational Tool',
+        content: 'Portfolio mirroring analysis for educational purposes only. Not financial advice. StagAlgo does not custody funds or execute trades. Your broker account remains separate and under your control.',
         severity: 'info',
         requiresAcknowledgment: false,
         frequency: 'always',
         contexts: [
           { component: 'recommendations', action: 'view', priority: 3 },
-          { component: 'oracle', action: 'view', priority: 3 }
+          { component: 'oracle', action: 'view', priority: 3 },
+          { component: 'analyst', action: 'view', priority: 3 }
         ]
       },
       {
@@ -136,15 +197,82 @@ Please review your risk tolerance and position sizing carefully. Consider consul
         ]
       },
       {
-        id: 'market_search_general',
+        id: 'privacy_policy_notice',
         type: 'general',
-        title: 'Market Research Tool',
-        content: 'This search tool provides market data for research purposes. Results are not investment recommendations.',
+        title: 'Privacy Policy - Minimal Data Collection',
+        content: `**DATA MINIMIZATION POLICY**
+
+StagAlgo collects only essential data to provide portfolio mirroring services:
+
+**WHAT WE COLLECT**:
+• Workspace settings and preferences
+• Portfolio analytics and usage logs
+• API keys you provide (stored encrypted, never shared)
+• Basic session information for compliance
+
+**WHAT WE DON'T COLLECT**:
+• Your brokerage login credentials (never stored)
+• Personal financial information beyond portfolio positions
+• Unnecessary personal data or marketing profiles
+
+**DATA PROTECTION**:
+• API keys encrypted with industry-standard security
+• Data used only to provide our software service
+• No data reselling or sharing with third parties
+• GDPR-compliant deletion rights upon request
+
+**YOUR CONTROL**:
+• You can delete your account and all data anytime
+• API keys can be revoked at your brokerage
+• Portfolio data mirrors what you choose to share
+
+This minimal data approach protects your privacy while enabling our portfolio mirroring analytics.`,
         severity: 'info',
         requiresAcknowledgment: false,
-        frequency: 'once', // Changed from 'per_session' to 'once' so it only shows once ever
+        frequency: 'once',
         contexts: [
           { component: 'market_search', action: 'view', priority: 2 }
+        ]
+      },
+      {
+        id: 'regulatory_compliance_shield',
+        type: 'general',
+        title: 'Regulatory Compliance Framework',
+        content: `**REGULATORY POSITIONING**
+
+StagAlgo operates under a compliance framework designed to protect users:
+
+**NOT A FINANCIAL SERVICE PROVIDER**:
+• We provide software tools, not financial services
+• No broker-dealer registration required (funds never custodied)
+• No investment advisor registration (educational content only)
+• Clear separation from regulated financial activities
+
+**USER PROTECTION MODEL**:
+• Your funds always remain at YOUR regulated broker
+• Your broker provides SIPC insurance and regulatory protection
+• StagAlgo cannot access or move your actual money
+• If our software fails, your brokerage account is unaffected
+
+**COMPLIANCE FEATURES**:
+• All user interactions logged for audit purposes
+• Risk warnings and acknowledgments tracked
+• Clear disclaimers about software-only nature
+• Educational purpose statements throughout
+
+**REGULATORY SHIELD**:
+This structure protects you by ensuring:
+• Your money stays with regulated, insured brokers
+• Our software cannot create financial liability for user losses  
+• Clear legal boundaries prevent regulatory overreach
+• Educational software classification avoids financial service rules
+
+This framework provides maximum user protection while enabling powerful portfolio analytics.`,
+        severity: 'info',
+        requiresAcknowledgment: false,
+        frequency: 'once',
+        contexts: [
+          { component: 'analyst', action: 'view', priority: 2 }
         ]
       }
     ];
@@ -213,7 +341,7 @@ Please review your risk tolerance and position sizing carefully. Consider consul
         return !this.acknowledgments.some(ack => ack.disclaimerId === disclaimer.id);
       
       case 'daily':
-        if (disclaimer.id === 'session_start_analyst') {
+        if (disclaimer.id === 'portfolio_mirroring_eula') {
           return !this.dailyDisclaimerShown;
         }
         const today = new Date().toDateString();
@@ -277,7 +405,7 @@ Please review your risk tolerance and position sizing carefully. Consider consul
     });
 
     // Mark daily disclaimer as shown if applicable
-    if (disclaimer.id === 'session_start_analyst') {
+    if (disclaimer.id === 'portfolio_mirroring_eula') {
       this.dailyDisclaimerShown = true;
     }
   }
@@ -368,7 +496,7 @@ Please review your risk tolerance and position sizing carefully. Consider consul
     }
 
     // Always show trade intent disclaimer
-    const tradeDisclaimer = this.disclaimers.find(d => d.id === 'trade_intent_risk');
+    const tradeDisclaimer = this.disclaimers.find(d => d.id === 'portfolio_mirroring_confirmation');
     if (tradeDisclaimer) {
       await this.showDisclaimer(tradeDisclaimer, { intent });
     }
@@ -411,13 +539,13 @@ Please review your risk tolerance and position sizing carefully. Consider consul
   // Get legal footer for component
   getLegalFooter(component: string, variant: 'minimal' | 'standard' | 'detailed' = 'minimal'): LegalFooter | null {
     const footerContent = {
-      minimal: 'Not financial advice. For informational purposes only.',
-      standard: 'This information is for educational purposes only and does not constitute financial advice. Always conduct your own research.',
-      detailed: 'StagAlgo provides market analysis tools for educational purposes only. This is not financial, investment, or trading advice. You are solely responsible for your investment decisions. Past performance does not guarantee future results. Trading involves substantial risk of loss.'
+      minimal: 'Portfolio mirroring software for educational use only. Not financial advice. Your funds remain at your broker.',
+      standard: 'StagAlgo is portfolio mirroring software for educational purposes only. This is not financial advice. We do not custody funds or execute trades. You maintain complete control of your brokerage account.',
+      detailed: 'StagAlgo provides portfolio mirroring and market analysis tools for educational purposes only. This is not financial, investment, or trading advice. We are not a broker-dealer or custodian. Your funds remain at your external broker under your complete control. You are solely responsible for your investment decisions. Past performance does not guarantee future results. Trading involves substantial risk of loss.'
     };
 
-    // Determine if footer should be shown for this component
-    const showFooter = ['recommendations', 'oracle', 'analyst', 'market_search'].includes(component);
+    // Show footer for all financial components
+    const showFooter = ['recommendations', 'oracle', 'analyst', 'market_search', 'trade_bots', 'portfolio'].includes(component);
     
     if (!showFooter) return null;
 
