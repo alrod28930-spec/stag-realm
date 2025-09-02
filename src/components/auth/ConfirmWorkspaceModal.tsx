@@ -37,6 +37,15 @@ export function ConfirmWorkspaceModal({
     setIsCreating(true);
     
     try {
+      // First verify the user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        throw new Error('You must be logged in to create a workspace. Please refresh and try logging in again.');
+      }
+
+      console.log('User authenticated:', user.id);
+      
       // Call the RPC function to create workspace safely
       const { data: workspaceId, error } = await supabase.rpc(
         'create_workspace_safely',
@@ -47,6 +56,7 @@ export function ConfirmWorkspaceModal({
       );
 
       if (error) {
+        console.error('RPC Error:', error);
         throw error;
       }
 
