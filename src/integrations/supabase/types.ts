@@ -129,25 +129,52 @@ export type Database = {
       bot_profiles: {
         Row: {
           capital_risk_pct: number
+          daily_loss_halt_pct: number
           daily_return_target_pct: number
+          daily_target_mode: string
           execution_mode: string
+          max_concurrent_positions: number
+          max_trades_per_day: number
+          min_volume_usd: number
           risk_indicator: string
+          risk_per_trade_pct: number
+          rr_min: number
+          signal_confidence_min: number
+          stop_style: string
           updated_at: string | null
           workspace_id: string
         }
         Insert: {
           capital_risk_pct?: number
+          daily_loss_halt_pct?: number
           daily_return_target_pct?: number
+          daily_target_mode?: string
           execution_mode?: string
+          max_concurrent_positions?: number
+          max_trades_per_day?: number
+          min_volume_usd?: number
           risk_indicator?: string
+          risk_per_trade_pct?: number
+          rr_min?: number
+          signal_confidence_min?: number
+          stop_style?: string
           updated_at?: string | null
           workspace_id: string
         }
         Update: {
           capital_risk_pct?: number
+          daily_loss_halt_pct?: number
           daily_return_target_pct?: number
+          daily_target_mode?: string
           execution_mode?: string
+          max_concurrent_positions?: number
+          max_trades_per_day?: number
+          min_volume_usd?: number
           risk_indicator?: string
+          risk_per_trade_pct?: number
+          rr_min?: number
+          signal_confidence_min?: number
+          stop_style?: string
           updated_at?: string | null
           workspace_id?: string
         }

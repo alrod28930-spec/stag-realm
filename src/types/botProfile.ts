@@ -1,9 +1,21 @@
+export type DailyTargetMode = '1p' | '2p' | '5p' | '10p';
+export type StopStyle = 'wide' | 'standard' | 'tight' | 'very_tight';
+
 export interface BotProfile {
   workspace_id: string;
   capital_risk_pct: number;
   daily_return_target_pct: number;
   execution_mode: 'manual' | 'automated';
   risk_indicator: 'low' | 'medium' | 'high';
+  daily_target_mode: DailyTargetMode;
+  max_trades_per_day: number;
+  risk_per_trade_pct: number;
+  rr_min: number;
+  stop_style: StopStyle;
+  signal_confidence_min: number;
+  min_volume_usd: number;
+  max_concurrent_positions: number;
+  daily_loss_halt_pct: number;
   updated_at: string;
 }
 
@@ -12,12 +24,22 @@ export interface BotProfileUpdate {
   daily_return_target_pct?: number;
   execution_mode?: 'manual' | 'automated';
   risk_indicator?: 'low' | 'medium' | 'high';
+  daily_target_mode?: DailyTargetMode;
+  max_trades_per_day?: number;
+  risk_per_trade_pct?: number;
+  rr_min?: number;
+  stop_style?: StopStyle;
+  signal_confidence_min?: number;
+  min_volume_usd?: number;
+  max_concurrent_positions?: number;
+  daily_loss_halt_pct?: number;
 }
 
 export interface RiskGoalsSettings {
   capitalRisk: number;
   dailyTarget: number;
   executionMode: 'manual' | 'automated';
+  dailyTargetMode: DailyTargetMode;
 }
 
 export interface ComplianceAcknowledgment {
