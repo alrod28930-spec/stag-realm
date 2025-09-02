@@ -666,7 +666,181 @@ This framework provides maximum user protection while enabling powerful portfoli
       }))
     };
   }
+  // KYC/AML verification
+  async verifyKyc(workspaceId: string): Promise<any> {
+    try {
+      const { supabase } = await import('../integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('compliance-kyc-check', {
+        body: { workspace_id: workspaceId }
+      });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('KYC verification failed:', error);
+      throw error;
+    }
+  }
+
+  async getVerificationStatus(userId: string): Promise<any> {
+    try {
+      const { supabase } = await import('../integrations/supabase/client');
+      const { data, error } = await supabase
+        .from('user_verifications')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching verification status:', error);
+      return null;
+    }
+  }
+
+  async generateReport(workspaceId: string, reportType: string, periodStart: string, periodEnd: string): Promise<any> {
+    try {
+      const { supabase } = await import('../integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('compliance-generate-report', {
+        body: { 
+          workspace_id: workspaceId,
+          report_type: reportType,
+          period_start: periodStart,
+          period_end: periodEnd
+        }
+      });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Report generation failed:', error);
+      throw error;
+    }
+  }
+
+  async getReports(workspaceId: string): Promise<any[]> {
+    try {
+      const { supabase } = await import('../integrations/supabase/client');
+      const { data, error } = await supabase
+        .from('regulatory_reports')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('generated_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      return [];
+    }
+  }
+
+  async recordAcknowledgment(workspaceId: string, documentType: string, version: string): Promise<void> {
+    try {
+      const { supabase } = await import('../integrations/supabase/client');
+      const userAgent = navigator?.userAgent || 'Unknown';
+      
+      const { error } = await supabase
+        .from('compliance_acknowledgments')
+        .insert({
+          workspace_id: workspaceId,
+          document_type: documentType,
+          version,
+          user_agent: userAgent,
+        });
+      
+      if (error) throw error;
+      
+      await this.logComplianceEvent('compliance.document.acknowledged', {
+        document_type: documentType,
+        version,
+      });
+    } catch (error) {
+      console.error('Error recording acknowledgment:', error);
+      throw error;
+    }
+  }
+
+  async getAcknowledgments(workspaceId: string): Promise<any[]> {
+    try {
+      const { supabase } = await import('../integrations/supabase/client');
+      const { data, error } = await supabase
+        .from('compliance_acknowledgments')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('acknowledged_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching acknowledgments:', error);
+      return [];
+    }
+  }
+
+  async flagSuspiciousActivity(workspaceId: string, activityType: string, description: string, severity: number = 1): Promise<void> {
+    try {
+      const { supabase } = await import('../integrations/supabase/client');
+      const { error } = await supabase
+        .from('suspicious_activity')
+        .insert({
+          workspace_id: workspaceId,
+          activity_type: activityType,
+          description,
+          severity,
+        });
+      
+      if (error) throw error;
+      
+      await this.logComplianceEvent('compliance.sar.flagged', {
+        activity_type: activityType,
+        severity,
+        description,
+      });
+    } catch (error) {
+      console.error('Error flagging suspicious activity:', error);
+      throw error;
+    }
+  }
+
+  async getSuspiciousActivities(workspaceId: string, status?: string): Promise<any[]> {
+    try {
+      const { supabase } = await import('../integrations/supabase/client');
+      let query = supabase
+        .from('suspicious_activity')
+        .select('*')
+        .eq('workspace_id', workspaceId);
+      
+      if (status) {
+        query = query.eq('status', status);
+      }
+      
+      const { data, error } = await query.order('ts', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching suspicious activities:', error);
+      return [];
+    }
+  }
+
+  logComplianceEvent(eventType: string, details: any): Promise<void> {
+    const event: ComplianceEvent = {
+      id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: eventType as any,
+      sessionId: this.currentSessionId,
+      timestamp: new Date(),
+      context: JSON.stringify(details),
+      details
+    };
+
+    this.complianceEvents.unshift(event);
+    this.complianceEvents = this.complianceEvents.slice(0, 1000);
+
+    return Promise.resolve();
+  }
 }
 
-// Export singleton
 export const complianceService = new ComplianceService();

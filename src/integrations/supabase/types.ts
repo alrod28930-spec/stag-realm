@@ -21,6 +21,7 @@ export type Database = {
           input_kind: string | null
           model: string | null
           output_text: string | null
+          retention_until: string | null
           ts: string | null
           tts_url: string | null
           workspace_id: string | null
@@ -31,6 +32,7 @@ export type Database = {
           input_kind?: string | null
           model?: string | null
           output_text?: string | null
+          retention_until?: string | null
           ts?: string | null
           tts_url?: string | null
           workspace_id?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           input_kind?: string | null
           model?: string | null
           output_text?: string | null
+          retention_until?: string | null
           ts?: string | null
           tts_url?: string | null
           workspace_id?: string | null
@@ -170,6 +173,47 @@ export type Database = {
           },
           {
             foreignKeyName: "candles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_acknowledgments: {
+        Row: {
+          acknowledged_at: string | null
+          document_type: string
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+          version: string
+          workspace_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          document_type: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+          version: string
+          workspace_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          document_type?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_acknowledgments_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -513,6 +557,7 @@ export type Database = {
           event_type: string
           id: string
           payload_json: Json | null
+          retention_until: string | null
           severity: number
           summary: string | null
           ts: string
@@ -525,6 +570,7 @@ export type Database = {
           event_type: string
           id?: string
           payload_json?: Json | null
+          retention_until?: string | null
           severity?: number
           summary?: string | null
           ts?: string
@@ -537,6 +583,7 @@ export type Database = {
           event_type?: string
           id?: string
           payload_json?: Json | null
+          retention_until?: string | null
           severity?: number
           summary?: string | null
           ts?: string
@@ -658,6 +705,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      regulatory_reports: {
+        Row: {
+          created_by: string | null
+          file_path: string | null
+          generated_at: string | null
+          id: string
+          period_end: string | null
+          period_start: string | null
+          report_type: string
+          status: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          created_by?: string | null
+          file_path?: string | null
+          generated_at?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          report_type: string
+          status?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          created_by?: string | null
+          file_path?: string | null
+          generated_at?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          report_type?: string
+          status?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regulatory_reports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       risk_portfolio: {
         Row: {
@@ -935,6 +1026,97 @@ export type Database = {
             foreignKeyName: "subscriptions_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suspicious_activity: {
+        Row: {
+          activity_type: string | null
+          description: string | null
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          severity: number | null
+          status: string | null
+          ts: string | null
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          description?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          severity?: number | null
+          status?: string | null
+          ts?: string | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          description?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          severity?: number | null
+          status?: string | null
+          ts?: string | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suspicious_activity_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_verifications: {
+        Row: {
+          accredited_investor: boolean | null
+          aml_status: string | null
+          created_at: string | null
+          kyc_status: string | null
+          last_checked: string | null
+          provider: string | null
+          updated_at: string | null
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          accredited_investor?: boolean | null
+          aml_status?: string | null
+          created_at?: string | null
+          kyc_status?: string | null
+          last_checked?: string | null
+          provider?: string | null
+          updated_at?: string | null
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          accredited_investor?: boolean | null
+          aml_status?: string | null
+          created_at?: string | null
+          kyc_status?: string | null
+          last_checked?: string | null
+          provider?: string | null
+          updated_at?: string | null
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_verifications_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
