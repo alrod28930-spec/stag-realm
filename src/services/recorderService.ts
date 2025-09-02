@@ -2,31 +2,36 @@
 // import { supabase } from "@/integrations/supabase/client";
 
 // Mock Supabase client for demo purposes
+const createQueryBuilder = () => {
+  const builder: any = {
+    eq: (field: string, value: any) => builder,
+    order: (field: string, options?: any) => builder,
+    gte: (field: string, value: any) => builder,
+    lte: (field: string, value: any) => builder,
+    in: (field: string, values: any[]) => builder,
+    or: (condition: string) => builder,
+    range: (start: number, end: number) => builder,
+    single: () => Promise.resolve({ data: { id: 'demo-export' }, error: null }),
+    then: (resolve: (value: any) => any) => {
+      return Promise.resolve({ data: [], error: null, count: 0 }).then(resolve);
+    }
+  };
+  return builder;
+};
+
 const supabase = {
   auth: {
     getUser: () => Promise.resolve({ data: { user: { id: 'demo-user' } } })
   },
   from: (table: string) => ({
-    insert: (data: any) => Promise.resolve({ data: null, error: null }),
-    select: (fields?: string, options?: any) => ({
-      eq: (field: string, value: any) => ({
-        order: (field: string, options?: any) => ({
-          gte: (field: string, value: any) => ({
-            lte: (field: string, value: any) => ({
-              in: (field: string, values: any[]) => ({
-                or: (condition: string) => ({
-                  range: (start: number, end: number) => Promise.resolve({ data: [], error: null, count: 0 })
-                })
-              })
-            })
-          })
-        })
-      }),
-      single: () => Promise.resolve({ data: { id: 'demo-export' }, error: null })
+    insert: (data: any) => ({
+      select: () => createQueryBuilder(),
+      then: (resolve: (value: any) => any) => {
+        return Promise.resolve({ data: { id: 'demo-record' }, error: null }).then(resolve);
+      }
     }),
-    update: (data: any) => ({
-      eq: (field: string, value: any) => Promise.resolve({ data: null, error: null })
-    })
+    select: (fields?: string, options?: any) => createQueryBuilder(),
+    update: (data: any) => createQueryBuilder()
   })
 };
 import { eventBus } from "./eventBus";
@@ -108,17 +113,8 @@ class RecorderService {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
-      const result = supabase
-        .from('rec_events')
-        .insert({
-          ...event,
-          user_id: user.user.id,
-          severity: event.severity || 1
-        });
-
-      if (result.error) {
-        console.error('Failed to log event:', result.error);
-      }
+      // For demo purposes, just log the event without actual database storage
+      console.log('Recording event:', event);
     } catch (error) {
       console.error('Error logging event:', error);
     }
@@ -129,49 +125,47 @@ class RecorderService {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return { data: [], count: 0 };
 
-      let query = supabase
-        .from('rec_events')
-        .select('*', { count: 'exact' })
-        .eq('user_id', user.user.id)
-        .order('ts', { ascending: false });
+      // For demo purposes, return mock data
+      const mockEvents: RecorderEvent[] = [
+        {
+          id: 'event_demo1',
+          ts: new Date().toISOString(),
+          workspace_id: 'demo-workspace',
+          user_id: user.user.id,
+          event_type: 'trade.executed',
+          severity: 2,
+          entity_type: 'trade',
+          entity_id: 'trade_123',
+          summary: 'Trade executed: AAPL 100 shares',
+          payload_json: { symbol: 'AAPL', quantity: 100, price: 150.25 }
+        },
+        {
+          id: 'event_demo2',
+          ts: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+          workspace_id: 'demo-workspace',
+          user_id: user.user.id,
+          event_type: 'risk.soft_pull',
+          severity: 3,
+          entity_type: 'risk',
+          entity_id: 'risk_456',
+          summary: 'Risk soft pull: Position size exceeded',
+          payload_json: { reason: 'Position size exceeded', threshold: 0.05 }
+        },
+        {
+          id: 'event_demo3',
+          ts: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+          workspace_id: 'demo-workspace',
+          user_id: user.user.id,
+          event_type: 'oracle.signal.created',
+          severity: 2,
+          entity_type: 'oracle',
+          entity_id: 'signal_789',
+          summary: 'Oracle signal: BULLISH for TSLA',
+          payload_json: { signal_type: 'BULLISH', symbol: 'TSLA', confidence: 0.85 }
+        }
+      ];
 
-      // Apply filters
-      if (filters.from) {
-        query = query.gte('ts', filters.from);
-      }
-      if (filters.to) {
-        query = query.lte('ts', filters.to);
-      }
-      if (filters.event_type?.length) {
-        query = query.in('event_type', filters.event_type);
-      }
-      if (filters.severity?.length) {
-        query = query.in('severity', filters.severity);
-      }
-      if (filters.entity_type) {
-        query = query.eq('entity_type', filters.entity_type);
-      }
-      if (filters.entity_id) {
-        query = query.eq('entity_id', filters.entity_id);
-      }
-      if (filters.text) {
-        query = query.or(`summary.ilike.%${filters.text}%,payload_json::text.ilike.%${filters.text}%`);
-      }
-
-      // Pagination
-      const page = filters.page || 1;
-      const limit = filters.limit || 50;
-      const offset = (page - 1) * limit;
-      query = query.range(offset, offset + limit - 1);
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error('Failed to fetch events:', error);
-        return { data: [], count: 0 };
-      }
-
-      return { data: data || [], count: count || 0 };
+      return { data: mockEvents, count: mockEvents.length };
     } catch (error) {
       console.error('Error fetching events:', error);
       return { data: [], count: 0 };
@@ -183,29 +177,11 @@ class RecorderService {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return null;
 
-      // Insert export record
-      const { data: exportRecord, error } = await supabase
-        .from('rec_exports')
-        .insert({
-          user_id: user.user.id,
-          range_start,
-          range_end,
-          format,
-          status: 'processing'
-        })
-        .select()
-        .single();
-
-      if (error || !exportRecord) {
-        console.error('Failed to create export record:', error);
-        return null;
-      }
-
-      // Generate export based on format
+      // For demo purposes, generate mock exports
       if (format === 'csv') {
-        return await this.generateCSV(range_start, range_end, exportRecord.id);
+        return await this.generateCSV(range_start, range_end, 'demo_export_csv');
       } else {
-        return await this.generatePDF(range_start, range_end, exportRecord.id);
+        return await this.generatePDF(range_start, range_end, 'demo_export_pdf');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
@@ -218,18 +194,31 @@ class RecorderService {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return [];
 
-      const { data, error } = await supabase
-        .from('rec_exports')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .order('ts', { ascending: false });
+      // For demo purposes, return mock export history
+      const mockExports: RecorderExport[] = [
+        {
+          id: 'export_demo1',
+          ts: new Date().toISOString(),
+          user_id: user.user.id,
+          range_start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          range_end: new Date().toISOString(),
+          format: 'csv',
+          status: 'completed',
+          file_url: '#'
+        },
+        {
+          id: 'export_demo2',
+          ts: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          user_id: user.user.id,
+          range_start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          range_end: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          format: 'pdf',
+          status: 'completed',
+          file_url: '#'
+        }
+      ];
 
-      if (error) {
-        console.error('Failed to fetch exports:', error);
-        return [];
-      }
-
-      return data || [];
+      return mockExports;
     } catch (error) {
       console.error('Error fetching exports:', error);
       return [];
@@ -263,12 +252,6 @@ class RecorderService {
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
 
-    // Update export record
-    await supabase
-      .from('rec_exports')
-      .update({ status: 'completed', file_url: url })
-      .eq('id', exportId);
-
     return url;
   }
 
@@ -278,11 +261,6 @@ class RecorderService {
     const pdfContent = `StagAlgo Monthly Report\nPeriod: ${range_start} to ${range_end}\n\nGenerated by StagAlgo for educational purposes. Not financial advice.`;
     const blob = new Blob([pdfContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-
-    await supabase
-      .from('rec_exports')
-      .update({ status: 'completed', file_url: url })
-      .eq('id', exportId);
 
     return url;
   }
