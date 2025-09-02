@@ -163,7 +163,7 @@ export default function Oracle() {
   const signalTypes = [
     'volatility_spike', 'volume_surge', 'sector_rotation', 'earnings_beat',
     'news_sentiment', 'options_flow', 'technical_breakout'
-  ];
+  ].filter(type => type && type.length > 0); // Filter out any empty strings just to be safe
 
   return (
     <div className="space-y-6">
@@ -236,11 +236,13 @@ export default function Oracle() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    {signalTypes.map(type => (
-                      <SelectItem key={type} value={type}>
-                        {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </SelectItem>
-                    ))}
+                     {signalTypes
+                       .filter(type => type && type.trim() !== '') // Ensure no empty types
+                       .map(type => (
+                       <SelectItem key={type} value={type}>
+                         {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                       </SelectItem>
+                     ))}
                   </SelectContent>
                 </Select>
 
