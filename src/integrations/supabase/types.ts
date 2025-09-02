@@ -14,16 +14,852 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blacklists: {
+        Row: {
+          created_at: string
+          reason: string | null
+          symbol: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          reason?: string | null
+          symbol: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          reason?: string | null
+          symbol?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blacklists_symbol_fkey"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "ref_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "blacklists_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candles: {
+        Row: {
+          c: number | null
+          h: number | null
+          l: number | null
+          o: number | null
+          symbol: string
+          tf: string
+          ts: string
+          v: number | null
+          vwap: number | null
+          workspace_id: string
+        }
+        Insert: {
+          c?: number | null
+          h?: number | null
+          l?: number | null
+          o?: number | null
+          symbol: string
+          tf: string
+          ts: string
+          v?: number | null
+          vwap?: number | null
+          workspace_id: string
+        }
+        Update: {
+          c?: number | null
+          h?: number | null
+          l?: number | null
+          o?: number | null
+          symbol?: string
+          tf?: string
+          ts?: string
+          v?: number | null
+          vwap?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candles_symbol_fkey"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "ref_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "candles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      indicators: {
+        Row: {
+          atr14: number | null
+          bb_dn: number | null
+          bb_up: number | null
+          ma20: number | null
+          ma200: number | null
+          ma50: number | null
+          macd: number | null
+          rsi14: number | null
+          symbol: string
+          tf: string
+          ts: string
+          vwap_sess: number | null
+          workspace_id: string
+        }
+        Insert: {
+          atr14?: number | null
+          bb_dn?: number | null
+          bb_up?: number | null
+          ma20?: number | null
+          ma200?: number | null
+          ma50?: number | null
+          macd?: number | null
+          rsi14?: number | null
+          symbol: string
+          tf: string
+          ts: string
+          vwap_sess?: number | null
+          workspace_id: string
+        }
+        Update: {
+          atr14?: number | null
+          bb_dn?: number | null
+          bb_up?: number | null
+          ma20?: number | null
+          ma200?: number | null
+          ma50?: number | null
+          macd?: number | null
+          rsi14?: number | null
+          symbol?: string
+          tf?: string
+          ts?: string
+          vwap_sess?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicators_symbol_fkey"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "ref_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "indicators_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oracle_signals: {
+        Row: {
+          direction: number
+          id: string
+          signal_type: string
+          source: string | null
+          strength: number
+          summary: string | null
+          symbol: string | null
+          ts: string
+          workspace_id: string
+        }
+        Insert: {
+          direction: number
+          id?: string
+          signal_type: string
+          source?: string | null
+          strength: number
+          summary?: string | null
+          symbol?: string | null
+          ts?: string
+          workspace_id: string
+        }
+        Update: {
+          direction?: number
+          id?: string
+          signal_type?: string
+          source?: string | null
+          strength?: number
+          summary?: string | null
+          symbol?: string | null
+          ts?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oracle_signals_symbol_fkey"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "ref_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "oracle_signals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio_current: {
+        Row: {
+          cash: number | null
+          equity: number | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          cash?: number | null
+          equity?: number | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          cash?: number | null
+          equity?: number | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_current_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      positions_current: {
+        Row: {
+          avg_cost: number
+          mv: number | null
+          qty: number
+          r_pnl: number | null
+          symbol: string
+          unr_pnl: number | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          avg_cost: number
+          mv?: number | null
+          qty: number
+          r_pnl?: number | null
+          symbol: string
+          unr_pnl?: number | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          avg_cost?: number
+          mv?: number | null
+          qty?: number
+          r_pnl?: number | null
+          symbol?: string
+          unr_pnl?: number | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_current_symbol_fkey"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "ref_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "positions_current_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rec_events: {
+        Row: {
+          entity_id: string | null
+          entity_type: string | null
+          event_type: string
+          id: string
+          payload_json: Json | null
+          severity: number
+          summary: string | null
+          ts: string
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type: string
+          id?: string
+          payload_json?: Json | null
+          severity?: number
+          summary?: string | null
+          ts?: string
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type?: string
+          id?: string
+          payload_json?: Json | null
+          severity?: number
+          summary?: string | null
+          ts?: string
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rec_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rec_exports: {
+        Row: {
+          created_at: string
+          file_url: string | null
+          format: string
+          id: string
+          range_end: string | null
+          range_start: string | null
+          status: string
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_url?: string | null
+          format: string
+          id?: string
+          range_end?: string | null
+          range_start?: string | null
+          status?: string
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          file_url?: string | null
+          format?: string
+          id?: string
+          range_end?: string | null
+          range_start?: string | null
+          status?: string
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rec_exports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recommendations: {
+        Row: {
+          last_update_ts: string
+          reason_bullets: Json | null
+          related_event_ids: string[] | null
+          score: number | null
+          symbol: string
+          workspace_id: string
+        }
+        Insert: {
+          last_update_ts?: string
+          reason_bullets?: Json | null
+          related_event_ids?: string[] | null
+          score?: number | null
+          symbol: string
+          workspace_id: string
+        }
+        Update: {
+          last_update_ts?: string
+          reason_bullets?: Json | null
+          related_event_ids?: string[] | null
+          score?: number | null
+          symbol?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ref_symbols: {
+        Row: {
+          asset_class: string | null
+          exchange: string | null
+          industry: string | null
+          sector: string | null
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          asset_class?: string | null
+          exchange?: string | null
+          industry?: string | null
+          sector?: string | null
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          asset_class?: string | null
+          exchange?: string | null
+          industry?: string | null
+          sector?: string | null
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      risk_portfolio: {
+        Row: {
+          beta: number | null
+          concentration_top: number | null
+          dd_pct: number | null
+          es_95: number | null
+          liquidity_score: number | null
+          risk_state: number | null
+          ts: string
+          var_95: number | null
+          workspace_id: string
+        }
+        Insert: {
+          beta?: number | null
+          concentration_top?: number | null
+          dd_pct?: number | null
+          es_95?: number | null
+          liquidity_score?: number | null
+          risk_state?: number | null
+          ts?: string
+          var_95?: number | null
+          workspace_id: string
+        }
+        Update: {
+          beta?: number | null
+          concentration_top?: number | null
+          dd_pct?: number | null
+          es_95?: number | null
+          liquidity_score?: number | null
+          risk_state?: number | null
+          ts?: string
+          var_95?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_portfolio_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risk_positions: {
+        Row: {
+          adv_pct: number | null
+          beta_sym: number | null
+          spread_est: number | null
+          stop_suggest: number | null
+          symbol: string
+          tp_suggest: number | null
+          ts: string
+          workspace_id: string
+        }
+        Insert: {
+          adv_pct?: number | null
+          beta_sym?: number | null
+          spread_est?: number | null
+          stop_suggest?: number | null
+          symbol: string
+          tp_suggest?: number | null
+          ts?: string
+          workspace_id: string
+        }
+        Update: {
+          adv_pct?: number | null
+          beta_sym?: number | null
+          spread_est?: number | null
+          stop_suggest?: number | null
+          symbol?: string
+          tp_suggest?: number | null
+          ts?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_positions_symbol_fkey"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "ref_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "risk_positions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risk_settings: {
+        Row: {
+          blacklist_enforced: boolean | null
+          daily_drawdown_halt_pct: number | null
+          exposure_limits_enabled: boolean | null
+          gains_rr_ratio: number | null
+          hard_pull_enabled: boolean | null
+          leverage_cap: number | null
+          min_price: number | null
+          min_trade_usd: number | null
+          partial_exit_enabled: boolean | null
+          per_trade_risk_pct: number | null
+          profit_lock_trailing: boolean | null
+          sector_exposure_cap_pct: number | null
+          soft_pull_enabled: boolean | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          blacklist_enforced?: boolean | null
+          daily_drawdown_halt_pct?: number | null
+          exposure_limits_enabled?: boolean | null
+          gains_rr_ratio?: number | null
+          hard_pull_enabled?: boolean | null
+          leverage_cap?: number | null
+          min_price?: number | null
+          min_trade_usd?: number | null
+          partial_exit_enabled?: boolean | null
+          per_trade_risk_pct?: number | null
+          profit_lock_trailing?: boolean | null
+          sector_exposure_cap_pct?: number | null
+          soft_pull_enabled?: boolean | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          blacklist_enforced?: boolean | null
+          daily_drawdown_halt_pct?: number | null
+          exposure_limits_enabled?: boolean | null
+          gains_rr_ratio?: number | null
+          hard_pull_enabled?: boolean | null
+          leverage_cap?: number | null
+          min_price?: number | null
+          min_trade_usd?: number | null
+          partial_exit_enabled?: boolean | null
+          per_trade_risk_pct?: number | null
+          profit_lock_trailing?: boolean | null
+          sector_exposure_cap_pct?: number | null
+          soft_pull_enabled?: boolean | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_queries: {
+        Row: {
+          created_ts: string
+          filters_json: Json | null
+          id: string
+          last_run_ts: string | null
+          notify: boolean | null
+          owner_id: string | null
+          query_text: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_ts?: string
+          filters_json?: Json | null
+          id?: string
+          last_run_ts?: string | null
+          notify?: boolean | null
+          owner_id?: string | null
+          query_text?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_ts?: string
+          filters_json?: Json | null
+          id?: string
+          last_run_ts?: string | null
+          notify?: boolean | null
+          owner_id?: string | null
+          query_text?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_queries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_results: {
+        Row: {
+          features_json: Json | null
+          id: string
+          query_id: string
+          relevance_score: number | null
+          symbol: string
+          ts: string
+          workspace_id: string
+        }
+        Insert: {
+          features_json?: Json | null
+          id?: string
+          query_id: string
+          relevance_score?: number | null
+          symbol: string
+          ts?: string
+          workspace_id: string
+        }
+        Update: {
+          features_json?: Json | null
+          id?: string
+          query_id?: string
+          relevance_score?: number | null
+          symbol?: string
+          ts?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_results_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "search_queries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "search_results_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          billing_interval: string
+          plan: Database["public"]["Enums"]["plan_tier"]
+          renewal_date: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          billing_interval?: string
+          plan?: Database["public"]["Enums"]["plan_tier"]
+          renewal_date?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          billing_interval?: string
+          plan?: Database["public"]["Enums"]["plan_tier"]
+          renewal_date?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_members: {
+        Row: {
+          created_at: string
+          role: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["workspace_role"]
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      is_member_of_workspace: {
+        Args: { w_id: string }
+        Returns: boolean
+      }
+      recorder_log: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_event_type: string
+          p_payload: Json
+          p_severity: number
+          p_summary: string
+          p_workspace: string
+        }
+        Returns: string
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      plan_tier: "lite" | "standard" | "pro" | "elite"
+      workspace_role: "owner" | "admin" | "member" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +986,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      plan_tier: ["lite", "standard", "pro", "elite"],
+      workspace_role: ["owner", "admin", "member", "viewer"],
+    },
   },
 } as const
