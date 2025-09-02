@@ -234,7 +234,7 @@ export default function Analyst() {
                       className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg p-4 ${
+                        className={`max-w-[75%] min-w-0 rounded-lg p-3 break-words ${
                           message.type === 'user'
                             ? 'bg-primary text-primary-foreground'
                             : message.type === 'system'
@@ -242,42 +242,42 @@ export default function Analyst() {
                             : 'bg-muted text-foreground'
                         }`}
                       >
-                        <div className="flex items-start gap-2 mb-2">
+                        <div className="flex items-start gap-2 mb-1.5">
                           {message.type === 'user' ? (
-                            <User className="w-4 h-4 mt-0.5" />
+                            <User className="w-3 h-3 mt-0.5 flex-shrink-0" />
                           ) : message.type === 'analyst' ? (
-                            <Bot className="w-4 h-4 mt-0.5" />
+                            <Bot className="w-3 h-3 mt-0.5 flex-shrink-0" />
                           ) : (
-                            <AlertTriangle className="w-4 h-4 mt-0.5" />
+                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
                           )}
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs opacity-70">
+                              <span className="text-xs opacity-70 truncate">
                                 {message.type === 'analyst' && message.persona
                                   ? ANALYST_PERSONAS.find(p => p.id === message.persona)?.name
                                   : message.type.charAt(0).toUpperCase() + message.type.slice(1)
                                 }
                               </span>
-                              <span className="text-xs opacity-70">
+                              <span className="text-xs opacity-70 flex-shrink-0 ml-2">
                                 {formatTimestamp(message.timestamp)}
                               </span>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="prose prose-sm max-w-none text-current">
+                        <div className="prose prose-sm max-w-none text-current text-sm leading-relaxed">
                           {message.content.split('\n').map((line, index) => (
-                            <div key={index}>
+                            <div key={index} className="break-words">
                               {line.startsWith('**') && line.endsWith('**') ? (
-                                <h4 className="font-semibold text-current mb-1">
+                                <h4 className="font-semibold text-current mb-1 text-sm">
                                   {line.slice(2, -2)}
                                 </h4>
                               ) : line.startsWith('*') && line.endsWith('*') ? (
-                                <em className="text-current opacity-80">
+                                <em className="text-current opacity-80 text-sm">
                                   {line.slice(1, -1)}
                                 </em>
                               ) : (
-                                <p className="text-current">{line || '\u00A0'}</p>
+                                <p className="text-current text-sm m-0 leading-relaxed">{line || '\u00A0'}</p>
                               )}
                             </div>
                           ))}
@@ -359,53 +359,53 @@ export default function Analyst() {
           </Card>
 
           {/* Context Rail */}
-          <div className="space-y-3 overflow-y-auto min-h-0">
+          <div className="w-80 min-w-[280px] max-w-[320px] space-y-3 overflow-y-auto min-h-0 flex-shrink-0">
             {/* Quick Actions */}
             {showQuickActions && (
               <Card className="bg-gradient-card shadow-card">
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-sm">Quick Actions</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-1.5 p-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start"
+                    className="w-full justify-start h-8 text-xs px-2 gap-1.5"
                     onClick={() => handleQuickAction('explain-portfolio')}
                     disabled={isLoading}
                   >
-                    <DollarSign className="w-4 h-4 mr-2" />
-                    Explain Portfolio
+                    <DollarSign className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">Explain Portfolio</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start"
+                    className="w-full justify-start h-8 text-xs px-2 gap-1.5"
                     onClick={() => handleQuickAction('diagnose-last-trade')}
                     disabled={isLoading}
                   >
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    Diagnose Last Trade
+                    <TrendingUp className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">Diagnose Last Trade</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start"
+                    className="w-full justify-start h-8 text-xs px-2 gap-1.5"
                     onClick={() => handleQuickAction('daily-lessons')}
                     disabled={isLoading}
                   >
-                    <Bot className="w-4 h-4 mr-2" />
-                    Daily Lessons
+                    <Bot className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">Daily Lessons</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start"
+                    className="w-full justify-start h-8 text-xs px-2 gap-1.5"
                     onClick={() => handleQuickAction('compare-execution')}
                     disabled={isLoading}
                   >
-                    <Eye className="w-4 h-4 mr-2" />
-                    Compare Execution
+                    <Eye className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">Compare Execution</span>
                   </Button>
                 </CardContent>
               </Card>
@@ -413,32 +413,32 @@ export default function Analyst() {
 
             {/* Portfolio Summary */}
             <Card className="bg-gradient-card shadow-card">
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Portfolio Context</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total Equity</span>
-                  <span className="text-sm font-medium">
+              <CardContent className="space-y-2 p-3 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground truncate">Total Equity</span>
+                  <span className="font-medium ml-2 flex-shrink-0">
                     ${portfolioData?.totalEquity?.toLocaleString() || '125,750'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Available Cash</span>
-                  <span className="text-sm font-medium">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground truncate">Available Cash</span>
+                  <span className="font-medium ml-2 flex-shrink-0">
                     ${portfolioData?.availableCash?.toLocaleString() || '15,250'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Day Change</span>
-                  <span className={`text-sm font-medium ${
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground truncate">Day Change</span>
+                  <span className={`font-medium ml-2 flex-shrink-0 ${
                     (portfolioData?.dayChange || 2650) >= 0 ? 'text-accent' : 'text-destructive'
                   }`}>
                     ${(portfolioData?.dayChange || 2650).toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Positions</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground truncate">Positions</span>
                   <span className="text-sm font-medium">
                     {portfolioData?.positionCount || 8}
                   </span>
