@@ -1,366 +1,492 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { 
-  Play, 
-  Pause, 
-  Square, 
-  Video, 
-  Download, 
-  Search,
-  Calendar,
-  Clock,
-  BarChart3,
-  Filter
-} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  Search, 
+  Filter, 
+  Download, 
+  Calendar as CalendarIcon,
+  Clock, 
+  AlertTriangle, 
+  Info, 
+  AlertCircle,
+  Copy,
+  FileText,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
+import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { recorderService, RecorderEvent, RecorderExport } from '@/services/recorderService';
+import { toast } from 'sonner';
 
-interface TradeRecording {
-  id: string;
-  name: string;
-  symbol: string;
-  strategy: string;
-  duration: string;
-  recordedAt: Date;
-  profit: number;
-  profitPercent: number;
-  trades: number;
-  status: 'completed' | 'recording' | 'processing';
-  fileSize: string;
-}
+const EVENT_TYPES = [
+  'trade.intent', 'trade.executed', 'trade.canceled',
+  'risk.soft_pull', 'risk.hard_pull', 'risk.toggle.changed',
+  'oracle.signal.created', 'search.requested', 'recommendation.shown',
+  'analyst.note', 'alert.created', 'disclaimer.accepted',
+  'bot.state.changed', 'settings.updated', 'subscription.updated'
+];
+
+const SEVERITY_LEVELS = [
+  { value: 1, label: 'Info', color: 'bg-blue-500' },
+  { value: 2, label: 'Warn', color: 'bg-yellow-500' },
+  { value: 3, label: 'High', color: 'bg-orange-500' },
+  { value: 4, label: 'Critical', color: 'bg-red-500' }
+];
 
 export default function Recorder() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStrategy, setFilterStrategy] = useState('all');
-  const [isRecording, setIsRecording] = useState(false);
-
-  const [recordings] = useState<TradeRecording[]>([
-    {
-      id: '1',
-      name: 'AAPL Momentum Session',
-      symbol: 'AAPL',
-      strategy: 'Momentum Trading',
-      duration: '2h 15m',
-      recordedAt: new Date('2024-03-01T09:30:00'),
-      profit: 1250.75,
-      profitPercent: 2.4,
-      trades: 12,
-      status: 'completed',
-      fileSize: '1.2 GB'
-    },
-    {
-      id: '2',
-      name: 'TSLA Scalping Analysis',
-      symbol: 'TSLA',
-      strategy: 'Scalping',
-      duration: '45m',
-      recordedAt: new Date('2024-02-28T14:15:00'),
-      profit: -125.30,
-      profitPercent: -0.8,
-      trades: 23,
-      status: 'completed',
-      fileSize: '850 MB'
-    },
-    {
-      id: '3',
-      name: 'Live NVDA Session',
-      symbol: 'NVDA',
-      strategy: 'Swing Trading',
-      duration: '1h 32m',
-      recordedAt: new Date(),
-      profit: 2150.40,
-      profitPercent: 3.7,
-      trades: 8,
-      status: 'recording',
-      fileSize: 'Recording...'
-    },
-    {
-      id: '4',
-      name: 'Multi-Stock Portfolio',
-      symbol: 'Multiple',
-      strategy: 'Portfolio Management',
-      duration: '6h 20m',
-      recordedAt: new Date('2024-02-27T09:30:00'),
-      profit: 3840.90,
-      profitPercent: 5.1,
-      trades: 47,
-      status: 'completed',
-      fileSize: '4.7 GB'
-    },
-    {
-      id: '5',
-      name: 'Options Strategy Demo',
-      symbol: 'SPY',
-      strategy: 'Options Trading',
-      duration: '3h 45m',
-      recordedAt: new Date('2024-02-26T10:00:00'),
-      profit: 892.15,
-      profitPercent: 1.9,
-      trades: 15,
-      status: 'processing',
-      fileSize: 'Processing...'
-    }
-  ]);
-
-  const currentStats = {
-    sessionLength: '1h 32m',
-    tradesExecuted: 8,
-    currentProfit: 2150.40,
-    currentProfitPercent: 3.7
-  };
-
-  const filteredRecordings = recordings.filter(recording => {
-    const matchesSearch = recording.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         recording.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         recording.strategy.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesFilter = filterStrategy === 'all' || recording.strategy.toLowerCase().includes(filterStrategy.toLowerCase());
-    
-    return matchesSearch && matchesFilter;
+  const [events, setEvents] = useState<RecorderEvent[]>([]);
+  const [exports, setExports] = useState<RecorderExport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<RecorderEvent | null>(null);
+  
+  // Filters
+  const [searchText, setSearchText] = useState('');
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
+  const [selectedSeverities, setSelectedSeverities] = useState<number[]>([]);
+  const [dateRange, setDateRange] = useState({
+    from: subDays(new Date(), 7),
+    to: new Date()
   });
+  const [entityType, setEntityType] = useState('');
+  const [entityId, setEntityId] = useState('');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 50;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-accent text-accent-foreground';
-      case 'recording': return 'bg-primary text-primary-foreground animate-pulse';
-      case 'processing': return 'bg-warning text-warning-foreground';
-      default: return 'bg-muted text-muted-foreground';
+  useEffect(() => {
+    loadEvents();
+    loadExports();
+  }, [currentPage, selectedEventTypes, selectedSeverities, dateRange, searchText, entityType, entityId]);
+
+  const loadEvents = async () => {
+    setLoading(true);
+    try {
+      const { data, count } = await recorderService.getEvents({
+        from: dateRange.from.toISOString(),
+        to: dateRange.to.toISOString(),
+        event_type: selectedEventTypes.length > 0 ? selectedEventTypes : undefined,
+        severity: selectedSeverities.length > 0 ? selectedSeverities : undefined,
+        entity_type: entityType || undefined,
+        entity_id: entityId || undefined,
+        text: searchText || undefined,
+        page: currentPage,
+        limit: itemsPerPage
+      });
+      
+      setEvents(data);
+      setTotalCount(count);
+    } catch (error) {
+      console.error('Failed to load events:', error);
+      toast.error('Failed to load events');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <Video className="w-3 h-3" />;
-      case 'recording': return <Play className="w-3 h-3" />;
-      case 'processing': return <BarChart3 className="w-3 h-3" />;
-      default: return <Video className="w-3 h-3" />;
+  const loadExports = async () => {
+    try {
+      const data = await recorderService.getExports();
+      setExports(data);
+    } catch (error) {
+      console.error('Failed to load exports:', error);
     }
   };
+
+  const handleExportCSV = async () => {
+    try {
+      const url = await recorderService.exportData(
+        'csv',
+        dateRange.from.toISOString(),
+        dateRange.to.toISOString()
+      );
+      if (url) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `recorder-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        link.click();
+        toast.success('CSV export generated successfully');
+        loadExports();
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Export failed');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const url = await recorderService.exportData(
+        'pdf',
+        startOfMonth(new Date()).toISOString(),
+        endOfMonth(new Date()).toISOString()
+      );
+      if (url) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `recorder-monthly-${format(new Date(), 'yyyy-MM')}.pdf`;
+        link.click();
+        toast.success('PDF export generated successfully');
+        loadExports();
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Export failed');
+    }
+  };
+
+  const getSeverityIcon = (severity: number) => {
+    switch (severity) {
+      case 4: return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 3: return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      case 2: return <Clock className="h-4 w-4 text-yellow-500" />;
+      default: return <Info className="h-4 w-4 text-blue-500" />;
+    }
+  };
+
+  const getSeverityBadge = (severity: number) => {
+    const level = SEVERITY_LEVELS.find(l => l.value === severity);
+    return (
+      <Badge variant="secondary" className={`${level?.color} text-white`}>
+        {level?.label || 'Unknown'}
+      </Badge>
+    );
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  const quickFilters = [
+    { label: 'Today', action: () => setDateRange({ from: new Date(), to: new Date() }) },
+    { label: 'This Week', action: () => setDateRange({ from: subDays(new Date(), 7), to: new Date() }) },
+    { label: 'Trades', action: () => setSelectedEventTypes(['trade.intent', 'trade.executed', 'trade.canceled']) },
+    { label: 'Risk', action: () => setSelectedEventTypes(['risk.soft_pull', 'risk.hard_pull']) },
+    { label: 'Oracle', action: () => setSelectedEventTypes(['oracle.signal.created']) },
+    { label: 'Analyst', action: () => setSelectedEventTypes(['analyst.note']) },
+    { label: 'System', action: () => setSelectedEventTypes(['settings.updated', 'subscription.updated']) }
+  ];
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Trade Recorder</h1>
-          <p className="text-muted-foreground mt-2">
-            Record, analyze, and replay your trading sessions
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          {isRecording ? (
-            <>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsRecording(false)}
-                className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-              >
-                <Square className="w-4 h-4 mr-2" />
-                Stop Recording
-              </Button>
-              <Button 
-                variant="outline"
-                className="border-warning text-warning hover:bg-warning hover:text-warning-foreground"
-              >
-                <Pause className="w-4 h-4 mr-2" />
-                Pause
-              </Button>
-            </>
-          ) : (
-            <Button 
-              onClick={() => setIsRecording(true)}
-              className="bg-gradient-primary hover:opacity-90"
-            >
-              <Video className="w-4 h-4 mr-2" />
-              Start Recording
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Current Recording Status */}
-      {isRecording && (
-        <Card className="bg-gradient-card shadow-card border-primary/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-destructive rounded-full animate-pulse"></div>
-              Live Recording Session
-            </CardTitle>
-            <CardDescription>
-              Your current trading session is being recorded
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">{currentStats.sessionLength}</p>
-                <p className="text-sm text-muted-foreground">Session Length</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">{currentStats.tradesExecuted}</p>
-                <p className="text-sm text-muted-foreground">Trades Executed</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-accent">${currentStats.currentProfit.toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground">Current Profit</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-accent">+{currentStats.currentProfitPercent}%</p>
-                <p className="text-sm text-muted-foreground">Return</p>
-              </div>
+      <div className="border-b border-border bg-card">
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Recorder</h1>
+              <p className="text-muted-foreground mt-2">
+                Complete audit trail of all system events and activities
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Filters and Search */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search recordings..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filterStrategy} onValueChange={setFilterStrategy}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by strategy" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Strategies</SelectItem>
-            <SelectItem value="momentum">Momentum Trading</SelectItem>
-            <SelectItem value="scalping">Scalping</SelectItem>
-            <SelectItem value="swing">Swing Trading</SelectItem>
-            <SelectItem value="options">Options Trading</SelectItem>
-            <SelectItem value="portfolio">Portfolio Management</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline">
-          <Filter className="w-4 h-4 mr-2" />
-          More Filters
-        </Button>
-      </div>
-
-      {/* Recordings Grid */}
-      <div className="space-y-4">
-        {filteredRecordings.map((recording) => (
-          <Card key={recording.id} className="bg-gradient-card shadow-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                {/* Recording Info */}
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Video className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold">{recording.name}</h3>
-                      <Badge className={getStatusColor(recording.status)}>
-                        {getStatusIcon(recording.status)}
-                        <span className="ml-1 capitalize">{recording.status}</span>
-                      </Badge>
-                    </div>
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                      <span className="flex items-center">
-                        <BarChart3 className="w-3 h-3 mr-1" />
-                        {recording.symbol}
-                      </span>
-                      <span>{recording.strategy}</span>
-                      <span className="flex items-center">
-                        <Clock className="w-3 h-3 mr-1" />
-                        {recording.duration}
-                      </span>
-                      <span className="flex items-center">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        {recording.recordedAt.toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div className="flex items-center space-x-8">
-                  <div className="text-center">
-                    <p className={`font-semibold ${
-                      recording.profit >= 0 ? 'text-accent' : 'text-destructive'
-                    }`}>
-                      {recording.profit >= 0 ? '+' : ''}${Math.abs(recording.profit).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Profit</p>
-                  </div>
-                  <div className="text-center">
-                    <p className={`font-semibold ${
-                      recording.profitPercent >= 0 ? 'text-accent' : 'text-destructive'
-                    }`}>
-                      {recording.profitPercent >= 0 ? '+' : ''}{recording.profitPercent}%
-                    </p>
-                    <p className="text-xs text-muted-foreground">Return</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold">{recording.trades}</p>
-                    <p className="text-xs text-muted-foreground">Trades</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-muted-foreground">{recording.fileSize}</p>
-                    <p className="text-xs text-muted-foreground">Size</p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center space-x-2">
-                  {recording.status === 'completed' && (
-                    <>
-                      <Button variant="outline" size="sm">
-                        <Play className="w-4 h-4 mr-2" />
-                        Replay
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
-                    </>
-                  )}
-                  {recording.status === 'recording' && (
-                    <Button variant="outline" size="sm" disabled>
-                      <Play className="w-4 h-4 mr-2" />
-                      Live
-                    </Button>
-                  )}
-                  {recording.status === 'processing' && (
-                    <Button variant="outline" size="sm" disabled>
-                      <BarChart3 className="w-4 h-4 mr-2" />
-                      Processing...
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredRecordings.length === 0 && (
-        <Card className="bg-gradient-card shadow-card">
-          <CardContent className="py-12">
-            <div className="text-center space-y-4">
-              <Video className="w-12 h-12 text-muted-foreground mx-auto" />
-              <div>
-                <h3 className="text-lg font-semibold mb-2">No recordings found</h3>
-                <p className="text-muted-foreground">
-                  {searchTerm || filterStrategy !== 'all' 
-                    ? 'Try adjusting your search or filters'
-                    : 'Start your first recording to begin analyzing your trades'
-                  }
-                </p>
-              </div>
+            <div className="flex items-center gap-4">
+              <Button onClick={handleExportCSV} variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+              <Button onClick={handleExportPDF} variant="outline" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Export PDF
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-6 py-6">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left Rail - Quick Filters */}
+          <div className="col-span-3">
+            <Card className="p-4">
+              <h3 className="font-semibold mb-4">Quick Filters</h3>
+              <div className="space-y-2">
+                {quickFilters.map((filter) => (
+                  <Button
+                    key={filter.label}
+                    variant="ghost"
+                    size="sm"
+                    onClick={filter.action}
+                    className="w-full justify-start"
+                  >
+                    {filter.label}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <div className="col-span-6">
+            {/* Filters Bar */}
+            <Card className="p-4 mb-6">
+              <div className="flex flex-wrap gap-4">
+                <div className="flex-1 min-w-[200px]">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search events..."
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {dateRange.from && dateRange.to
+                        ? `${format(dateRange.from, 'MMM dd')} - ${format(dateRange.to, 'MMM dd')}`
+                        : 'Select dates'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange.from}
+                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      onSelect={(range) => range?.from && range?.to && setDateRange({ from: range.from, to: range.to })}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Select onValueChange={(value) => setSelectedEventTypes(value ? [value] : [])}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Event Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Types</SelectItem>
+                    {EVENT_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex gap-2">
+                  {SEVERITY_LEVELS.map((level) => (
+                    <div key={level.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`severity-${level.value}`}
+                        checked={selectedSeverities.includes(level.value)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedSeverities([...selectedSeverities, level.value]);
+                          } else {
+                            setSelectedSeverities(selectedSeverities.filter(s => s !== level.value));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`severity-${level.value}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {level.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            {/* Events Table */}
+            <Card>
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Events ({totalCount})</h3>
+              </div>
+              <ScrollArea className="h-[600px]">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background">
+                    <TableRow>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Severity</TableHead>
+                      <TableHead>Entity</TableHead>
+                      <TableHead>Summary</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {events.map((event) => (
+                      <Sheet key={event.id}>
+                        <SheetTrigger asChild>
+                          <TableRow className="cursor-pointer hover:bg-muted/50">
+                            <TableCell>
+                              {event.ts ? format(new Date(event.ts), 'MMM dd, HH:mm:ss') : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{event.event_type}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getSeverityIcon(event.severity || 1)}
+                                {getSeverityBadge(event.severity || 1)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {event.entity_type && (
+                                <Badge variant="secondary">
+                                  {event.entity_type}
+                                  {event.entity_id && `:${event.entity_id.substring(0, 8)}`}
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="max-w-[300px] truncate">
+                              {event.summary}
+                            </TableCell>
+                          </TableRow>
+                        </SheetTrigger>
+                        <SheetContent className="w-[600px] sm:w-[600px]">
+                          <SheetHeader>
+                            <SheetTitle className="flex items-center gap-2">
+                              {getSeverityIcon(event.severity || 1)}
+                              Event Details
+                            </SheetTitle>
+                          </SheetHeader>
+                          <div className="mt-6 space-y-4">
+                            <div>
+                              <label className="text-sm font-medium">Event ID</label>
+                              <div className="flex items-center gap-2 mt-1">
+                                <code className="flex-1 p-2 bg-muted rounded text-sm">
+                                  {event.id}
+                                </code>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => copyToClipboard(event.id || '')}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="text-sm font-medium">Timestamp</label>
+                              <div className="mt-1 p-2 bg-muted rounded text-sm">
+                                {event.ts ? format(new Date(event.ts), 'PPpp') : '-'}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-sm font-medium">Summary</label>
+                              <div className="mt-1 p-2 bg-muted rounded text-sm">
+                                {event.summary}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-sm font-medium">Payload</label>
+                              <ScrollArea className="mt-1 h-[300px]">
+                                <pre className="p-2 bg-muted rounded text-xs overflow-auto">
+                                  {JSON.stringify(event.payload_json || {}, null, 2)}
+                                </pre>
+                              </ScrollArea>
+                            </div>
+                          </div>
+                        </SheetContent>
+                      </Sheet>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+              
+              {/* Pagination */}
+              <div className="p-4 border-t flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} events
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage * itemsPerPage >= totalCount}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Right Rail - Export History */}
+          <div className="col-span-3">
+            <Card className="p-4">
+              <h3 className="font-semibold mb-4">Export History</h3>
+              <div className="space-y-3">
+                {exports.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No exports yet</p>
+                ) : (
+                  exports.map((exp) => (
+                    <div key={exp.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant={exp.status === 'completed' ? 'default' : 'secondary'}>
+                          {exp.status}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {exp.format?.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="text-sm">
+                        {exp.ts ? format(new Date(exp.ts), 'MMM dd, HH:mm') : '-'}
+                      </div>
+                      {exp.status === 'completed' && exp.file_url && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full mt-2"
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = exp.file_url!;
+                            link.download = `export-${exp.id}.${exp.format}`;
+                            link.click();
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Compliance Footer */}
+      <div className="border-t border-border bg-muted/30 p-4 text-center">
+        <p className="text-xs text-muted-foreground">
+          All events are logged for audit purposes. StagAlgo provides educational trading tools, not financial advice. 
+          Users remain responsible for all trading decisions and compliance with applicable regulations.
+        </p>
+      </div>
     </div>
   );
 }
