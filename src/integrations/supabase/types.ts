@@ -283,6 +283,59 @@ export type Database = {
           },
         ]
       }
+      connections_brokerages: {
+        Row: {
+          account_label: string | null
+          api_key_cipher: string
+          api_secret_cipher: string
+          created_at: string | null
+          id: string
+          last_sync: string | null
+          nonce: string
+          provider: string
+          scope: Json | null
+          status: string | null
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          account_label?: string | null
+          api_key_cipher: string
+          api_secret_cipher: string
+          created_at?: string | null
+          id?: string
+          last_sync?: string | null
+          nonce: string
+          provider: string
+          scope?: Json | null
+          status?: string | null
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          account_label?: string | null
+          api_key_cipher?: string
+          api_secret_cipher?: string
+          created_at?: string | null
+          id?: string
+          last_sync?: string | null
+          nonce?: string
+          provider?: string
+          scope?: Json | null
+          status?: string | null
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connections_brokerages_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       indicators: {
         Row: {
           atr14: number | null
@@ -593,21 +646,30 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           display_name: string | null
           id: string
+          marketing_opt_in: boolean | null
+          timezone: string | null
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id: string
+          marketing_opt_in?: boolean | null
+          timezone?: string | null
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          marketing_opt_in?: boolean | null
+          timezone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1134,6 +1196,106 @@ export type Database = {
           {
             foreignKeyName: "suspicious_activity_workspace_id_fkey"
             columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_devices: {
+        Row: {
+          id: string
+          last_seen: string | null
+          platform: string | null
+          push_token: string | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          last_seen?: string | null
+          platform?: string | null
+          push_token?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          last_seen?: string | null
+          platform?: string | null
+          push_token?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_overrides: {
+        Row: {
+          key: string
+          user_id: string
+          value: Json
+          workspace_id: string
+        }
+        Insert: {
+          key: string
+          user_id: string
+          value: Json
+          workspace_id: string
+        }
+        Update: {
+          key?: string
+          user_id?: string
+          value?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_overrides_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          analyst_persona: string | null
+          created_at: string | null
+          data_sharing_opt_in: boolean | null
+          notifications_email: boolean | null
+          notifications_push: boolean | null
+          theme: string | null
+          updated_at: string | null
+          user_id: string
+          voice_profile: string | null
+          workspace_default: string | null
+        }
+        Insert: {
+          analyst_persona?: string | null
+          created_at?: string | null
+          data_sharing_opt_in?: boolean | null
+          notifications_email?: boolean | null
+          notifications_push?: boolean | null
+          theme?: string | null
+          updated_at?: string | null
+          user_id: string
+          voice_profile?: string | null
+          workspace_default?: string | null
+        }
+        Update: {
+          analyst_persona?: string | null
+          created_at?: string | null
+          data_sharing_opt_in?: boolean | null
+          notifications_email?: boolean | null
+          notifications_push?: boolean | null
+          theme?: string | null
+          updated_at?: string | null
+          user_id?: string
+          voice_profile?: string | null
+          workspace_default?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_workspace_default_fkey"
+            columns: ["workspace_default"]
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]

@@ -12,6 +12,7 @@ interface AuthActions {
   login: (credentials: LoginCredentials) => Promise<boolean>;
   signUp: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<boolean>;
   setUser: (user: User | null) => void;
   setOrganization: (org: Organization | null) => void;
   hasPermission: (action: string) => boolean;
@@ -186,6 +187,22 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           logger.info('User logged out', { userId: user?.id });
         } catch (error) {
           logger.error('Logout failed', { error });
+        }
+      },
+
+      resetPassword: async (email: string) => {
+        try {
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`
+          });
+
+          if (error) throw error;
+          
+          logger.info('Password reset email sent', { email });
+          return true;
+        } catch (error) {
+          logger.error('Password reset failed', { email, error });
+          return false;
         }
       },
 

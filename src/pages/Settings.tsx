@@ -23,7 +23,8 @@ import {
   Clock,
   CheckCircle,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  User
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { complianceService } from '@/services/compliance';
@@ -31,6 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { RiskToggle } from '@/components/ui/risk-toggle';
 import { toggleService } from '@/services/toggleService';
+import { UserSettingsPanel } from '@/components/settings/UserSettingsPanel';
 
 interface BrokerConfig {
   id: string;
@@ -173,8 +175,9 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="brokers" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+      <Tabs defaultValue="user" className="w-full">
+        <TabsList className="grid w-full grid-cols-9">
+          <TabsTrigger value="user">User</TabsTrigger>
           <TabsTrigger value="brokers">Brokers</TabsTrigger>
           <TabsTrigger value="risk">Risk Controls</TabsTrigger>
           <TabsTrigger value="capital">Capital Risk</TabsTrigger>
@@ -184,6 +187,11 @@ export default function Settings() {
           <TabsTrigger value="display">Display</TabsTrigger>
           <TabsTrigger value="legal">Legal</TabsTrigger>
         </TabsList>
+
+        {/* User Settings */}
+        <TabsContent value="user" className="space-y-6">
+          <UserSettingsPanel />
+        </TabsContent>
 
         {/* Broker API Keys */}
         <TabsContent value="brokers" className="space-y-6">
