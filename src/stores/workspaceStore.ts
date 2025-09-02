@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 interface Workspace {
   id: string;
   name: string;
+  safe_name?: string;
+  wtype?: 'personal' | 'business' | 'team';
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -12,7 +14,7 @@ interface Workspace {
 interface WorkspaceMember {
   workspace_id: string;
   user_id: string;
-  role: 'owner' | 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'viewer';
   created_at: string;
 }
 
@@ -26,7 +28,7 @@ interface WorkspaceState {
   // Actions
   loadWorkspaces: () => Promise<void>;
   setCurrentWorkspace: (workspace: Workspace) => void;
-  createWorkspace: (name: string) => Promise<Workspace | null>;
+  createWorkspace: (name: string, wtype?: 'personal' | 'business' | 'team') => Promise<Workspace | null>;
   updateWorkspace: (id: string, updates: Partial<Workspace>) => Promise<void>;
   inviteMember: (email: string, role: WorkspaceMember['role']) => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
@@ -69,38 +71,38 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set({ currentWorkspace: workspace });
   },
 
-  createWorkspace: async (name: string) => {
+  createWorkspace: async (name: string, wtype: 'personal' | 'business' | 'team' = 'personal') => {
     set({ isLoading: true, error: null });
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: workspace, error } = await supabase
-        .from('workspaces')
-        .insert({ name, owner_id: user.id })
-        .select()
-        .single();
+      // Use the RPC function for safe workspace creation
+      const { data: workspaceId, error } = await supabase.rpc(
+        'create_workspace_safely',
+        {
+          p_name: name,
+          p_wtype: wtype
+        }
+      );
 
       if (error) throw error;
 
-      // Add user as owner to workspace_members
-      await supabase
-        .from('workspace_members')
-        .insert({
-          workspace_id: workspace.id,
-          user_id: user.id,
-          role: 'owner'
-        });
+      if (!workspaceId) {
+        throw new Error('Failed to create workspace - no ID returned');
+      }
 
+      // Reload workspaces to get the updated list
+      await get().loadWorkspaces();
+      
+      // Find and return the newly created workspace
       const { workspaces } = get();
-      set({ 
-        workspaces: [workspace, ...workspaces],
-        currentWorkspace: workspace,
-        isLoading: false 
-      });
-
-      return workspace;
+      const newWorkspace = workspaces.find(w => w.id === workspaceId);
+      
+      if (newWorkspace) {
+        set({ currentWorkspace: newWorkspace, isLoading: false });
+        return newWorkspace;
+      }
+      
+      throw new Error('Created workspace not found in list');
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to create workspace',

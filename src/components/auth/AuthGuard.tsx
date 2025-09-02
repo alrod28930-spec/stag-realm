@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { LoginForm } from './LoginForm';
-import { WorkspaceSetupModal } from './WorkspaceSetupModal';
+import { WorkspaceTypeSelect } from './WorkspaceTypeSelect';
 import { userSettingsService } from '@/services/userSettings';
 import { Loader2 } from 'lucide-react';
 
@@ -62,15 +62,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return <LoginForm />;
   }
 
-  // Show workspace setup if needed
+  // Show workspace type selector if needed
   if (needsWorkspaceSetup) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <WorkspaceSetupModal 
-          isOpen={true} 
-          onComplete={() => setNeedsWorkspaceSetup(false)} 
-        />
-      </div>
+      <WorkspaceTypeSelect 
+        onComplete={() => setNeedsWorkspaceSetup(false)} 
+      />
     );
   }
 
