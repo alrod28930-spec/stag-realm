@@ -17,11 +17,16 @@ import {
 import { useCompliance } from '@/components/compliance/ComplianceProvider';
 import { LegalFooter } from '@/components/compliance/LegalFooter';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
+import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
+import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import { useDemoMode } from '@/utils/demoMode';
+import { demoDataService } from '@/services/demoDataService';
 import Analyst from '@/pages/Analyst';
 
 export default function Market() {
   const [searchTerm, setSearchTerm] = useState('');
   const { showDisclaimer } = useCompliance();
+  const { isDemoMode } = useDemoMode();
 
   useEffect(() => {
     // Trigger market search disclaimer on component access
@@ -29,14 +34,32 @@ export default function Market() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Remove showDisclaimer from deps to prevent infinite loop
 
-  const marketData = [
-    { symbol: 'AAPL', name: 'Apple Inc.', price: 175.50, change: +2.25, changePercent: +1.30, volume: '52.3M', marketCap: '2.75T' },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 142.30, change: -1.85, changePercent: -1.28, volume: '28.7M', marketCap: '1.78T' },
-    { symbol: 'MSFT', name: 'Microsoft Corp.', price: 378.90, change: +5.20, changePercent: +1.39, volume: '31.2M', marketCap: '2.82T' },
-    { symbol: 'TSLA', name: 'Tesla Inc.', price: 248.75, change: -12.45, changePercent: -4.77, volume: '89.1M', marketCap: '789B' },
-    { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 146.28, change: +0.95, changePercent: +0.65, volume: '41.8M', marketCap: '1.52T' },
-    { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 875.30, change: +18.75, changePercent: +2.19, volume: '67.4M', marketCap: '2.15T' },
-  ];
+  // Get market data - use demo data if in demo mode
+  const getMarketData = () => {
+    if (isDemoMode) {
+      const demoSearchResults = demoDataService.getSearchResults('', 10);
+      return demoSearchResults.map(result => ({
+        symbol: result.symbol,
+        name: `${result.symbol} Corp.`,
+        price: result.currentPrice,
+        change: result.currentPrice * (result.changePercent / 100),
+        changePercent: result.changePercent,
+        volume: '45.2M',
+        marketCap: '1.25T'
+      }));
+    }
+    
+    return [
+      { symbol: 'AAPL', name: 'Apple Inc.', price: 175.50, change: +2.25, changePercent: +1.30, volume: '52.3M', marketCap: '2.75T' },
+      { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 142.30, change: -1.85, changePercent: -1.28, volume: '28.7M', marketCap: '1.78T' },
+      { symbol: 'MSFT', name: 'Microsoft Corp.', price: 378.90, change: +5.20, changePercent: +1.39, volume: '31.2M', marketCap: '2.82T' },
+      { symbol: 'TSLA', name: 'Tesla Inc.', price: 248.75, change: -12.45, changePercent: -4.77, volume: '89.1M', marketCap: '789B' },
+      { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 146.28, change: +0.95, changePercent: +0.65, volume: '41.8M', marketCap: '1.52T' },
+      { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 875.30, change: +18.75, changePercent: +2.19, volume: '67.4M', marketCap: '2.15T' },
+    ];
+  };
+
+  const marketData = getMarketData();
 
   const indices = [
     { name: 'S&P 500', symbol: 'SPX', price: 4725.80, change: +24.15, changePercent: +0.51 },
@@ -64,14 +87,23 @@ export default function Market() {
 
   return (
     <div className="space-y-8">
+      {/* Demo Disclaimer */}
+      {isDemoMode && (
+        <DemoDisclaimer feature="Market Center" />
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-3">
           Market Center
+          {isDemoMode && <DemoModeIndicator variant="badge" />}
           <DisclaimerBadge variant="minimal" component="market_search" />
         </h1>
         <p className="text-muted-foreground mt-2">
-          Real-time market data, AI insights, and trading opportunities
+          {isDemoMode 
+            ? "Explore our market analysis tools with demonstration data"
+            : "Real-time market data, AI insights, and trading opportunities"
+          }
         </p>
       </div>
 

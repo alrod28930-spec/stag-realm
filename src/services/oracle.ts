@@ -27,7 +27,20 @@ class OracleService {
   constructor() {
     this.initializeEventListeners();
     this.initializeSectorHeatmap();
-    this.startDataFeeds();
+    
+    // Only start data feeds if not in demo mode
+    if (!this.isDemoMode()) {
+      this.startDataFeeds();
+    }
+  }
+
+  private isDemoMode(): boolean {
+    // Check if we're in demo mode by checking the current user
+    if (typeof window !== 'undefined') {
+      const authStore = (window as any).__authStore;
+      return authStore?.user?.email === 'demo@example.com';
+    }
+    return false;
   }
 
   private initializeEventListeners() {

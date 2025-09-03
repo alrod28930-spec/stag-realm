@@ -177,12 +177,17 @@ export default function Oracle() {
   };
 
   const handleRefresh = async () => {
-    setIsLoading(true);
-    eventBus.emit('oracle.manual_refresh', {});
-    setTimeout(() => {
+    if (!isDemoMode) {
+      setIsLoading(true);
+      eventBus.emit('oracle.manual_refresh', {});
+      setTimeout(() => {
+        loadOracleData();
+        setIsLoading(false);
+      }, 1000);
+    } else {
+      // For demo mode, just refresh the demo data
       loadOracleData();
-      setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const getSeverityColor = (severity: ProcessedSignal['severity']) => {
@@ -266,9 +271,9 @@ export default function Oracle() {
           <Button
             variant="outline"
             onClick={handleRefresh}
-            disabled={isLoading}
+            disabled={isLoading && !isDemoMode}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoading && !isDemoMode) ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>

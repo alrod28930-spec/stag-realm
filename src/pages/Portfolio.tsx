@@ -20,6 +20,10 @@ import {
   Target,
   PieChart
 } from 'lucide-react';
+import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
+import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import { useDemoMode } from '@/utils/demoMode';
+import { demoDataService } from '@/services/demoDataService';
 import Recorder from '@/pages/Recorder';
 
 export default function Portfolio() {
@@ -33,29 +37,49 @@ export default function Portfolio() {
   } = useRealPortfolioStore();
   
   const { toast } = useToast();
+  const { isDemoMode } = useDemoMode();
 
-  // Load portfolio data and subscribe to updates
+  // Load portfolio data and subscribe to updates (only for non-demo users)
   useEffect(() => {
-    loadPortfolio();
-    const unsubscribe = subscribeToUpdates();
-    return unsubscribe;
+    if (!isDemoMode) {
+      loadPortfolio();
+      const unsubscribe = subscribeToUpdates();
+      return unsubscribe;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Remove functions from deps to prevent infinite loop
+  }, [isDemoMode]); // Remove functions from deps to prevent infinite loop
 
   const handleRefresh = () => {
-    loadPortfolio();
+    if (!isDemoMode) {
+      loadPortfolio();
+    }
     toast({
       title: "Portfolio Refreshed",
-      description: "Portfolio data has been updated.",
+      description: isDemoMode ? "Demo portfolio data refreshed." : "Portfolio data has been updated.",
     });
   };
 
+  // Get portfolio data - use demo data if in demo mode
+  const getPortfolioData = () => {
+    if (isDemoMode) {
+      return demoDataService.getPortfolio();
+    }
+    return {
+      equity: portfolio?.equity || 0,
+      cash: portfolio?.cash || 0,
+      positions: positions || []
+    };
+  };
+
+  const portfolioData = getPortfolioData();
+  
   // Calculate portfolio metrics
-  const portfolioValue = portfolio?.equity || 0;
-  const availableCash = portfolio?.cash || 0;
-  const totalPositions = positions.length;
-  const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + (pos.unr_pnl || 0), 0);
-  const totalMarketValue = positions.reduce((sum, pos) => sum + (pos.mv || 0), 0);
+  const portfolioValue = portfolioData.equity || 0;
+  const availableCash = portfolioData.cash || 0;
+  const currentPositions = portfolioData.positions || [];
+  const totalPositions = currentPositions.length;
+  const totalUnrealizedPnL = currentPositions.reduce((sum, pos) => sum + (pos.unr_pnl || 0), 0);
+  const totalMarketValue = currentPositions.reduce((sum, pos) => sum + (pos.mv || 0), 0);
 
   const stats = [
     {
@@ -90,22 +114,33 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-8">
+      {/* Demo Disclaimer */}
+      {isDemoMode && (
+        <DemoDisclaimer feature="Portfolio Management" />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Portfolio</h1>
+          <h1 className="text-3xl font-bold flex items-center">
+            Portfolio
+            {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
+          </h1>
           <p className="text-muted-foreground mt-2">
-            Track and manage your investment positions
+            {isDemoMode 
+              ? "Explore portfolio tracking and management with demo data"
+              : "Track and manage your investment positions"
+            }
           </p>
         </div>
-        <Button onClick={handleRefresh} disabled={isLoading} size="sm">
-          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+        <Button onClick={handleRefresh} disabled={isLoading && !isDemoMode} size="sm">
+          <RefreshCw className={`w-4 h-4 mr-2 ${(isLoading && !isDemoMode) ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
 
       {/* Error State */}
-      {error && (
+      {error && !isDemoMode && (
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
@@ -167,21 +202,24 @@ export default function Portfolio() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {(isLoading && !isDemoMode) ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="w-6 h-6 animate-spin" />
                   <span className="ml-2">Loading positions...</span>
                 </div>
-              ) : positions.length === 0 ? (
+              ) : currentPositions.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">No positions found</p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Your portfolio positions will appear here once you have investments
+                    {isDemoMode 
+                      ? "Demo data shows an empty portfolio"
+                      : "Your portfolio positions will appear here once you have investments"
+                    }
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {positions.map((position, index) => (
+                  {currentPositions.map((position, index) => (
                     <div 
                       key={`${position.symbol}-${index}`}
                       className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
@@ -283,8 +321,8 @@ export default function Portfolio() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {positions.length > 0 ? 
-                    Math.max(...positions.map(p => p.unr_pnl || 0)).toFixed(2) 
+                  {currentPositions.length > 0 ? 
+                    Math.max(...currentPositions.map(p => p.unr_pnl || 0)).toFixed(2) 
                     : '0.00'
                   }
                 </div>
