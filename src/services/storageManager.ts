@@ -1,6 +1,7 @@
 import { logService } from './logging';
 import { eventBus } from './eventBus';
 import { dataCompression } from './dataCompression';
+import { serviceManager } from './serviceManager';
 import type { 
   ArchiveMetadata, 
   DataCompressionRule, 
@@ -114,8 +115,6 @@ class StorageManagerService {
   }
 
   private startStorageManager() {
-    const { serviceManager } = require('./serviceManager');
-    
     // Register this service
     serviceManager.registerService('storageManager', this, () => this.cleanup());
     

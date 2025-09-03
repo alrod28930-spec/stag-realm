@@ -2,6 +2,7 @@ import { logService } from './logging';
 import { eventBus } from './eventBus';
 import { bid } from './bid';
 import { recorder } from './recorder';
+import { serviceManager } from './serviceManager';
 import { 
   TradeIntent, 
   GovernanceDecision, 
@@ -47,7 +48,6 @@ export class Overseer {
     });
 
     // Register with service manager
-    const { serviceManager } = require('./serviceManager');
     serviceManager.registerService('overseer', this, () => this.cleanup());
     
     // Position-level monitoring

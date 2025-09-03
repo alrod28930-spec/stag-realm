@@ -2,6 +2,7 @@ import { logService } from './logging';
 import { eventBus } from './eventBus';
 import { repository } from './repository';
 import { recorder } from './recorder';
+import { serviceManager } from './serviceManager';
 import type { ProcessedSignal, OracleAlert, SectorHeatmap, OracleContext, MarketFeed } from '@/types/oracle';
 
 // Re-export types for backward compatibility
@@ -72,8 +73,6 @@ class OracleService {
   }
 
   private async startDataFeeds() {
-    const { serviceManager } = require('./serviceManager');
-    
     // Register this service
     serviceManager.registerService('oracle', this, () => this.cleanup());
     

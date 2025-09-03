@@ -25,6 +25,7 @@ import {
 } from '@/utils/formulas';
 import { eventBus } from './eventBus';
 import { logService } from './logging';
+import { serviceManager } from './serviceManager';
 
 class CoreScaffold {
   private systemState: SystemState;
@@ -138,8 +139,6 @@ class CoreScaffold {
   }
 
   private startHealthChecks() {
-    const { serviceManager } = require('./serviceManager');
-    
     // Register this service
     serviceManager.registerService('scaffold', this, () => this.cleanup());
     

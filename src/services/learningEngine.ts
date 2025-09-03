@@ -1,6 +1,7 @@
 import { generateULID } from '../utils/ulid';
 import { eventBus } from './eventBus';
 import { recorder } from './recorder';
+import { serviceManager } from './serviceManager';
 import type { 
   TradeOutcome, 
   LearningEvent, 
@@ -380,7 +381,6 @@ export class LearningEngine {
 export const learningEngine = new LearningEngine();
 
 // Auto-save learning state every 5 minutes - managed by service manager
-const { serviceManager } = require('./serviceManager');
 serviceManager.registerService('learningEngine', learningEngine, () => {
   console.log('Learning Engine cleanup completed');
 });

@@ -4,6 +4,7 @@ import { logService } from './logging';
 import { eventBus } from './eventBus';
 import { generateULID } from '@/utils/ulid';
 import { EVENT_TOPICS } from '@/utils/constants';
+import { serviceManager } from './serviceManager';
 
 // A) Market Primitives & Reference Data
 export interface RefSymbol {
@@ -242,8 +243,6 @@ class BIDCore {
   }
 
   private startMaintenanceTasks() {
-    const { serviceManager } = require('./serviceManager');
-    
     // Register this service
     serviceManager.registerService('bidCore', this, () => this.cleanup());
     

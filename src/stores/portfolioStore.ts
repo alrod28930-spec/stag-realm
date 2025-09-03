@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { BrokerAdapter, FakeBrokerAdapter, PortfolioSummary, TradeOrder, TradeResult } from '@/adapters/BrokerAdapter';
 import { logService } from '@/services/logging';
 import { eventBus } from '@/services/eventBus';
+import { serviceManager } from '@/services/serviceManager';
 
 interface PortfolioState {
   // Broker Connection
@@ -193,7 +194,6 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
 }));
 
 // Auto-refresh portfolio every 30 seconds when connected - managed by service manager
-const { serviceManager } = require('@/services/serviceManager');
 serviceManager.registerService('portfolioStore', usePortfolioStore, () => {
   // Cleanup handled by service manager
 });
