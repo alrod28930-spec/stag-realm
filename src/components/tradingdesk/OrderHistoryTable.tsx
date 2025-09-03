@@ -34,6 +34,9 @@ export function OrderHistoryTable() {
           'trade.manual.intent',
           'trade.manual.executed', 
           'trade.manual.rejected',
+          'trade.bot.intent',
+          'trade.bot.executed',
+          'trade.bot.rejected',
           'trade.closed'
         ])
         .order('ts', { ascending: false })
@@ -57,10 +60,13 @@ export function OrderHistoryTable() {
   const getStatusBadge = (eventType: string) => {
     switch (eventType) {
       case 'trade.manual.executed':
+      case 'trade.bot.executed':
         return <Badge variant="default">Executed</Badge>;
       case 'trade.manual.rejected':
+      case 'trade.bot.rejected':
         return <Badge variant="destructive">Rejected</Badge>;
       case 'trade.manual.intent':
+      case 'trade.bot.intent':
         return <Badge variant="secondary">Pending</Badge>;
       case 'trade.closed':
         return <Badge variant="outline">Closed</Badge>;
@@ -107,7 +113,8 @@ export function OrderHistoryTable() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Orders</SelectItem>
-                <SelectItem value="trade.manual.executed">Executed</SelectItem>
+                <SelectItem value="trade.manual.executed">Manual Executed</SelectItem>
+                <SelectItem value="trade.bot.executed">Bot Executed</SelectItem>
                 <SelectItem value="trade.manual.rejected">Rejected</SelectItem>
                 <SelectItem value="trade.closed">Closed</SelectItem>
               </SelectContent>

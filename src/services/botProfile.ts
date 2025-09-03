@@ -137,7 +137,7 @@ export const getBotProfile = async (workspaceId: string): Promise<BotProfile | n
     return null;
   }
 
-  return data as BotProfile;
+  return data as unknown as BotProfile;
 };
 
 // Save bot profile (after disclaimer accepted)
@@ -157,7 +157,7 @@ export const saveBotProfile = async (workspaceId: string, update: BotProfileUpda
     return null;
   }
 
-  return data as BotProfile;
+  return data as unknown as BotProfile;
 };
 
 // Log risk toggle acceptance

@@ -30,11 +30,11 @@ export function useTradingStats() {
     setError(null);
 
     try {
-      // Get trade events for stats calculation
+      // Get trade events for stats calculation (manual + bot trades)
       const { data: tradeEvents, error: eventsError } = await supabase
         .from('rec_events')
         .select('*')
-        .in('event_type', ['trade.closed', 'trade.manual.executed'])
+        .in('event_type', ['trade.closed', 'trade.manual.executed', 'trade.bot.executed', 'trade.bot.closed'])
         .order('ts', { ascending: false });
 
       if (eventsError) throw eventsError;

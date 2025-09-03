@@ -128,6 +128,7 @@ export type Database = {
       }
       bot_profiles: {
         Row: {
+          active: boolean
           capital_risk_pct: number
           daily_loss_halt_pct: number
           daily_return_target_pct: number
@@ -141,9 +142,13 @@ export type Database = {
           intraday_rr_min: number
           intraday_stop_style: string
           intraday_time_window: string
+          last_activated: string | null
+          last_deactivated: string | null
           max_concurrent_positions: number
           max_trades_per_day: number
           min_volume_usd: number
+          mode: string
+          name: string | null
           pdt_guard: boolean
           risk_indicator: string
           risk_per_trade_pct: number
@@ -154,6 +159,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          active?: boolean
           capital_risk_pct?: number
           daily_loss_halt_pct?: number
           daily_return_target_pct?: number
@@ -167,9 +173,13 @@ export type Database = {
           intraday_rr_min?: number
           intraday_stop_style?: string
           intraday_time_window?: string
+          last_activated?: string | null
+          last_deactivated?: string | null
           max_concurrent_positions?: number
           max_trades_per_day?: number
           min_volume_usd?: number
+          mode?: string
+          name?: string | null
           pdt_guard?: boolean
           risk_indicator?: string
           risk_per_trade_pct?: number
@@ -180,6 +190,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          active?: boolean
           capital_risk_pct?: number
           daily_loss_halt_pct?: number
           daily_return_target_pct?: number
@@ -193,9 +204,13 @@ export type Database = {
           intraday_rr_min?: number
           intraday_stop_style?: string
           intraday_time_window?: string
+          last_activated?: string | null
+          last_deactivated?: string | null
           max_concurrent_positions?: number
           max_trades_per_day?: number
           min_volume_usd?: number
+          mode?: string
+          name?: string | null
           pdt_guard?: boolean
           risk_indicator?: string
           risk_per_trade_pct?: number

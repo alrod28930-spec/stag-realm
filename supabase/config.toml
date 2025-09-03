@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.stats-kpis]
 verify_jwt = true
+
+[functions.bot-trading]
+verify_jwt = true
