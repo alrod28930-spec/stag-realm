@@ -4,31 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { paperTradingTester } from '@/services/paperTradingTester';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuthStore } from '@/stores/authStore';
 import { Play, CheckCircle, XCircle, Clock, AlertTriangle, LogIn } from 'lucide-react';
 
 export function PaperTradingTestPanel() {
   const [isRunning, setIsRunning] = useState(false);
   const [testResults, setTestResults] = useState<any>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const { toast } = useToast();
-
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setIsAuthenticated(false);
-    } finally {
-      setIsCheckingAuth(false);
-    }
-  };
+  const { isAuthenticated, isLoading } = useAuthStore();
 
   const handleRunTests = async () => {
     setIsRunning(true);
@@ -97,7 +80,7 @@ export function PaperTradingTestPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isCheckingAuth ? (
+        {isLoading ? (
           <div className="flex items-center justify-center p-8">
             <Clock className="h-6 w-6 animate-spin mr-2" />
             <span>Checking authentication...</span>

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { AuthPage } from "@/components/auth/AuthPage";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ComplianceProvider } from "@/components/compliance/ComplianceProvider";
 import { useAuthStore } from "@/stores/authStore";
@@ -41,6 +42,7 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               {/* Public routes (no auth required) */}
+              <Route path="/auth" element={<AuthPage />} />
               <Route path="/auth/verify" element={<VerifyEmail />} />
               
               {/* Protected routes */}
