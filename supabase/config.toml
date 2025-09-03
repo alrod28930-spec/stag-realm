@@ -7,7 +7,7 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.stats-kpis]
-verify_jwt = true
+verify_jwt = false
 
 [functions.bot-trading]
-verify_jwt = true
+verify_jwt = false
