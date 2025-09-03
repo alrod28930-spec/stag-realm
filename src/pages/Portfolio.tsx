@@ -34,7 +34,8 @@ export default function Portfolio() {
     loadPortfolio();
     const unsubscribe = subscribeToUpdates();
     return unsubscribe;
-  }, [loadPortfolio, subscribeToUpdates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove functions from deps to prevent infinite loop
 
   const handleRefresh = () => {
     loadPortfolio();

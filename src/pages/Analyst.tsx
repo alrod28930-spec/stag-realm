@@ -54,12 +54,16 @@ export default function Analyst() {
     showDisclaimer('analyst', 'view');
     
     // Subscribe to events
-    const unsubscribe = eventBus.on('portfolio.updated', loadContextData);
+    const handlePortfolioUpdate = () => loadContextData();
+    eventBus.on('portfolio.updated', handlePortfolioUpdate);
 
     return () => {
       analystService.endSession();
+      // Remove event listener
+      eventBus.off('portfolio.updated', handlePortfolioUpdate);
     };
-  }, [showDisclaimer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove showDisclaimer from deps to prevent infinite loop
 
   useEffect(() => {
     // Load messages from service

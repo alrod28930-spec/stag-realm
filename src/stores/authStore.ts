@@ -60,8 +60,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             set({ isLoading: false });
           }
 
-          // Listen for auth changes
-          supabase.auth.onAuthStateChange((event, session) => {
+          // Listen for auth changes - set up only once
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
               const user: User = {
                 id: session.user.id,

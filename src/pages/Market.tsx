@@ -24,7 +24,8 @@ export default function Market() {
   useEffect(() => {
     // Trigger market search disclaimer on component access
     showDisclaimer('market_search', 'view');
-  }, [showDisclaimer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove showDisclaimer from deps to prevent infinite loop
 
   const marketData = [
     { symbol: 'AAPL', name: 'Apple Inc.', price: 175.50, change: +2.25, changePercent: +1.30, volume: '52.3M', marketCap: '2.75T' },
