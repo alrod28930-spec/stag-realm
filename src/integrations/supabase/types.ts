@@ -1663,7 +1663,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          owner_id: string
+          owner_id: string | null
           safe_name: string | null
           updated_at: string
           wtype: Database["public"]["Enums"]["workspace_type"]
@@ -1672,7 +1672,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
-          owner_id: string
+          owner_id?: string | null
           safe_name?: string | null
           updated_at?: string
           wtype?: Database["public"]["Enums"]["workspace_type"]
@@ -1681,7 +1681,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
-          owner_id?: string
+          owner_id?: string | null
           safe_name?: string | null
           updated_at?: string
           wtype?: Database["public"]["Enums"]["workspace_type"]
