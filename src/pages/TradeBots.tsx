@@ -33,6 +33,7 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { toggleService } from '@/services/toggleService';
 import { RiskGoalsCard } from '@/components/tradebots/RiskGoalsCard';
 import { StrategyLibraryCard } from '@/components/tradebots/StrategyLibraryCard';
+import { DayTradingCard } from '@/components/tradebots/DayTradingCard';
 import { useAuthStore } from '@/stores/authStore';
 import { getBotProfile } from '@/services/botProfile';
 import { DailyTargetMode } from '@/types/botProfile';
@@ -188,15 +189,24 @@ export default function TradeBots() {
 
       {/* Risk & Goals Panel */}
       {user && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RiskGoalsCard 
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RiskGoalsCard 
+              workspaceId="00000000-0000-0000-0000-000000000001"
+              userId={user.id}
+              onModeChange={(mode) => setCurrentMode(mode)}
+            />
+            <StrategyLibraryCard
+              mode={currentMode}
+              workspaceId="00000000-0000-0000-0000-000000000001"
+            />
+          </div>
+
+          {/* Day Trading Mode */}
+          <DayTradingCard
             workspaceId="00000000-0000-0000-0000-000000000001"
             userId={user.id}
-            onModeChange={(mode) => setCurrentMode(mode)}
-          />
-          <StrategyLibraryCard
-            mode={currentMode}
-            workspaceId="00000000-0000-0000-0000-000000000001"
+            dailyTargetMode={currentMode}
           />
         </div>
       )}

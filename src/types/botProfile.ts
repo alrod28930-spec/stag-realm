@@ -17,6 +17,20 @@ export interface BotProfile {
   max_concurrent_positions: number;
   daily_loss_halt_pct: number;
   updated_at: string;
+  
+  // Intraday trading fields
+  intraday_enabled?: boolean;
+  intraday_max_trades?: number;
+  intraday_time_window?: string;
+  intraday_stop_style?: string;
+  intraday_rr_min?: number;
+  intraday_min_volume_usd?: number;
+  intraday_blackout_json?: {
+    pre_open: number;
+    pre_close: number;
+  };
+  pdt_guard?: boolean;
+  intraday_daily_loss_halt_pct?: number;
 }
 
 export interface BotProfileUpdate {
@@ -33,6 +47,20 @@ export interface BotProfileUpdate {
   min_volume_usd?: number;
   max_concurrent_positions?: number;
   daily_loss_halt_pct?: number;
+  
+  // Intraday trading fields
+  intraday_enabled?: boolean;
+  intraday_max_trades?: number;
+  intraday_time_window?: string;
+  intraday_stop_style?: string;
+  intraday_rr_min?: number;
+  intraday_min_volume_usd?: number;
+  intraday_blackout_json?: {
+    pre_open: number;
+    pre_close: number;
+  };
+  pdt_guard?: boolean;
+  intraday_daily_loss_halt_pct?: number;
 }
 
 export interface RiskGoalsSettings {

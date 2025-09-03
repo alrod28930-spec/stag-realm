@@ -133,9 +133,18 @@ export type Database = {
           daily_return_target_pct: number
           daily_target_mode: string
           execution_mode: string
+          intraday_blackout_json: Json | null
+          intraday_daily_loss_halt_pct: number
+          intraday_enabled: boolean
+          intraday_max_trades: number
+          intraday_min_volume_usd: number
+          intraday_rr_min: number
+          intraday_stop_style: string
+          intraday_time_window: string
           max_concurrent_positions: number
           max_trades_per_day: number
           min_volume_usd: number
+          pdt_guard: boolean
           risk_indicator: string
           risk_per_trade_pct: number
           rr_min: number
@@ -150,9 +159,18 @@ export type Database = {
           daily_return_target_pct?: number
           daily_target_mode?: string
           execution_mode?: string
+          intraday_blackout_json?: Json | null
+          intraday_daily_loss_halt_pct?: number
+          intraday_enabled?: boolean
+          intraday_max_trades?: number
+          intraday_min_volume_usd?: number
+          intraday_rr_min?: number
+          intraday_stop_style?: string
+          intraday_time_window?: string
           max_concurrent_positions?: number
           max_trades_per_day?: number
           min_volume_usd?: number
+          pdt_guard?: boolean
           risk_indicator?: string
           risk_per_trade_pct?: number
           rr_min?: number
@@ -167,9 +185,18 @@ export type Database = {
           daily_return_target_pct?: number
           daily_target_mode?: string
           execution_mode?: string
+          intraday_blackout_json?: Json | null
+          intraday_daily_loss_halt_pct?: number
+          intraday_enabled?: boolean
+          intraday_max_trades?: number
+          intraday_min_volume_usd?: number
+          intraday_rr_min?: number
+          intraday_stop_style?: string
+          intraday_time_window?: string
           max_concurrent_positions?: number
           max_trades_per_day?: number
           min_volume_usd?: number
+          pdt_guard?: boolean
           risk_indicator?: string
           risk_per_trade_pct?: number
           rr_min?: number
@@ -392,6 +419,38 @@ export type Database = {
           },
           {
             foreignKeyName: "indicators_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intraday_sessions: {
+        Row: {
+          close_time: string
+          open_time: string
+          symbol_class: string
+          tz: string
+          workspace_id: string
+        }
+        Insert: {
+          close_time?: string
+          open_time?: string
+          symbol_class: string
+          tz?: string
+          workspace_id: string
+        }
+        Update: {
+          close_time?: string
+          open_time?: string
+          symbol_class?: string
+          tz?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intraday_sessions_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
