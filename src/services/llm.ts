@@ -101,6 +101,8 @@ export class LLMService {
       recentEvents?: any[];
       bidData?: any;
       recorderData?: any[];
+      knowledgeBase?: any;
+      retrievedSources?: string[];
     }
   ): Promise<LLMResponse> {
     // Mock implementation - replace with actual LLM API call
@@ -114,11 +116,12 @@ export class LLMService {
 
   private generateMockResponse(userQuery: string, context: any): LLMResponse {
     const persona = this.currentPersona;
+    const kb = context.knowledgeBase || {};
     
     // Analyze query type
-    const isExplainQuery = /explain|what is|tell me about/i.test(userQuery);
+    const isExplainQuery = /explain|what is|tell me about|define/i.test(userQuery);
     const isDiagnoseQuery = /why|diagnose|what happened/i.test(userQuery);
-    const isTeachQuery = /teach|lesson|learn/i.test(userQuery);
+    const isTeachQuery = /teach|lesson|learn|how to/i.test(userQuery);
     const isCompareQuery = /compare|contrast|vs/i.test(userQuery);
 
     let content = '';
@@ -126,7 +129,7 @@ export class LLMService {
     let watchNext = '';
 
     if (isExplainQuery) {
-      content = this.generateExplanation(userQuery, persona, context);
+      content = this.generateKnowledgeBasedResponse(userQuery, persona, context, kb);
       actionButtons = [
         {
           label: 'Refresh Portfolio',
@@ -148,7 +151,7 @@ export class LLMService {
       ];
       watchNext = 'Check for similar patterns in future trades';
     } else if (isTeachQuery) {
-      content = this.generateLesson(userQuery, persona, context);
+      content = this.generateEducationalResponse(userQuery, persona, context, kb);
       watchNext = 'Apply these lessons to future decision-making';
     } else if (isCompareQuery) {
       content = this.generateComparison(userQuery, persona, context);
@@ -166,12 +169,116 @@ export class LLMService {
       watchNext = 'Monitor market conditions and portfolio balance';
     }
 
+    // Add compliance disclaimer to all responses
+    content = this.addComplianceDisclaimer(content);
+
     return {
       content,
       persona: persona.name,
       actionButtons,
       watchNext
     };
+  }
+
+  // Generate knowledge-based response using glossary and FAQs
+  private generateKnowledgeBasedResponse(query: string, persona: any, context: any, kb: any): string {
+    let response = '';
+    const sources: string[] = [];
+
+    // Check if we have glossary matches
+    if (kb.glossaryTerms && kb.glossaryTerms.length > 0) {
+      const term = kb.glossaryTerms[0];
+      response += `**${term.term}**\n\n${term.definition}\n\n`;
+      
+      if (term.examples) {
+        response += `**Example:** ${term.examples}\n\n`;
+      }
+      
+      if (term.see_also && term.see_also.length > 0) {
+        response += `**Related concepts:** ${term.see_also.join(', ')}\n\n`;
+      }
+      
+      sources.push('Glossary');
+    }
+
+    // Add FAQ information if relevant
+    if (kb.faqs && kb.faqs.length > 0) {
+      const faq = kb.faqs[0];
+      if (!response.includes(faq.answer.substring(0, 50))) { // Avoid duplication
+        response += `**Common Question:** ${faq.question}\n\n${faq.answer}\n\n`;
+        sources.push('FAQs');
+      }
+    }
+
+    // Add knowledge base chunks if we have them
+    if (kb.chunks && kb.chunks.length > 0) {
+      const chunk = kb.chunks[0];
+      if (chunk.document?.source?.name && !response.includes(chunk.content.substring(0, 50))) {
+        response += `**From ${chunk.document.source.name}:**\n\n${chunk.content}\n\n`;
+        sources.push(chunk.document.source.name);
+      }
+    }
+
+    // If no KB results, generate basic explanation
+    if (!response) {
+      response = this.generateExplanation(query, persona, context);
+    }
+
+    // Add source citation
+    if (sources.length > 0) {
+      response += `\n*Sources: ${sources.join(', ')}*`;
+    }
+
+    return response;
+  }
+
+  // Generate educational response with knowledge base integration
+  private generateEducationalResponse(query: string, persona: any, context: any, kb: any): string {
+    let response = '';
+
+    // Check for how-to FAQs first
+    if (kb.faqs && kb.faqs.length > 0) {
+      const relevantFaq = kb.faqs.find((faq: any) => 
+        faq.question.toLowerCase().includes('how') || 
+        faq.tags.some((tag: string) => query.toLowerCase().includes(tag))
+      );
+      
+      if (relevantFaq) {
+        response = `**${relevantFaq.question}**\n\n${relevantFaq.answer}\n\n`;
+      }
+    }
+
+    // Add primers or educational chunks
+    if (kb.chunks && kb.chunks.length > 0) {
+      const educationalChunk = kb.chunks.find((chunk: any) => 
+        chunk.document?.doc_type === 'primer' || 
+        chunk.document?.doc_type === 'note'
+      );
+      
+      if (educationalChunk && !response.includes(educationalChunk.content.substring(0, 50))) {
+        response += `**Educational Content:**\n\n${educationalChunk.content}\n\n`;
+      }
+    }
+
+    // Fallback to generated lesson
+    if (!response) {
+      response = this.generateLesson(query, persona, context);
+    }
+
+    return response;
+  }
+
+  // Add compliance disclaimer to all responses
+  private addComplianceDisclaimer(content: string): string {
+    const hasAdviceWords = /should buy|should sell|recommend|suggest buying|suggest selling/i.test(content);
+    
+    if (hasAdviceWords) {
+      // Redirect advice-like content
+      return `I can explain the concepts and risks involved, but I cannot provide specific buy/sell recommendations. Let me share educational information instead:\n\n${content}\n\n*This is educational content only. StagAlgo is software-only and does not provide investment advice.*`;
+    }
+
+    // Standard educational disclaimer
+    return `${content}\n\n*This is educational information to help you understand market concepts. Always consider your risk tolerance and do your own research.*`;
   }
 
   private generateExplanation(query: string, persona: LLMPersona, context: any): string {

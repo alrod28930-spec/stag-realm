@@ -1,5 +1,8 @@
 project_id = "vtfpwvzufffmtnovvilx"
 
+[functions.kb-embeddings]
+verify_jwt = false
+
 [functions.trade-execute]
 verify_jwt = true
 

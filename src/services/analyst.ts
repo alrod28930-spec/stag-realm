@@ -3,6 +3,7 @@ import { eventBus } from './eventBus';
 import { bid } from './bid';
 import { recorder } from './recorder';
 import { llmService, LLMResponse, ANALYST_PERSONAS } from './llm';
+import { knowledgeBaseService, RetrievalResult } from './knowledgeBase';
 
 export interface AnalystMessage {
   id: string;
@@ -140,12 +141,22 @@ class AnalystService {
     // Add user message
     const userMessage = this.addUserMessage(userInput);
 
-    // Gather context from BID and Recorder
-    const context = await this.gatherContext(userInput);
+    // Gather context from BID and Recorder AND knowledge base
+    const [context, kbResults] = await Promise.all([
+      this.gatherContext(userInput),
+      this.retrieveKnowledge(userInput)
+    ]);
+
+    // Enhance context with knowledge base results
+    const enhancedContext = {
+      ...context,
+      knowledgeBase: kbResults,
+      retrievedSources: kbResults.sources
+    };
 
     // Generate LLM response
     try {
-      const llmResponse = await llmService.generateResponse(userInput, context);
+      const llmResponse = await llmService.generateResponse(userInput, enhancedContext);
       
       // Add analyst response
       const analystMessage = this.addAnalystMessage(
@@ -153,18 +164,21 @@ class AnalystService {
         llmResponse.actionButtons,
         llmResponse.watchNext,
         llmResponse.relatedEventIds,
-        context
+        enhancedContext
       );
 
-      // Log to recorder
+      // Log to recorder with knowledge base sources
       recorder.recordAnalystConversation({
         userQuery: userInput,
         analystResponse: llmResponse.content,
         persona: this.currentPersona,
-        citedSources: llmResponse.relatedEventIds || [],
+        citedSources: [...(llmResponse.relatedEventIds || []), ...kbResults.sources],
         chartsGenerated: [],
         confidenceLevel: 0.8
       });
+
+      // Record conversation for compliance audit with KB sources
+      await this.recordConversation(userInput, llmResponse.content, enhancedContext);
 
       // Extract topics for session tracking
       this.extractTopics(userInput);
@@ -174,7 +188,8 @@ class AnalystService {
         sessionId: this.currentSession!.id,
         userQuery: userInput,
         response: llmResponse.content,
-        persona: this.currentPersona
+        persona: this.currentPersona,
+        knowledgeBaseSources: kbResults.sources
       });
 
       return analystMessage;
@@ -197,6 +212,80 @@ class AnalystService {
           }
         ]
       );
+    }
+  }
+
+  // Retrieve knowledge from KB using RAG
+  private async retrieveKnowledge(userInput: string): Promise<RetrievalResult> {
+    try {
+      // Extract relevant tags/categories from user input
+      const tags = this.extractTags(userInput);
+
+      // Retrieve knowledge with different strategies based on query type
+      const isDefinitionQuery = /what is|define|explain|tell me about/i.test(userInput);
+      const isHowToQuery = /how to|how do|how should/i.test(userInput);
+      const isStrategyQuery = /strategy|trading|bot|risk/i.test(userInput);
+
+      const retrievalOptions = {
+        includeGlossary: isDefinitionQuery || isStrategyQuery,
+        includeFAQs: isHowToQuery || /\?/.test(userInput),
+        includeChunks: true,
+        limit: isDefinitionQuery ? 3 : 5,
+        tags
+      };
+
+      return await knowledgeBaseService.retrieveKnowledge(userInput, retrievalOptions);
+
+    } catch (error) {
+      console.error('Knowledge retrieval error:', error);
+      return { chunks: [], glossaryTerms: [], faqs: [], sources: [] };
+    }
+  }
+
+  // Extract relevant tags from user input
+  private extractTags(input: string): string[] {
+    const inputLower = input.toLowerCase();
+    const tagMap: Record<string, string[]> = {
+      'day-trading': ['day', 'intraday', 'scalp'],
+      'swing-trading': ['swing', 'position', 'hold'],
+      'risk-management': ['risk', 'stop', 'loss', 'size', 'drawdown'],
+      'strategy': ['strategy', 'bot', 'signal', 'momentum', 'breakout'],
+      'regulation': ['pdt', 'rule', 'finra', 'sec', 'compliance'],
+      'technical-analysis': ['rsi', 'macd', 'atr', 'vwap', 'bollinger', 'moving average'],
+      'platform': ['stagalgo', 'how', 'work', 'connect', 'brokerage']
+    };
+
+    const tags: string[] = [];
+    for (const [tag, keywords] of Object.entries(tagMap)) {
+      if (keywords.some(keyword => inputLower.includes(keyword))) {
+        tags.push(tag);
+      }
+    }
+
+    return tags;
+  }
+
+  // Record conversation for compliance audit with knowledge base sources
+  private async recordConversation(userInput: string, analystResponse: string, context: any): Promise<void> {
+    try {
+      // Record using simple logging for now - would be enhanced with proper recorder
+      logService.log('info', 'Analyst conversation recorded', {
+        sessionId: this.currentSession?.id,
+        userInputPreview: userInput.substring(0, 100),
+        responsePreview: analystResponse.substring(0, 100),
+        persona: this.currentPersona,
+        complianceMode: 'educational',
+        citedSources: context.retrievedSources || [],
+        contextSummary: {
+          portfolioDataAvailable: !!context.portfolioData,
+          recentEventsCount: context.recentEvents?.length || 0,
+          bidDataAvailable: !!context.bidData,
+          knowledgeBaseSources: context.retrievedSources || []
+        },
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Failed to record conversation:', error);
     }
   }
 
