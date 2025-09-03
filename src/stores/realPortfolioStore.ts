@@ -40,20 +40,29 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
   lastUpdated: null,
 
   loadPortfolio: async () => {
-    // Use a default workspace ID for now
-    const defaultWorkspaceId = '00000000-0000-0000-0000-000000000001';
-    
-    set({ isLoading: true, error: null });
-
     try {
+      set({ isLoading: true, error: null });
+
+      // Get current user's workspace instead of hardcoded ID
+      const { getCurrentUserWorkspace } = await import('@/utils/auth');
+      const workspaceId = await getCurrentUserWorkspace();
+      
+      if (!workspaceId) {
+        set({ 
+          error: 'No workspace found - please ensure you are logged in',
+          isLoading: false 
+        });
+        return;
+      }
+
       // Load portfolio summary
       const { data: portfolioData, error: portfolioError } = await supabase
         .from('portfolio_current')
         .select('*')
-        .eq('workspace_id', defaultWorkspaceId)
-        .single();
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
 
-      if (portfolioError && portfolioError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (portfolioError && portfolioError.code !== 'PGRST116') { 
         throw portfolioError;
       }
 
@@ -61,7 +70,7 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
       const { data: positionsData, error: positionsError } = await supabase
         .from('positions_current')
         .select('*')
-        .eq('workspace_id', defaultWorkspaceId)
+        .eq('workspace_id', workspaceId)
         .order('mv', { ascending: false });
 
       if (positionsError) throw positionsError;
@@ -97,20 +106,27 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
   },
 
   subscribeToUpdates: () => {
-    // Use default workspace ID
-    const defaultWorkspaceId = '00000000-0000-0000-0000-000000000001';
+    // Get workspace ID dynamically
+    const setupSubscriptions = async () => {
+      const { getCurrentUserWorkspace } = await import('@/utils/auth');
+      const workspaceId = await getCurrentUserWorkspace();
+      
+      if (!workspaceId) {
+        console.warn('Cannot set up subscriptions - no workspace found');
+        return () => {};
+      }
 
-    // Subscribe to portfolio changes
-    const portfolioChannel = supabase
-      .channel('portfolio-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'portfolio_current',
-          filter: `workspace_id=eq.${defaultWorkspaceId}`
-        },
+      // Subscribe to portfolio changes
+      const portfolioChannel = supabase
+        .channel('portfolio-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'portfolio_current',
+            filter: `workspace_id=eq.${workspaceId}`
+          },
         (payload) => {
           const { portfolio } = get();
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
@@ -124,17 +140,17 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
       )
       .subscribe();
 
-    // Subscribe to position changes
-    const positionsChannel = supabase
-      .channel('positions-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'positions_current',
-          filter: `workspace_id=eq.${defaultWorkspaceId}`
-        },
+      // Subscribe to position changes
+      const positionsChannel = supabase
+        .channel('positions-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'positions_current',
+            filter: `workspace_id=eq.${workspaceId}`
+          },
         (payload) => {
           const { positions } = get();
           
@@ -168,11 +184,20 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
       )
       .subscribe();
 
-    // Return cleanup function
-    return () => {
-      supabase.removeChannel(portfolioChannel);
-      supabase.removeChannel(positionsChannel);
+      // Return cleanup function
+      return () => {
+        supabase.removeChannel(portfolioChannel);
+        supabase.removeChannel(positionsChannel);
+      };
     };
+    
+    // Execute async setup and return cleanup
+    let cleanupFn = () => {};
+    setupSubscriptions().then(cleanup => {
+      cleanupFn = cleanup;
+    });
+    
+    return () => cleanupFn();
   },
 
   refreshData: async () => {

@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ComplianceProvider } from "@/components/compliance/ComplianceProvider";
+import { useAuthStore } from "@/stores/authStore";
+import { useEffect } from "react";
 import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
 import Portfolio from "@/pages/Portfolio";
@@ -21,42 +23,52 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <ComplianceProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes (no auth required) */}
-            <Route path="/auth/verify" element={<VerifyEmail />} />
-            
-            {/* Protected routes */}
-            <Route path="/*" element={
-              <AuthGuard>
-                <DashboardLayout>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/market" element={<Market />} />
-                    <Route path="/portfolio" element={<Portfolio />} />
-                    <Route path="/trading-desk" element={<TradingDesk />} />
-                    <Route path="/cradle" element={<Cradle />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/subscription" element={<Subscription />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/system-monitor" element={<SystemMonitor />} />
-                    <Route path="/admin" element={<AdminPortal />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </DashboardLayout>
-              </AuthGuard>
-            } />
-          </Routes>
-        </BrowserRouter>
-      </ComplianceProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    const initApp = async () => {
+      // Initialize auth first - critical for all other services
+      await useAuthStore.getState().initializeAuth();
+    };
+    initApp();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <ComplianceProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Public routes (no auth required) */}
+              <Route path="/auth/verify" element={<VerifyEmail />} />
+              
+              {/* Protected routes */}
+              <Route path="/*" element={
+                <AuthGuard>
+                  <DashboardLayout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/market" element={<Market />} />
+                      <Route path="/portfolio" element={<Portfolio />} />
+                      <Route path="/trading-desk" element={<TradingDesk />} />
+                      <Route path="/cradle" element={<Cradle />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/subscription" element={<Subscription />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/system-monitor" element={<SystemMonitor />} />
+                      <Route path="/admin" element={<AdminPortal />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </DashboardLayout>
+                </AuthGuard>
+              } />
+            </Routes>
+          </BrowserRouter>
+        </ComplianceProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

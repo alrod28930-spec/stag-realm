@@ -252,24 +252,47 @@ class OracleService {
       // Get current user to determine workspace
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.warn('No authenticated user, skipping database storage');
+        // Store in memory only if no user - don't spam logs
         return;
       }
 
-      // Get user's workspace
-      const { data: workspaces } = await supabase
+      // Get user's workspace - use maybeSingle to avoid 406 errors
+      const { data: workspace } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
-        .limit(1);
+        .maybeSingle();
       
-      if (!workspaces || workspaces.length === 0) {
-        console.warn('No workspace found for user, skipping database storage');
-        return;
+      let workspace_id: string;
+      
+      if (!workspace) {
+        // Create default workspace for user if none exists
+        const { data: newWorkspace } = await supabase
+          .from('workspaces')
+          .insert({
+            name: `${user.email}'s Workspace`,
+            owner_id: user.id,
+            wtype: 'personal'
+          })
+          .select()
+          .single();
+          
+        if (newWorkspace) {
+          await supabase.from('workspace_members').insert({
+            workspace_id: newWorkspace.id,
+            user_id: user.id,
+            role: 'owner'
+          });
+          workspace_id = newWorkspace.id;
+        } else {
+          return;
+        }
+      } else {
+        workspace_id = workspace.workspace_id;
       }
 
       const { error } = await supabase.from('oracle_signals').insert({
-        workspace_id: workspaces[0].workspace_id,
+        workspace_id,
         signal_type: signal.type,
         symbol: signal.symbol,
         direction: signal.direction === 'bullish' ? 1 : signal.direction === 'bearish' ? -1 : 0,
@@ -451,22 +474,21 @@ class OracleService {
         return this.signals.slice(0, limit);
       }
 
-      // Get user's workspace
-      const { data: workspaces } = await supabase
+      // Get user's workspace - use maybeSingle to avoid 406 errors
+      const { data: workspace } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
-        .limit(1);
+        .maybeSingle();
       
-      if (!workspaces || workspaces.length === 0) {
-        console.warn('No workspace found for user');
+      if (!workspace) {
         return this.signals.slice(0, limit);
       }
 
       const { data, error } = await supabase
         .from('oracle_signals')
         .select('*')
-        .eq('workspace_id', workspaces[0].workspace_id)
+        .eq('workspace_id', workspace.workspace_id)
         .order('ts', { ascending: false })
         .limit(limit);
 
