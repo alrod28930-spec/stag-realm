@@ -1788,6 +1788,22 @@ export type Database = {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
       }
+      match_kb_chunks: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          document: Json
+          document_id: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
       recorder_log: {
         Args: {
           p_entity_id: string
