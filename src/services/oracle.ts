@@ -93,13 +93,13 @@ class OracleService {
     logService.log('info', 'Oracle service cleanup completed');
   }
 
-  private simulateMarketData() {
-    // Generate mock signals based on current market conditions
+  private async simulateMarketData() {
+    // Generate signals and store them in Supabase
     const mockSignals = this.generateMockSignals();
     
-    mockSignals.forEach(signal => {
-      this.processSignal(signal);
-    });
+    for (const signal of mockSignals) {
+      await this.processSignal(signal);
+    }
 
     // Update sector heatmap
     this.updateSectorHeatmap();
@@ -238,16 +238,32 @@ class OracleService {
     }
   }
 
-  private processSignal(signal: ProcessedSignal) {
+  private async processSignal(signal: ProcessedSignal) {
     // Store in Oracle's internal array
     this.signals.unshift(signal);
     
     // Keep only last 100 signals
     this.signals = this.signals.slice(0, 100);
     
-    // Store in BID for consumption by other services
-    // Note: Removed BID import to avoid circular dependency
-    // BID will be notified via events instead
+    try {
+      // Store in Supabase oracle_signals table
+      const { supabase } = await import('../integrations/supabase/client');
+      const { error } = await supabase.from('oracle_signals').insert({
+        workspace_id: '00000000-0000-0000-0000-000000000001', // Default workspace
+        signal_type: signal.type,
+        symbol: signal.symbol,
+        direction: signal.direction === 'bullish' ? 1 : signal.direction === 'bearish' ? -1 : 0,
+        strength: signal.confidence,
+        summary: signal.signal,
+        source: signal.sources?.[0] || 'oracle'
+      });
+      
+      if (error) {
+        console.warn('Failed to store signal in database:', error);
+      }
+    } catch (dbError) {
+      console.warn('Database storage failed for signal:', dbError);
+    }
     
     // Log to Recorder
     recorder.recordOracleSignal(signal);
@@ -398,6 +414,45 @@ class OracleService {
 
   // Public API methods
   getSignals(limit = 20): ProcessedSignal[] {
+    // Return in-memory signals synchronously for now
+    // Async database fetching can be handled separately via hooks/components
+    return this.signals.slice(0, limit);
+  }
+
+  async getSignalsFromDb(limit = 20): Promise<ProcessedSignal[]> {
+    try {
+      // Get signals from database
+      const { supabase } = await import('../integrations/supabase/client');
+      const { data, error } = await supabase
+        .from('oracle_signals')
+        .select('*')
+        .eq('workspace_id', '00000000-0000-0000-0000-000000000001')
+        .order('ts', { ascending: false })
+        .limit(limit);
+
+      if (!error && data) {
+        // Convert database format to ProcessedSignal format
+        return data.map(record => ({
+          id: record.id,
+          type: record.signal_type as any,
+          symbol: record.symbol,
+          sector: 'Technology', // Default fallback
+          severity: 'medium' as any,
+          direction: record.direction === 1 ? 'bullish' : record.direction === -1 ? 'bearish' : 'neutral',
+          confidence: record.strength || 0.7,
+          signal: record.summary || '',
+          description: record.summary || '',
+          data: {},
+          timestamp: new Date(record.ts),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          sources: [record.source || 'oracle']
+        }));
+      }
+    } catch (error) {
+      console.warn('Failed to fetch signals from database:', error);
+    }
+    
+    // Fallback to in-memory signals
     return this.signals.slice(0, limit);
   }
 
