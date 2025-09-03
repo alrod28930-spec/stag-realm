@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
 import { useState, useEffect } from 'react';
@@ -14,8 +15,12 @@ import {
   Activity,
   RefreshCw,
   AlertTriangle,
-  Building2
+  Building2,
+  FileText,
+  Target,
+  PieChart
 } from 'lucide-react';
+import Recorder from '@/pages/Recorder';
 
 export default function Portfolio() {
   const {
@@ -142,10 +147,16 @@ export default function Portfolio() {
       </div>
 
       <Tabs defaultValue="positions" className="w-full">
-        <TabsList>
-          <TabsTrigger value="positions">Positions</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full">
+          <TabsList className="grid w-full grid-cols-3 min-w-max">
+            <TabsTrigger value="positions">Positions</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="recorder" className="gap-2">
+              <FileText className="w-4 h-4" />
+              Audit Trail
+            </TabsTrigger>
+          </TabsList>
+        </ScrollArea>
 
         <TabsContent value="positions" className="space-y-4">
           <Card className="bg-gradient-card shadow-card">
@@ -221,45 +232,90 @@ export default function Portfolio() {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="bg-gradient-card shadow-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Return</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${totalUnrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {totalUnrealizedPnL >= 0 ? '+' : ''}${totalUnrealizedPnL.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {((totalUnrealizedPnL / portfolioValue) * 100).toFixed(2)}% of portfolio
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-card shadow-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Cash Utilization</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {(((totalMarketValue) / portfolioValue) * 100).toFixed(1)}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  ${(portfolioValue - availableCash).toFixed(2)} invested
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-card shadow-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Diversification</CardTitle>
+                <PieChart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalPositions}</div>
+                <p className="text-xs text-muted-foreground">
+                  Active positions
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-card shadow-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Best Performer</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {positions.length > 0 ? 
+                    Math.max(...positions.map(p => p.unr_pnl || 0)).toFixed(2) 
+                    : '0.00'
+                  }
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Unrealized P&L
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Performance Chart Placeholder */}
           <Card className="bg-gradient-card shadow-card">
             <CardHeader>
-              <CardTitle>Performance Metrics</CardTitle>
+              <CardTitle>Performance Overview</CardTitle>
               <CardDescription>
-                Portfolio performance analysis and metrics
+                Portfolio performance metrics and analysis
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Total Return</h4>
-                  <div className="text-2xl font-bold text-accent">
-                    {portfolioValue > 0 ? 
-                      `${((totalUnrealizedPnL / (portfolioValue - totalUnrealizedPnL)) * 100).toFixed(2)}%` : 
-                      '0.00%'
-                    }
-                  </div>
-                  <p className="text-xs text-muted-foreground">Since inception</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Cash Utilization</h4>
-                  <div className="text-2xl font-bold">
-                    {portfolioValue > 0 ? 
-                      `${((totalMarketValue / portfolioValue) * 100).toFixed(1)}%` : 
-                      '0.0%'
-                    }
-                  </div>
-                  <p className="text-xs text-muted-foreground">Invested capital</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Diversification</h4>
-                  <div className="text-2xl font-bold">{totalPositions}</div>
-                  <p className="text-xs text-muted-foreground">Active positions</p>
-                </div>
+            <CardContent className="h-[300px] flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">Performance charts coming soon</p>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="recorder" className="space-y-6">
+          <div className="h-screen overflow-hidden">
+            <Recorder />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -1,21 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   TrendingUp, 
   TrendingDown, 
   Search, 
   Star,
   Volume2,
-  BarChart3
+  BarChart3,
+  MessageSquare
 } from 'lucide-react';
 import { useCompliance } from '@/components/compliance/ComplianceProvider';
 import { LegalFooter } from '@/components/compliance/LegalFooter';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
-import { useEffect } from 'react';
+import Analyst from '@/pages/Analyst';
 
 export default function Market() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,11 +67,11 @@ export default function Market() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-3">
-          Market Data
+          Market Center
           <DisclaimerBadge variant="minimal" component="market_search" />
         </h1>
         <p className="text-muted-foreground mt-2">
-          Real-time market data and analysis tools
+          Real-time market data, AI insights, and trading opportunities
         </p>
       </div>
 
@@ -101,123 +103,192 @@ export default function Market() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Market Data */}
-        <Card className="lg:col-span-3 bg-gradient-card shadow-card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Stock Watchlist</CardTitle>
-                <CardDescription>Monitor your favorite stocks in real-time</CardDescription>
-              </div>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Search stocks..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {filteredMarketData.map((stock, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center space-x-4">
-                    <Button variant="ghost" size="sm" className="p-1 h-auto">
-                      <Star className="w-4 h-4" />
-                    </Button>
-                    <div>
-                      <p className="font-semibold">{stock.symbol}</p>
-                      <p className="text-sm text-muted-foreground truncate max-w-[150px]">
-                        {stock.name}
-                      </p>
-                    </div>
+      {/* Main Content with Tabs */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <ScrollArea className="w-full">
+          <TabsList className="grid w-full grid-cols-3 min-w-max">
+            <TabsTrigger value="overview">Market Overview</TabsTrigger>
+            <TabsTrigger value="movers">Top Movers</TabsTrigger>
+            <TabsTrigger value="analyst" className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              AI Analyst
+            </TabsTrigger>
+          </TabsList>
+        </ScrollArea>
+
+        <TabsContent value="overview">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Main Market Data */}
+            <Card className="lg:col-span-3 bg-gradient-card shadow-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Stock Watchlist</CardTitle>
+                    <CardDescription>Monitor your favorite stocks in real-time</CardDescription>
                   </div>
-                  
-                  <div className="flex items-center space-x-6">
-                    <div className="text-right">
-                      <p className="font-semibold">${stock.price}</p>
-                      <p className={`text-sm flex items-center ${
-                        stock.change >= 0 ? 'text-accent' : 'text-destructive'
-                      }`}>
-                        {stock.change >= 0 ? 
-                          <TrendingUp className="w-3 h-3 mr-1" /> : 
-                          <TrendingDown className="w-3 h-3 mr-1" />
-                        }
-                        {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%)
-                      </p>
-                    </div>
-                    
-                    <div className="text-right text-sm text-muted-foreground">
-                      <p className="flex items-center">
-                        <Volume2 className="w-3 h-3 mr-1" />
-                        {stock.volume}
-                      </p>
-                      <p>Cap: {stock.marketCap}</p>
-                    </div>
-                    
-                    <Button variant="outline" size="sm">
-                      <BarChart3 className="w-4 h-4 mr-2" />
-                      Chart
-                    </Button>
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Search stocks..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {filteredMarketData.map((stock, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <Button variant="ghost" size="sm" className="p-1 h-auto">
+                          <Star className="w-4 h-4" />
+                        </Button>
+                        <div>
+                          <p className="font-semibold">{stock.symbol}</p>
+                          <p className="text-sm text-muted-foreground truncate max-w-[150px]">
+                            {stock.name}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-6">
+                        <div className="text-right">
+                          <p className="font-semibold">${stock.price}</p>
+                          <p className={`text-sm flex items-center ${
+                            stock.change >= 0 ? 'text-accent' : 'text-destructive'
+                          }`}>
+                            {stock.change >= 0 ? 
+                              <TrendingUp className="w-3 h-3 mr-1" /> : 
+                              <TrendingDown className="w-3 h-3 mr-1" />
+                            }
+                            {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%)
+                          </p>
+                        </div>
+                        
+                        <div className="text-right text-sm text-muted-foreground">
+                          <p className="flex items-center">
+                            <Volume2 className="w-3 h-3 mr-1" />
+                            {stock.volume}
+                          </p>
+                          <p>Cap: {stock.marketCap}</p>
+                        </div>
+                        
+                        <Button variant="outline" size="sm">
+                          <BarChart3 className="w-4 h-4 mr-2" />
+                          Chart
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Top Movers */}
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader>
-            <CardTitle>Top Movers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="gainers" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="gainers">Gainers</TabsTrigger>
-                <TabsTrigger value="losers">Losers</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="gainers" className="space-y-3 mt-4">
-                {topMovers.gainers.map((stock, index) => (
-                  <div key={index} className="flex justify-between items-center p-2 rounded bg-muted/30">
-                    <div>
-                      <p className="font-semibold text-sm">{stock.symbol}</p>
-                      <p className="text-xs text-muted-foreground">${stock.price}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-accent">+{stock.changePercent.toFixed(2)}%</p>
-                      <p className="text-xs text-accent">+{stock.change.toFixed(2)}</p>
-                    </div>
-                  </div>
+            {/* Top Movers Sidebar */}
+            <Card className="bg-gradient-card shadow-card">
+              <CardHeader>
+                <CardTitle>Top Movers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="gainers" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="gainers">Gainers</TabsTrigger>
+                    <TabsTrigger value="losers">Losers</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="gainers" className="space-y-3 mt-4">
+                    {topMovers.gainers.map((stock, index) => (
+                      <div key={index} className="flex justify-between items-center p-2 rounded bg-muted/30">
+                        <div>
+                          <p className="font-semibold text-sm">{stock.symbol}</p>
+                          <p className="text-xs text-muted-foreground">${stock.price}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-accent">+{stock.changePercent.toFixed(2)}%</p>
+                          <p className="text-xs text-accent">+{stock.change.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </TabsContent>
+                  
+                  <TabsContent value="losers" className="space-y-3 mt-4">
+                    {topMovers.losers.map((stock, index) => (
+                      <div key={index} className="flex justify-between items-center p-2 rounded bg-muted/30">
+                        <div>
+                          <p className="font-semibold text-sm">{stock.symbol}</p>
+                          <p className="text-xs text-muted-foreground">${stock.price}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-destructive">{stock.changePercent.toFixed(2)}%</p>
+                          <p className="text-xs text-destructive">{stock.change.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="movers">
+          <Tabs defaultValue="gainers" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="gainers">Top Gainers</TabsTrigger>
+              <TabsTrigger value="losers">Top Losers</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="gainers">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {topMovers.gainers.map((stock) => (
+                  <Card key={stock.symbol} className="bg-gradient-card shadow-card">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold">{stock.symbol}</h4>
+                        <Badge className="bg-accent text-accent-foreground">
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                          +{stock.changePercent.toFixed(2)}%
+                        </Badge>
+                      </div>
+                      <p className="text-2xl font-bold">${stock.price}</p>
+                    </CardContent>
+                  </Card>
                 ))}
-              </TabsContent>
-              
-              <TabsContent value="losers" className="space-y-3 mt-4">
-                {topMovers.losers.map((stock, index) => (
-                  <div key={index} className="flex justify-between items-center p-2 rounded bg-muted/30">
-                    <div>
-                      <p className="font-semibold text-sm">{stock.symbol}</p>
-                      <p className="text-xs text-muted-foreground">${stock.price}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-destructive">{stock.changePercent.toFixed(2)}%</p>
-                      <p className="text-xs text-destructive">{stock.change.toFixed(2)}</p>
-                    </div>
-                  </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="losers">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {topMovers.losers.map((stock) => (
+                  <Card key={stock.symbol} className="bg-gradient-card shadow-card">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold">{stock.symbol}</h4>
+                        <Badge variant="destructive">
+                          <TrendingDown className="w-3 h-3 mr-1" />
+                          {stock.changePercent.toFixed(2)}%
+                        </Badge>
+                      </div>
+                      <p className="text-2xl font-bold">${stock.price}</p>
+                    </CardContent>
+                  </Card>
                 ))}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        <TabsContent value="analyst" className="space-y-6">
+          <div className="h-screen overflow-hidden">
+            <Analyst />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Legal Footer */}
       <LegalFooter component="market_search" variant="standard" />

@@ -10,9 +10,6 @@ import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
 import Portfolio from "@/pages/Portfolio";
 import TradingDesk from "@/pages/TradingDesk";
-import Analyst from "@/pages/Analyst";
-import TradeBots from "@/pages/TradeBots";
-import Recorder from "@/pages/Recorder";
 import Cradle from "@/pages/Cradle";
 import About from "@/pages/About";
 import Subscription from "@/pages/Subscription";
@@ -44,9 +41,6 @@ const App = () => (
                     <Route path="/market" element={<Market />} />
                     <Route path="/portfolio" element={<Portfolio />} />
                     <Route path="/trading-desk" element={<TradingDesk />} />
-                    <Route path="/analyst" element={<Analyst />} />
-                    <Route path="/trade-bots" element={<TradeBots />} />
-                    <Route path="/recorder" element={<Recorder />} />
                     <Route path="/cradle" element={<Cradle />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/subscription" element={<Subscription />} />

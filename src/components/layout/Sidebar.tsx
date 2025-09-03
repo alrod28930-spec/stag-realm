@@ -30,12 +30,9 @@ import { cn } from '@/lib/utils';
 
 const navigationItems = [
   { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
-  { title: 'Market', url: '/market', icon: TrendingUp, description: 'Real-time market data' },
-  { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Your positions' },
-  { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual trading & metrics' },
-  { title: 'Analyst', url: '/analyst', icon: MessageSquare, description: 'AI trading assistant' },
-  { title: 'Trade Bots', url: '/trade-bots', icon: Bot, description: 'Automated trading' },
-  { title: 'Recorder', url: '/recorder', icon: FileText, description: 'Audit trail & exports' },
+  { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
+  { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
+  { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
   { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
 ];
 
