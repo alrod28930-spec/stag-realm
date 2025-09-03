@@ -114,7 +114,7 @@ serve(async (req) => {
     try {
       await supabaseClient.from('rec_events').insert({
         workspace_id: effectiveBotProfile.workspace_id,
-        user_id: user.id,
+        user_id: isTestRequest ? null : user.id, // Use null for test requests to avoid foreign key issues
         event_type: 'trade.bot.intent',
         severity: 1,
         entity_type: 'bot',
@@ -187,7 +187,7 @@ serve(async (req) => {
     try {
       await supabaseClient.from('rec_events').insert({
         workspace_id: effectiveBotProfile.workspace_id,
-        user_id: user.id,
+        user_id: isTestRequest ? null : user.id, // Use null for test requests to avoid foreign key issues
         event_type: 'trade.bot.executed',
         severity: 1,
         entity_type: 'bot',
