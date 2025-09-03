@@ -52,7 +52,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               .from('profiles')
               .select('*')
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle();
 
             const user: User = {
               id: session.user.id,
@@ -75,16 +75,23 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             set({ isLoading: false });
           }
 
-          // Listen for auth changes - set up only once
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          // Listen for auth changes - set up only once with proper user handling
+          supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
+              // Ensure profile exists and fetch it
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
               const user: User = {
                 id: session.user.id,
                 email: session.user.email || '',
-                name: session.user.email || '',
+                name: profile?.display_name || session.user.email || '',
                 role: 'Member',
                 organizationId: '00000000-0000-0000-0000-000000000001',
-                avatar: undefined,
+                avatar: profile?.avatar_url,
                 isActive: true,
                 createdAt: new Date(session.user.created_at),
                 lastLogin: new Date()
@@ -177,12 +184,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           }
 
           if (data.user) {
-            // Create profile if it doesn't exist
+            // Ensure profile exists
             const { error: profileError } = await supabase
               .from('profiles')
               .upsert({
                 id: data.user.id,
-                display_name: data.user.email
+                display_name: data.user.email || 'User'
+              }, {
+                onConflict: 'id'
               });
 
             if (profileError) {

@@ -12,6 +12,7 @@ import { OrderHistoryTable } from '@/components/tradingdesk/OrderHistoryTable';
 import { ComplianceFooter } from '@/components/tradingdesk/ComplianceFooter';
 import TradeBots from '@/pages/TradeBots';
 import { PaperTradingTestPanel } from '@/components/tradingdesk/PaperTradingTestPanel';
+import { SystemAuditPanel } from '@/components/debug/SystemAuditPanel';
 import { Bot } from 'lucide-react';
 import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
@@ -46,7 +47,7 @@ export default function TradingDesk() {
       {/* Main Content with Tabs */}
       <Tabs defaultValue="manual" className="space-y-6">
         <ScrollArea className="w-full">
-          <TabsList className="grid w-full grid-cols-5 min-w-max">
+          <TabsList className="grid w-full grid-cols-6 min-w-max">
             <TabsTrigger value="manual">Manual Trading</TabsTrigger>
             <TabsTrigger value="positions">Open Positions</TabsTrigger>
             <TabsTrigger value="history">Order History</TabsTrigger>
@@ -55,6 +56,7 @@ export default function TradingDesk() {
               Trade Bots
             </TabsTrigger>
             <TabsTrigger value="testing">System Testing</TabsTrigger>
+            <TabsTrigger value="audit">System Audit</TabsTrigger>
           </TabsList>
         </ScrollArea>
 
@@ -101,6 +103,10 @@ export default function TradingDesk() {
 
         <TabsContent value="testing" className="space-y-6">
           <PaperTradingTestPanel />
+        </TabsContent>
+        
+        <TabsContent value="audit" className="space-y-6">
+          <SystemAuditPanel />
         </TabsContent>
       </Tabs>
 
