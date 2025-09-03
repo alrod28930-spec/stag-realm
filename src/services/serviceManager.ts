@@ -17,14 +17,19 @@ class ServiceManager {
   private isShuttingDown = false;
 
   constructor() {
-    // Handle process termination gracefully
-    process.on('SIGTERM', () => this.shutdown());
-    process.on('SIGINT', () => this.shutdown());
-    process.on('beforeExit', () => this.shutdown());
+    // Handle page unload gracefully (browser equivalent of process termination)
+    window.addEventListener('beforeunload', () => this.shutdown());
+    window.addEventListener('unload', () => this.shutdown());
     
-    // Handle unhandled errors
-    process.on('uncaughtException', (error) => {
-      logService.log('error', 'Uncaught exception, shutting down services', { error: error.message });
+    // Handle unhandled errors (browser equivalent of uncaught exceptions)
+    window.addEventListener('error', (event) => {
+      logService.log('error', 'Uncaught exception, shutting down services', { error: event.error?.message || 'Unknown error' });
+      this.shutdown();
+    });
+    
+    // Handle unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      logService.log('error', 'Unhandled promise rejection, shutting down services', { error: event.reason?.message || 'Unknown rejection' });
       this.shutdown();
     });
   }
