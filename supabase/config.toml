@@ -1,1 +1,7 @@
 project_id = "vtfpwvzufffmtnovvilx"
+
+[functions.trade-execute]
+verify_jwt = true
+
+[functions.stats-kpis]
+verify_jwt = true

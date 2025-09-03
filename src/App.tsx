@@ -9,6 +9,7 @@ import { ComplianceProvider } from "@/components/compliance/ComplianceProvider";
 import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
 import Portfolio from "@/pages/Portfolio";
+import TradingDesk from "@/pages/TradingDesk";
 import Analyst from "@/pages/Analyst";
 import TradeBots from "@/pages/TradeBots";
 import Recorder from "@/pages/Recorder";
@@ -42,6 +43,7 @@ const App = () => (
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/market" element={<Market />} />
                     <Route path="/portfolio" element={<Portfolio />} />
+                    <Route path="/trading-desk" element={<TradingDesk />} />
                     <Route path="/analyst" element={<Analyst />} />
                     <Route path="/trade-bots" element={<TradeBots />} />
                     <Route path="/recorder" element={<Recorder />} />
