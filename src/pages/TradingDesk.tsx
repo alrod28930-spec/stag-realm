@@ -11,6 +11,7 @@ import { OpenPositionsTable } from '@/components/tradingdesk/OpenPositionsTable'
 import { OrderHistoryTable } from '@/components/tradingdesk/OrderHistoryTable';
 import { ComplianceFooter } from '@/components/tradingdesk/ComplianceFooter';
 import TradeBots from '@/pages/TradeBots';
+import { PaperTradingTestPanel } from '@/components/tradingdesk/PaperTradingTestPanel';
 import { Bot } from 'lucide-react';
 import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
@@ -45,7 +46,7 @@ export default function TradingDesk() {
       {/* Main Content with Tabs */}
       <Tabs defaultValue="manual" className="space-y-6">
         <ScrollArea className="w-full">
-          <TabsList className="grid w-full grid-cols-4 min-w-max">
+          <TabsList className="grid w-full grid-cols-5 min-w-max">
             <TabsTrigger value="manual">Manual Trading</TabsTrigger>
             <TabsTrigger value="positions">Open Positions</TabsTrigger>
             <TabsTrigger value="history">Order History</TabsTrigger>
@@ -53,6 +54,7 @@ export default function TradingDesk() {
               <Bot className="w-4 h-4" />
               Trade Bots
             </TabsTrigger>
+            <TabsTrigger value="testing">System Testing</TabsTrigger>
           </TabsList>
         </ScrollArea>
 
@@ -95,6 +97,10 @@ export default function TradingDesk() {
           <div className="h-screen overflow-hidden">
             <TradeBots />
           </div>
+        </TabsContent>
+
+        <TabsContent value="testing" className="space-y-6">
+          <PaperTradingTestPanel />
         </TabsContent>
       </Tabs>
 

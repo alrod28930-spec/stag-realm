@@ -103,12 +103,40 @@ serve(async (req) => {
       }
     });
 
-    // Mock bot order execution (replace with real brokerage integration)
-    const orderId = crypto.randomUUID();
-    const executedPrice = tradeRequest.price || (Math.random() * 100 + 50);
+    // Execute bot trade through Alpaca Paper Trading API
+    const alpacaApiKey = Deno.env.get('ALPACA_API_KEY');
+    const alpacaSecretKey = Deno.env.get('ALPACA_SECRET_KEY');
     
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 500));
+    if (!alpacaApiKey || !alpacaSecretKey) {
+      throw new Error('Alpaca API credentials not configured');
+    }
+
+    const alpacaOrder = {
+      symbol: tradeRequest.symbol,
+      qty: tradeRequest.quantity.toString(),
+      side: tradeRequest.side,
+      type: 'market', // Bots typically use market orders for speed
+      time_in_force: 'day'
+    };
+
+    const alpacaResponse = await fetch('https://paper-api.alpaca.markets/v2/orders', {
+      method: 'POST',
+      headers: {
+        'APCA-API-KEY-ID': alpacaApiKey,
+        'APCA-API-SECRET-KEY': alpacaSecretKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(alpacaOrder),
+    });
+
+    if (!alpacaResponse.ok) {
+      const errorData = await alpacaResponse.json();
+      throw new Error(`Alpaca bot order failed: ${errorData.message || alpacaResponse.status}`);
+    }
+
+    const alpacaResult = await alpacaResponse.json();
+    const orderId = alpacaResult.id;
+    const executedPrice = parseFloat(alpacaResult.filled_avg_price || tradeRequest.price || '0');
 
     // Log successful bot execution
     await supabaseClient.from('rec_events').insert({
@@ -130,8 +158,9 @@ serve(async (req) => {
         strategy: tradeRequest.strategy,
         confidence: tradeRequest.confidence,
         mode: botProfile.mode,
-        status: 'filled',
-        brokerage: 'mock_broker'
+        status: alpacaResult.status === 'filled' ? 'filled' : 'pending',
+        brokerage: 'alpaca_paper',
+        alpaca_order_id: orderId
       }
     });
 

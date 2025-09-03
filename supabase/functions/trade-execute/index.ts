@@ -72,12 +72,42 @@ serve(async (req) => {
       }
     });
 
-    // Mock order execution (replace with real brokerage integration)
-    const orderId = crypto.randomUUID();
-    const executedPrice = tradeRequest.price || (Math.random() * 100 + 50); // Mock price
+    // Execute trade through Alpaca Paper Trading API
+    const alpacaApiKey = Deno.env.get('ALPACA_API_KEY');
+    const alpacaSecretKey = Deno.env.get('ALPACA_SECRET_KEY');
     
-    // Simulate order processing time
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (!alpacaApiKey || !alpacaSecretKey) {
+      throw new Error('Alpaca API credentials not configured');
+    }
+
+    const alpacaOrder = {
+      symbol: tradeRequest.symbol,
+      qty: tradeRequest.quantity.toString(),
+      side: tradeRequest.side,
+      type: tradeRequest.order_type === 'market' ? 'market' : 'limit',
+      time_in_force: 'day',
+      ...(tradeRequest.price && { limit_price: tradeRequest.price.toString() }),
+      ...(tradeRequest.stop_price && { stop_price: tradeRequest.stop_price.toString() })
+    };
+
+    const alpacaResponse = await fetch('https://paper-api.alpaca.markets/v2/orders', {
+      method: 'POST',
+      headers: {
+        'APCA-API-KEY-ID': alpacaApiKey,
+        'APCA-API-SECRET-KEY': alpacaSecretKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(alpacaOrder),
+    });
+
+    if (!alpacaResponse.ok) {
+      const errorData = await alpacaResponse.json();
+      throw new Error(`Alpaca order failed: ${errorData.message || alpacaResponse.status}`);
+    }
+
+    const alpacaResult = await alpacaResponse.json();
+    const orderId = alpacaResult.id;
+    const executedPrice = parseFloat(alpacaResult.filled_avg_price || tradeRequest.price || '0');
 
     // Log successful execution
     await supabaseClient.from('rec_events').insert({
@@ -95,8 +125,9 @@ serve(async (req) => {
         order_type: tradeRequest.order_type,
         quantity: tradeRequest.quantity,
         executed_price: executedPrice,
-        status: 'filled',
-        brokerage: 'mock_broker'
+        status: alpacaResult.status === 'filled' ? 'filled' : 'pending',
+        brokerage: 'alpaca_paper',
+        alpaca_order_id: orderId
       }
     });
 
