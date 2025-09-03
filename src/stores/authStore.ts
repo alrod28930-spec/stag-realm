@@ -29,6 +29,17 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       initializeAuth: async () => {
         try {
+          // Check for demo user in persisted state first
+          const currentState = get();
+          if (currentState.user?.email === 'demo@example.com') {
+            set({
+              user: currentState.user,
+              isAuthenticated: true,
+              isLoading: false
+            });
+            return;
+          }
+
           // Get initial session
           const { data: { session } } = await supabase.auth.getSession();
           
@@ -103,7 +114,31 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
         
         try {
-          // Simple sign-in for all accounts including demo
+          // Handle demo account specially
+          if (credentials.email === 'demo@example.com' && credentials.password === 'demo123') {
+            const demoUser: User = {
+              id: '00000000-0000-0000-0000-000000000000',
+              email: 'demo@example.com',
+              name: 'Demo User',
+              role: 'Member',
+              organizationId: '00000000-0000-0000-0000-000000000001',
+              avatar: undefined,
+              isActive: true,
+              createdAt: new Date(),
+              lastLogin: new Date()
+            };
+
+            set({
+              user: demoUser,
+              isAuthenticated: true,
+              isLoading: false
+            });
+            
+            eventBus.emit('user-login' as any, { email: demoUser.email, timestamp: new Date() });
+            return { data: { user: demoUser }, error: null };
+          }
+
+          // Regular authentication for non-demo accounts
           const { data, error } = await supabase.auth.signInWithPassword({
             email: credentials.email,
             password: credentials.password
@@ -198,6 +233,18 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         const { user } = get();
         
         try {
+          // Handle demo account logout
+          if (user?.email === 'demo@example.com') {
+            set({
+              user: null,
+              organization: null,
+              isAuthenticated: false,
+              isLoading: false
+            });
+            eventBus.emit('user-logout' as any, { timestamp: new Date() });
+            return;
+          }
+
           await supabase.auth.signOut();
           
           logger.info('User logged out', { userId: user?.id });
@@ -256,3 +303,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }
   )
 );
+
+// Expose auth store to window for utility functions
+if (typeof window !== 'undefined') {
+  (window as any).__authStore = useAuthStore.getState();
+  useAuthStore.subscribe((state) => {
+    (window as any).__authStore = state;
+  });
+}

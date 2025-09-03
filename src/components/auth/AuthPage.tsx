@@ -211,13 +211,13 @@ export function AuthPage() {
                       setEmail('demo@example.com');
                       setPassword('demo123');
                       toast({
-                        title: "Demo Mode",
-                        description: "Demo credentials loaded. Click Sign In to continue.",
+                        title: "Demo Credentials Loaded",
+                        description: "Click 'Sign In' to access the demo account.",
                       });
                     }}
                     disabled={isLoading}
                   >
-                    Use Demo Account
+                    Load Demo Credentials
                   </Button>
                   
                   <div className="text-center">
