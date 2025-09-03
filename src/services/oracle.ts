@@ -248,8 +248,28 @@ class OracleService {
     try {
       // Store in Supabase oracle_signals table
       const { supabase } = await import('../integrations/supabase/client');
+      
+      // Get current user to determine workspace
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.warn('No authenticated user, skipping database storage');
+        return;
+      }
+
+      // Get user's workspace
+      const { data: workspaces } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1);
+      
+      if (!workspaces || workspaces.length === 0) {
+        console.warn('No workspace found for user, skipping database storage');
+        return;
+      }
+
       const { error } = await supabase.from('oracle_signals').insert({
-        workspace_id: '00000000-0000-0000-0000-000000000001', // Default workspace
+        workspace_id: workspaces[0].workspace_id,
         signal_type: signal.type,
         symbol: signal.symbol,
         direction: signal.direction === 'bullish' ? 1 : signal.direction === 'bearish' ? -1 : 0,
@@ -423,10 +443,30 @@ class OracleService {
     try {
       // Get signals from database
       const { supabase } = await import('../integrations/supabase/client');
+      
+      // Get current user to determine workspace
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.warn('No authenticated user for database query');
+        return this.signals.slice(0, limit);
+      }
+
+      // Get user's workspace
+      const { data: workspaces } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1);
+      
+      if (!workspaces || workspaces.length === 0) {
+        console.warn('No workspace found for user');
+        return this.signals.slice(0, limit);
+      }
+
       const { data, error } = await supabase
         .from('oracle_signals')
         .select('*')
-        .eq('workspace_id', '00000000-0000-0000-0000-000000000001')
+        .eq('workspace_id', workspaces[0].workspace_id)
         .order('ts', { ascending: false })
         .limit(limit);
 
