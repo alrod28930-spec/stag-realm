@@ -12,16 +12,32 @@ import { OrderHistoryTable } from '@/components/tradingdesk/OrderHistoryTable';
 import { ComplianceFooter } from '@/components/tradingdesk/ComplianceFooter';
 import TradeBots from '@/pages/TradeBots';
 import { Bot } from 'lucide-react';
+import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
+import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import { useDemoMode } from '@/utils/demoMode';
 
 export default function TradingDesk() {
+  const { isDemoMode } = useDemoMode();
+
   return (
     <div className="space-y-6">
+      {/* Demo Disclaimer */}
+      {isDemoMode && (
+        <DemoDisclaimer feature="Trading Desk" />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Trading Desk</h1>
+          <h1 className="text-3xl font-bold flex items-center">
+            Trading Desk
+            {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
+          </h1>
           <p className="text-muted-foreground mt-2">
-            Execute trades manually and manage automated trading bots
+            {isDemoMode 
+              ? "Explore manual trading and automated bot features with simulated data"
+              : "Execute trades manually and manage automated trading bots"
+            }
           </p>
         </div>
       </div>

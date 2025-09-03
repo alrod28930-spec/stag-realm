@@ -22,12 +22,17 @@ import {
 import { oracle } from '@/services/oracle';
 import type { ProcessedSignal, OracleAlert, SectorHeatmap } from '@/types/oracle';
 import { eventBus } from '@/services/eventBus';
+import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
+import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import { useDemoMode } from '@/utils/demoMode';
+import { demoDataService } from '@/services/demoDataService';
 
 export default function Oracle() {
   const [signals, setSignals] = useState<ProcessedSignal[]>([]);
   const [alerts, setAlerts] = useState<OracleAlert[]>([]);
   const [sectorHeatmap, setSectorHeatmap] = useState<SectorHeatmap>({});
   const [filteredSignals, setFilteredSignals] = useState<ProcessedSignal[]>([]);
+  const { isDemoMode } = useDemoMode();
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,29 +46,93 @@ export default function Oracle() {
   useEffect(() => {
     loadOracleData();
 
-    // Subscribe to Oracle updates
-    const unsubscribeRefresh = eventBus.on('oracle.refreshed', loadOracleData);
-    const unsubscribeSignal = eventBus.on('oracle.signal.created', (signal: ProcessedSignal) => {
-      setSignals(prev => [signal, ...prev.slice(0, 99)]);
-    });
-    const unsubscribeAlert = eventBus.on('oracle.alert', (alert: OracleAlert) => {
-      setAlerts(prev => [alert, ...prev.slice(0, 49)]);
-    });
+    if (!isDemoMode) {
+      // Subscribe to Oracle updates only for non-demo users
+      const unsubscribeRefresh = eventBus.on('oracle.refreshed', loadOracleData);
+      const unsubscribeSignal = eventBus.on('oracle.signal.created', (signal: ProcessedSignal) => {
+        setSignals(prev => [signal, ...prev.slice(0, 99)]);
+      });
+      const unsubscribeAlert = eventBus.on('oracle.alert', (alert: OracleAlert) => {
+        setAlerts(prev => [alert, ...prev.slice(0, 49)]);
+      });
 
-    return () => {
-      // Cleanup event listeners if needed
-    };
-  }, []);
+      return () => {
+        // Cleanup event listeners if needed
+      };
+    }
+  }, [isDemoMode]);
 
   useEffect(() => {
     applyFilters();
   }, [signals, searchTerm, selectedSeverity, selectedType, selectedTimeframe]);
 
   const loadOracleData = () => {
-    setSignals(oracle.getSignals(100));
-    setAlerts(oracle.getAlerts(50));
-    setSectorHeatmap(oracle.getSectorHeatmap());
-    setLastRefresh(oracle.getLastRefresh());
+    if (isDemoMode) {
+      // Use demo data
+      const demoSignals = demoDataService.getOracleSignals(100);
+      setSignals(demoSignals.map(signal => ({
+        id: signal.id,
+        signal: signal.summary || 'Demo Signal',
+        description: signal.summary || 'Demonstration signal with mock data',
+        type: (signal.signal_type === 'technical' ? 'technical_breakout' : 'news_sentiment') as any,
+        severity: (signal.strength > 0.8 ? 'high' : 'medium') as any,
+        direction: (signal.direction > 0 ? 'bullish' : 'bearish') as any,
+        symbol: signal.symbol,
+        sector: 'Technology',
+        confidence: signal.strength,
+        timestamp: new Date(signal.ts),
+        sources: [signal.source || 'Demo Source'],
+        data: { demoData: true, originalStrength: signal.strength }
+      })));
+      
+      setAlerts([
+        {
+          id: 'demo-alert-1',
+          type: 'unusual_activity' as any,
+          title: 'Demo Market Alert',
+          message: 'This is a demonstration alert showing how market notifications appear',
+          severity: 'medium' as any,
+          timestamp: new Date(Date.now() - 10 * 60 * 1000),
+          affectedSymbols: ['DEMO'],
+          affectedSectors: ['Technology'],
+          actionRequired: false,
+          relatedSignals: ['demo-signal-1']
+        }
+      ]);
+      
+      setSectorHeatmap({
+        'Technology': { 
+          performance: 2.1, 
+          signals: 5,
+          volume: 1500000,
+          volatility: 0.15,
+          sentiment: 'positive' as any,
+          lastUpdated: new Date()
+        },
+        'Healthcare': { 
+          performance: -0.8, 
+          signals: 2,
+          volume: 800000,
+          volatility: 0.12,
+          sentiment: 'negative' as any,
+          lastUpdated: new Date()
+        },
+        'Finance': { 
+          performance: 1.3, 
+          signals: 3,
+          volume: 1200000,
+          volatility: 0.18,
+          sentiment: 'neutral' as any,
+          lastUpdated: new Date()
+        }
+      });
+    } else {
+      // Use real data
+      setSignals(oracle.getSignals(100));
+      setAlerts(oracle.getAlerts(50));
+      setSectorHeatmap(oracle.getSectorHeatmap());
+    }
+    setLastRefresh(new Date());
   };
 
   const applyFilters = () => {
@@ -167,14 +236,25 @@ export default function Oracle() {
 
   return (
     <div className="space-y-6">
+      {/* Demo Disclaimer */}
+      {isDemoMode && (
+        <DemoDisclaimer feature="Oracle Intelligence System" />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Zap className="w-8 h-8 text-accent" />
           <div>
-            <h1 className="text-2xl font-bold">Oracle Intelligence</h1>
+            <h1 className="text-2xl font-bold flex items-center">
+              Oracle Intelligence
+              {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
+            </h1>
             <p className="text-muted-foreground">
-              Market scanning and signal extraction engine
+              {isDemoMode 
+                ? "Explore our market scanning and signal extraction engine with demo data"
+                : "Market scanning and signal extraction engine"
+              }
             </p>
           </div>
         </div>

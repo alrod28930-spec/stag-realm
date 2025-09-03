@@ -16,22 +16,37 @@ import {
 } from 'lucide-react';
 import { ComplianceStatus } from '@/components/compliance/ComplianceStatus';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
+import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
+import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import { useDemoMode } from '@/utils/demoMode';
+import { demoDataService } from '@/services/demoDataService';
 
 export default function Dashboard() {
   const { portfolio, positions, loadPortfolio, subscribeToUpdates } = useRealPortfolioStore();
+  const { isDemoMode } = useDemoMode();
 
-  // Load portfolio data and subscribe to updates
+  // Load portfolio data and subscribe to updates (only for non-demo users)
   useEffect(() => {
-    loadPortfolio();
-    const unsubscribe = subscribeToUpdates();
-    return unsubscribe;
-  }, [loadPortfolio, subscribeToUpdates]);
+    if (!isDemoMode) {
+      loadPortfolio();
+      const unsubscribe = subscribeToUpdates();
+      return unsubscribe;
+    }
+  }, [loadPortfolio, subscribeToUpdates, isDemoMode]);
+
+  // Get portfolio data based on demo mode
+  const portfolioData = isDemoMode ? demoDataService.getPortfolio() : {
+    equity: portfolio?.equity || 0,
+    cash: portfolio?.cash || 0,
+    positions: positions || []
+  };
 
   // Calculate real-time stats
-  const portfolioValue = portfolio?.equity || 0;
-  const availableCash = portfolio?.cash || 0;
-  const totalPositions = positions.length;
-  const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + (pos.unr_pnl || 0), 0);
+  const portfolioValue = portfolioData.equity || 0;
+  const availableCash = portfolioData.cash || 0;
+  const currentPositions = portfolioData.positions || [];
+  const totalPositions = currentPositions.length;
+  const totalUnrealizedPnL = currentPositions.reduce((sum, pos) => sum + (pos.unr_pnl || 0), 0);
 
   // Mock data for other stats that would come from trading bots, etc.
   const stats = [
@@ -65,8 +80,8 @@ export default function Dashboard() {
     },
   ];
 
-  // Use real positions or show empty state
-  const displayPositions = positions.slice(0, 4).map(pos => ({
+  // Use real positions or demo data
+  const displayPositions = currentPositions.slice(0, 4).map(pos => ({
     symbol: pos.symbol,
     side: pos.qty > 0 ? 'Long' : 'Short',
     qty: Math.abs(pos.qty),
@@ -77,12 +92,25 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Demo Disclaimer */}
+      {isDemoMode && (
+        <DemoDisclaimer feature="Trading Dashboard" />
+      )}
+
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Trading Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          Welcome back! Here's an overview of your trading activity.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center">
+            Trading Dashboard
+            {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            {isDemoMode 
+              ? "Explore our trading platform with simulated data and features"
+              : "Welcome back! Here's an overview of your trading activity."
+            }
+          </p>
+        </div>
       </div>
 
       {/* Stats Grid */}

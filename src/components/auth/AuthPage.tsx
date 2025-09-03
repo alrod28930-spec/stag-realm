@@ -210,14 +210,10 @@ export function AuthPage() {
                     onClick={() => {
                       setEmail('demo@example.com');
                       setPassword('demo123');
-                      toast({
-                        title: "Demo Credentials Loaded",
-                        description: "Click 'Sign In' to access the demo account.",
-                      });
                     }}
                     disabled={isLoading}
                   >
-                    Load Demo Credentials
+                    Use Demo Account
                   </Button>
                   
                   <div className="text-center">

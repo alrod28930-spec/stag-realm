@@ -37,6 +37,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               isAuthenticated: true,
               isLoading: false
             });
+            
+            // Initialize demo mode
+            const { initializeDemoMode } = await import('@/utils/demoMode');
+            initializeDemoMode();
             return;
           }
 
@@ -133,6 +137,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               isAuthenticated: true,
               isLoading: false
             });
+            
+            // Initialize demo mode
+            const { initializeDemoMode } = await import('@/utils/demoMode');
+            initializeDemoMode();
             
             eventBus.emit('user-login' as any, { email: demoUser.email, timestamp: new Date() });
             return { data: { user: demoUser }, error: null };
