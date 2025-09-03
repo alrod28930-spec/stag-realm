@@ -9,8 +9,8 @@ export async function getCurrentUserWorkspace(): Promise<string | null> {
     if (!user) {
       // Check if we have a demo user from the auth store
       const authStore = (window as any).__authStore;
-      if (authStore?.user?.email === 'demo@example.com') {
-        return '00000000-0000-0000-0000-000000000001'; // Default workspace for demo
+      if (authStore?.user?.email === 'demo@example.com' || authStore?.user?.email === 'john.trader@stagalgo.com') {
+        return '00000000-0000-0000-0000-000000000001'; // Default workspace for test accounts
       }
       return null;
     }
@@ -62,6 +62,12 @@ export async function getCurrentUser() {
       return {
         id: '00000000-0000-0000-0000-000000000000',
         email: 'demo@example.com'
+      };
+    }
+    if (authStore?.user?.email === 'john.trader@stagalgo.com') {
+      return {
+        id: '00000000-0000-0000-0000-000000000002',
+        email: 'john.trader@stagalgo.com'
       };
     }
   }

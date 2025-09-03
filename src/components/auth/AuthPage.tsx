@@ -202,19 +202,33 @@ export function AuthPage() {
                     )}
                   </Button>
                   
-                  {/* Demo Access Button */}
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      setEmail('demo@example.com');
-                      setPassword('demo123');
-                    }}
-                    disabled={isLoading}
-                  >
-                    Use Demo Account
-                  </Button>
+                  {/* Test Account Buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      className="w-full text-xs"
+                      onClick={() => {
+                        setEmail('demo@example.com');
+                        setPassword('demo123');
+                      }}
+                      disabled={isLoading}
+                    >
+                      Demo Account
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      className="w-full text-xs"
+                      onClick={() => {
+                        setEmail('john.trader@stagalgo.com');
+                        setPassword('owner123');
+                      }}
+                      disabled={isLoading}
+                    >
+                      Owner Account
+                    </Button>
+                  </div>
                   
                   <div className="text-center">
                     <Button
