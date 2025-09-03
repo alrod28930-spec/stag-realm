@@ -378,6 +378,60 @@ export type Database = {
           },
         ]
       }
+      faqs: {
+        Row: {
+          answer: string
+          created_at: string | null
+          id: string
+          question: string
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          answer: string
+          created_at?: string | null
+          id?: string
+          question: string
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          answer?: string
+          created_at?: string | null
+          id?: string
+          question?: string
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      glossary: {
+        Row: {
+          created_at: string | null
+          definition: string
+          examples: string | null
+          see_also: string[] | null
+          term: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          definition: string
+          examples?: string | null
+          see_also?: string[] | null
+          term: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          definition?: string
+          examples?: string | null
+          see_also?: string[] | null
+          term?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       indicators: {
         Row: {
           atr14: number | null
@@ -472,6 +526,126 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      kb_chunks: {
+        Row: {
+          content: string
+          created_at: string | null
+          document_id: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          document_id?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          document_id?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "kb_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_documents: {
+        Row: {
+          created_at: string | null
+          doc_type: string | null
+          id: string
+          language: string | null
+          source_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          doc_type?: string | null
+          id?: string
+          language?: string | null
+          source_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          doc_type?: string | null
+          id?: string
+          language?: string | null
+          source_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_documents_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "kb_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_embeddings: {
+        Row: {
+          chunk_id: string
+          created_at: string | null
+          embedding: string | null
+        }
+        Insert: {
+          chunk_id: string
+          created_at?: string | null
+          embedding?: string | null
+        }
+        Update: {
+          chunk_id?: string
+          created_at?: string | null
+          embedding?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_embeddings_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: true
+            referencedRelation: "kb_chunks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_sources: {
+        Row: {
+          created_at: string | null
+          id: string
+          license: string | null
+          name: string
+          priority: number | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          license?: string | null
+          name: string
+          priority?: number | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          license?: string | null
+          name?: string
+          priority?: number | null
+          url?: string | null
+        }
+        Relationships: []
       }
       oracle_news: {
         Row: {
