@@ -113,10 +113,28 @@ export class PaperTradingTester {
     console.log('🚀 Starting comprehensive paper trading tests...');
     
     const startTime = Date.now();
-    this.workspaceId = await getCurrentUserWorkspace();
     
-    if (!this.workspaceId) {
-      throw new Error('No workspace found for testing');
+    // Get current user and workspace with better error handling
+    try {
+      this.workspaceId = await getCurrentUserWorkspace();
+      console.log('Detected workspace ID:', this.workspaceId);
+      
+      if (!this.workspaceId) {
+        // Try to get user directly from Supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('Current user:', user);
+        
+        if (!user) {
+          throw new Error('No authenticated user found. Please log in to run tests.');
+        }
+        
+        // Use user ID as workspace fallback
+        this.workspaceId = user.id;
+        console.log('Using user ID as workspace:', this.workspaceId);
+      }
+    } catch (error) {
+      console.error('Workspace detection error:', error);
+      throw new Error(`Authentication required: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     for (const scenario of this.testReport.scenarios) {
@@ -160,11 +178,23 @@ export class PaperTradingTester {
 
   private async testAlpacaConnection(): Promise<TestResult> {
     try {
-      // Connection test would typically use environment variables
-      // For this test, we'll simulate a connection check via edge function
+      console.log('Testing Alpaca connection with workspace:', this.workspaceId);
+      
+      // Test connection by calling the sync function
       const response = await supabase.functions.invoke('alpaca-sync');
       
       if (response.error) {
+        // Check if it's an API key issue
+        if (response.error.message?.includes('credentials not configured')) {
+          return {
+            success: false,
+            message: 'Alpaca API credentials not configured in Supabase secrets',
+            error: 'Please add ALPACA_API_KEY and ALPACA_SECRET_KEY to Supabase secrets',
+            duration: 0,
+            timestamp: new Date()
+          };
+        }
+        
         return {
           success: false,
           message: 'Failed to connect to Alpaca API',
