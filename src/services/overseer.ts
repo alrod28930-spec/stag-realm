@@ -46,12 +46,18 @@ export class Overseer {
       });
     });
 
+    // Register with service manager
+    const { serviceManager } = require('./serviceManager');
+    serviceManager.registerService('overseer', this, () => this.cleanup());
+    
     // Position-level monitoring
-    setInterval(() => {
+    serviceManager.createInterval('overseer', () => {
       this.performPositionScanning().catch(error => {
         logService.log('error', 'Overseer position scanning failed', { error });
       });
     }, 15000); // Every 15 seconds - more frequent than Monarch
+    
+    serviceManager.startService('overseer');
 
     logService.log('info', 'Overseer position governor initialized');
   }
@@ -494,6 +500,10 @@ export class Overseer {
     if (!context) confidence *= 0.7;
     
     return Math.max(confidence, 0.3);
+  }
+
+  private cleanup(): void {
+    logService.log('info', 'Overseer cleanup completed');
   }
 
   // Public methods

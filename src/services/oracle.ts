@@ -72,15 +72,26 @@ class OracleService {
   }
 
   private async startDataFeeds() {
+    const { serviceManager } = require('./serviceManager');
+    
+    // Register this service
+    serviceManager.registerService('oracle', this, () => this.cleanup());
+    
     // Simulate real-time data feeds
-    setInterval(() => {
+    serviceManager.createInterval('oracle', () => {
       if (this.isActive) {
         this.simulateMarketData();
       }
     }, 30000); // Update every 30 seconds
 
+    serviceManager.startService('oracle');
+    
     // Initial data load
     this.simulateMarketData();
+  }
+
+  private cleanup(): void {
+    logService.log('info', 'Oracle service cleanup completed');
   }
 
   private simulateMarketData() {
@@ -123,8 +134,8 @@ class OracleService {
     
     for (let i = 0; i < numSignals; i++) {
       const type = signalTypes[Math.floor(Math.random() * signalTypes.length)];
-      const symbol = Math.random() > 0.3 ? symbols[Math.floor(Math.random() * symbols.length)] : undefined;
-      const sector = Math.random() > 0.5 ? sectors[Math.floor(Math.random() * sectors.length)] : undefined;
+      const symbol = symbols[Math.floor(Math.random() * symbols.length)]; // Always provide valid symbol
+      const sector = sectors[Math.floor(Math.random() * sectors.length)]; // Always provide valid sector
       
       signals.push({
         id: `signal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

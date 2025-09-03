@@ -192,10 +192,17 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   }
 }));
 
-// Auto-refresh portfolio every 30 seconds when connected
-setInterval(async () => {
+// Auto-refresh portfolio every 30 seconds when connected - managed by service manager
+const { serviceManager } = require('@/services/serviceManager');
+serviceManager.registerService('portfolioStore', usePortfolioStore, () => {
+  // Cleanup handled by service manager
+});
+
+serviceManager.createGlobalInterval(async () => {
   const { isConnected, refreshPortfolio } = usePortfolioStore.getState();
   if (isConnected) {
     await refreshPortfolio();
   }
 }, 30000);
+
+serviceManager.startService('portfolioStore');

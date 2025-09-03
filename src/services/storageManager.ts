@@ -114,18 +114,23 @@ class StorageManagerService {
   }
 
   private startStorageManager() {
+    const { serviceManager } = require('./serviceManager');
+    
+    // Register this service
+    serviceManager.registerService('storageManager', this, () => this.cleanup());
+    
     // Run storage cleanup every 6 hours
-    this.cleanupInterval = setInterval(() => {
+    serviceManager.createInterval('storageManager', () => {
       this.performStorageCleanup();
     }, 6 * 60 * 60 * 1000);
 
     // Run archive process daily
-    setInterval(() => {
+    serviceManager.createInterval('storageManager', () => {
       this.performArchivalProcess();
     }, 24 * 60 * 60 * 1000);
 
     // Update storage stats every hour
-    setInterval(() => {
+    serviceManager.createInterval('storageManager', () => {
       this.updateStorageStats();
     }, 60 * 60 * 1000);
 
@@ -135,7 +140,16 @@ class StorageManagerService {
       this.updateStorageStats();
     }, 30000);
 
+    serviceManager.startService('storageManager');
     logService.log('info', 'Storage manager started');
+  }
+
+  private cleanup(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    logService.log('info', 'Storage manager cleanup completed');
   }
 
   private subscribeToEvents() {

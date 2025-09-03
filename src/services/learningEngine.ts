@@ -379,7 +379,14 @@ export class LearningEngine {
 // Export singleton instance
 export const learningEngine = new LearningEngine();
 
-// Auto-save learning state every 5 minutes
-setInterval(() => {
+// Auto-save learning state every 5 minutes - managed by service manager
+const { serviceManager } = require('./serviceManager');
+serviceManager.registerService('learningEngine', learningEngine, () => {
+  console.log('Learning Engine cleanup completed');
+});
+
+serviceManager.createGlobalInterval(() => {
   learningEngine.saveLearningState();
 }, 5 * 60 * 1000);
+
+serviceManager.startService('learningEngine');

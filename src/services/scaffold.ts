@@ -138,10 +138,25 @@ class CoreScaffold {
   }
 
   private startHealthChecks() {
+    const { serviceManager } = require('./serviceManager');
+    
+    // Register this service
+    serviceManager.registerService('scaffold', this, () => this.cleanup());
+    
     // Health check every 30 seconds
-    this.healthCheckInterval = setInterval(() => {
+    this.healthCheckInterval = serviceManager.createInterval('scaffold', () => {
       this.performHealthCheck();
     }, 30000);
+    
+    serviceManager.startService('scaffold');
+  }
+
+  private cleanup(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = undefined;
+    }
+    logService.log('info', 'Scaffold cleanup completed');
   }
 
   private performHealthCheck() {
@@ -327,9 +342,7 @@ class CoreScaffold {
   }
 
   public shutdown(): void {
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-    }
+    this.cleanup();
     
     logService.log('info', 'Core Scaffold shutting down', {
       uptime_seconds: this.systemState.uptime_seconds

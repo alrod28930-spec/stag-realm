@@ -4,7 +4,8 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SystemStatus } from '@/components/scaffold/SystemStatus';
 import { MetricsDisplay } from '@/components/scaffold/MetricsDisplay';
-import { Monitor, Activity, BarChart3, Settings } from 'lucide-react';
+import { SystemHealthMonitor } from '@/components/debug/SystemHealthMonitor';
+import { Monitor, Activity, BarChart3, Settings, Heart } from 'lucide-react';
 
 export default function SystemMonitor() {
   return (
@@ -24,8 +25,13 @@ export default function SystemMonitor() {
       </div>
 
       {/* Monitoring Tabs */}
-      <Tabs defaultValue="status" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 h-12">
+      <Tabs defaultValue="health" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 h-12">
+          <TabsTrigger value="health" className="flex items-center gap-2 text-sm">
+            <Heart className="w-4 h-4" />
+            <span className="hidden sm:inline">Service Health</span>
+            <span className="sm:hidden">Health</span>
+          </TabsTrigger>
           <TabsTrigger value="status" className="flex items-center gap-2 text-sm">
             <Activity className="w-4 h-4" />
             <span className="hidden sm:inline">System Status</span>
@@ -42,6 +48,10 @@ export default function SystemMonitor() {
             <span className="sm:hidden">Config</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="health" className="space-y-6">
+          <SystemHealthMonitor />
+        </TabsContent>
 
         <TabsContent value="status" className="space-y-6">
           <SystemStatus />

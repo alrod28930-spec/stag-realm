@@ -242,25 +242,36 @@ class BIDCore {
   }
 
   private startMaintenanceTasks() {
+    const { serviceManager } = require('./serviceManager');
+    
+    // Register this service
+    serviceManager.registerService('bidCore', this, () => this.cleanup());
+    
     // Calculate indicators every 5 minutes
-    setInterval(() => {
+    serviceManager.createInterval('bidCore', () => {
       this.updateIndicators();
     }, 5 * 60 * 1000);
 
     // Update risk metrics every minute
-    setInterval(() => {
+    serviceManager.createInterval('bidCore', () => {
       this.updateRiskMetrics();
     }, 60 * 1000);
 
     // Clean old data every hour
-    setInterval(() => {
+    serviceManager.createInterval('bidCore', () => {
       this.performMaintenance();
     }, 60 * 60 * 1000);
 
     // Update performance daily
-    setInterval(() => {
+    serviceManager.createInterval('bidCore', () => {
       this.updatePerformanceMetrics();
     }, 24 * 60 * 60 * 1000);
+    
+    serviceManager.startService('bidCore');
+  }
+
+  private cleanup(): void {
+    logService.log('info', 'BID Core cleanup completed');
   }
 
   // A) Market Primitives Storage
