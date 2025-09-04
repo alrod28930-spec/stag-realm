@@ -33,7 +33,8 @@ interface OracleProps {
   onAnalyzeSignal?: (signal: ProcessedSignal) => void;
 }
 
-export default function Oracle({ onAnalyzeSignal }: OracleProps = {}) {
+export default function Oracle(props: OracleProps = {}) {
+  const { onAnalyzeSignal } = props;
   const [signals, setSignals] = useState<ProcessedSignal[]>([]);
   const [alerts, setAlerts] = useState<OracleAlert[]>([]);
   const [sectorHeatmap, setSectorHeatmap] = useState<SectorHeatmap>({});

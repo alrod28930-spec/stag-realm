@@ -35,7 +35,8 @@ interface AnalystProps {
   selectedSignal?: ProcessedSignal | null;
 }
 
-export default function Analyst({ selectedSignal }: AnalystProps = {}) {
+export default function Analyst(props: AnalystProps = {}) {
+  const { selectedSignal } = props;
   const [messages, setMessages] = useState<AnalystMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -50,18 +51,12 @@ export default function Analyst({ selectedSignal }: AnalystProps = {}) {
   const [portfolioData, setPortfolioData] = useState<any>(null);
   const [riskMetrics, setRiskMetrics] = useState<any>(null);
 
+  const [hasProcessedSignal, setHasProcessedSignal] = useState<string | null>(null);
+
   useEffect(() => {
     // Start analyst session and load initial data
     analystService.startSession();
     loadContextData();
-    
-    // If we have a selected signal, analyze it automatically
-    if (selectedSignal) {
-      const message = `Please analyze this Oracle signal: "${selectedSignal.signal}" for ${selectedSignal.symbol || 'the market'}. Signal type: ${selectedSignal.type.replace('_', ' ')}, Severity: ${selectedSignal.severity}, Direction: ${selectedSignal.direction}, Confidence: ${Math.round(selectedSignal.confidence * 100)}%. Description: ${selectedSignal.description}`;
-      analystService.processUserMessage(message).then(() => {
-        setMessages(analystService.getMessages());
-      });
-    }
     
     // Trigger session start disclaimer when Analyst is accessed
     showDisclaimer('analyst', 'view');
@@ -76,7 +71,30 @@ export default function Analyst({ selectedSignal }: AnalystProps = {}) {
       eventBus.off('portfolio.updated', handlePortfolioUpdate);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSignal]); // Add selectedSignal to deps
+  }, []); // Remove selectedSignal from deps to prevent infinite loop
+
+  // Separate effect for processing selected signal
+  useEffect(() => {
+    if (selectedSignal && selectedSignal.id !== hasProcessedSignal) {
+      const processSignal = async () => {
+        try {
+          const message = `Please analyze this Oracle signal: "${selectedSignal.signal}" for ${selectedSignal.symbol || 'the market'}. Signal type: ${selectedSignal.type.replace('_', ' ')}, Severity: ${selectedSignal.severity}, Direction: ${selectedSignal.direction}, Confidence: ${Math.round(selectedSignal.confidence * 100)}%. Description: ${selectedSignal.description}`;
+          await analystService.processUserMessage(message);
+          setMessages(analystService.getMessages());
+          setHasProcessedSignal(selectedSignal.id);
+        } catch (error) {
+          console.error('Failed to analyze signal:', error);
+          toast({
+            title: "Analysis Error", 
+            description: "Failed to analyze the selected signal",
+            variant: "destructive"
+          });
+        }
+      };
+
+      processSignal();
+    }
+  }, [selectedSignal, hasProcessedSignal, toast]);
 
   useEffect(() => {
     // Load messages from service

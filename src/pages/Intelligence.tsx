@@ -150,12 +150,12 @@ const Intelligence = () => {
 
 // Enhanced Oracle component with analyze signal functionality
 const OracleWithProps = ({ onAnalyzeSignal }: OracleProps) => {
-  return <Oracle onAnalyzeSignal={onAnalyzeSignal} />;
+  return <Oracle {...{ onAnalyzeSignal }} />;
 };
 
 // Enhanced Analyst component with signal context
 const AnalystWithProps = ({ selectedSignal }: AnalystProps) => {
-  return <Analyst selectedSignal={selectedSignal} />;
+  return <Analyst {...{ selectedSignal }} />;
 };
 
 export default Intelligence;
