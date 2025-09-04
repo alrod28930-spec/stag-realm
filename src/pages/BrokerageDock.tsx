@@ -1,265 +1,98 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Trash2, Plus, ExternalLink, Shield, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { useAuthStore } from '@/stores/authStore';
-
-interface DockedSite {
-  id: string;
-  label: string;
-  url: string;
-  created_at: string;
-}
+import { 
+  ArrowLeft, 
+  ArrowRight, 
+  RotateCcw, 
+  ExternalLink, 
+  Shield, 
+  Globe,
+  Home
+} from 'lucide-react';
 
 export default function BrokerageDock() {
-  const [dockedSites, setDockedSites] = useState<DockedSite[]>([]);
-  const [selectedSiteId, setSelectedSiteId] = useState<string>('');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newSite, setNewSite] = useState({ label: '', url: '' });
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-  const { user } = useAuthStore();
-  
-  // Default workspace ID - this should be updated to use proper workspace context
-  const workspaceId = '00000000-0000-0000-0000-000000000001';
+  const [currentUrl, setCurrentUrl] = useState('https://app.alpaca.markets');
+  const [inputUrl, setInputUrl] = useState('https://app.alpaca.markets');
+  const [isLoading, setIsLoading] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Check if user is authenticated
-  useEffect(() => {
-    if (!user) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to access the Brokerage Dock',
-        variant: 'destructive',
-      });
-      setLoading(false);
-      return;
+  // Popular trading platforms for quick access
+  const quickAccess = [
+    { name: 'Alpaca', url: 'https://app.alpaca.markets' },
+    { name: 'TradingView', url: 'https://www.tradingview.com' },
+    { name: 'Interactive Brokers', url: 'https://www.interactivebrokers.com' },
+    { name: 'TD Ameritrade', url: 'https://invest.ameritrade.com' },
+    { name: 'E*TRADE', url: 'https://us.etrade.com' },
+    { name: 'Yahoo Finance', url: 'https://finance.yahoo.com' }
+  ];
+
+  const formatUrl = (url: string) => {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return 'https://' + url;
     }
-    loadDockedSites();
-  }, [user]);
+    return url;
+  };
 
-  const loadDockedSites = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+  const navigateToUrl = (url: string) => {
+    const formattedUrl = formatUrl(url);
+    setCurrentUrl(formattedUrl);
+    setInputUrl(formattedUrl);
+    setIsLoading(true);
+  };
 
-    try {
-      const { data, error } = await supabase
-        .from('brokerage_dock_sites')
-        .select('*')
-        .order('created_at', { ascending: false });
+  const handleUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigateToUrl(inputUrl);
+  };
 
-      if (error) {
-        console.error('Error loading docked sites:', error);
-        throw error;
-      }
-
-      setDockedSites(data || []);
-      if (data && data.length > 0 && !selectedSiteId) {
-        setSelectedSiteId(data[0].id);
-      }
-    } catch (error) {
-      console.error('Error loading docked sites:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load docked sites',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+  const handleRefresh = () => {
+    if (iframeRef.current) {
+      iframeRef.current.src = currentUrl;
+      setIsLoading(true);
     }
   };
 
-  const addDockedSite = async () => {
-    if (!user) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to add docked sites',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!newSite.label || !newSite.url) {
-      toast({
-        title: 'Error',
-        description: 'Please provide both label and URL',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Add https:// if no protocol specified
-    let formattedUrl = newSite.url;
-    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
-      formattedUrl = 'https://' + formattedUrl;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('brokerage_dock_sites')
-        .insert([{ 
-          label: newSite.label, 
-          url: formattedUrl,
-          user_id: user.id, // ✅ Fixed: Add user_id for RLS policy
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Insert error:', error);
-        throw error;
-      }
-
-      // Log dock site creation event
+  const handleBack = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
       try {
-        await supabase.from('rec_events').insert([{
-          workspace_id: workspaceId,
-          event_type: 'dock.site_added',
-          severity: 1,
-          entity_type: 'dock_site',
-          entity_id: data.id,
-          summary: `Docked site added: ${newSite.label}`,
-          payload_json: { label: newSite.label, url: formattedUrl }
-        }]);
-      } catch (logError) {
-        console.error('Failed to log event:', logError);
-        // Don't fail the entire operation if logging fails
+        iframeRef.current.contentWindow.history.back();
+      } catch (error) {
+        console.log('Cannot access iframe history due to cross-origin restrictions');
       }
-
-      setDockedSites(prev => [data, ...prev]);
-      if (!selectedSiteId) {
-        setSelectedSiteId(data.id);
-      }
-      setNewSite({ label: '', url: '' });
-      setIsAddModalOpen(false);
-
-      toast({
-        title: 'Success',
-        description: 'Docked site added successfully',
-      });
-    } catch (error) {
-      console.error('Error adding docked site:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to add docked site',
-        variant: 'destructive',
-      });
     }
   };
 
-  const removeDockedSite = async (id: string, label: string) => {
-    if (!user) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to remove docked sites',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('brokerage_dock_sites')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Delete error:', error);
-        throw error;
-      }
-
-      // Log dock site removal event
+  const handleForward = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
       try {
-        await supabase.from('rec_events').insert([{
-          workspace_id: workspaceId,
-          event_type: 'dock.site_removed',
-          severity: 1,
-          entity_type: 'dock_site',
-          entity_id: id,
-          summary: `Docked site removed: ${label}`,
-          payload_json: { label }
-        }]);
-      } catch (logError) {
-        console.error('Failed to log event:', logError);
-        // Don't fail the entire operation if logging fails
+        iframeRef.current.contentWindow.history.forward();
+      } catch (error) {
+        console.log('Cannot access iframe history due to cross-origin restrictions');
       }
-
-      setDockedSites(prev => prev.filter(site => site.id !== id));
-      if (selectedSiteId === id) {
-        const remainingSites = dockedSites.filter(site => site.id !== id);
-        setSelectedSiteId(remainingSites.length > 0 ? remainingSites[0].id : '');
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Docked site removed successfully',
-      });
-    } catch (error) {
-      console.error('Error removing docked site:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to remove docked site',
-        variant: 'destructive',
-      });
     }
   };
 
-  const openSelectedSite = async (siteId: string) => {
-    const site = dockedSites.find(s => s.id === siteId);
-    if (site && user) {
-      // Log dock site open event
-      try {
-        await supabase.from('rec_events').insert([{
-          workspace_id: workspaceId,
-          event_type: 'dock.open',
-          severity: 1,
-          entity_type: 'dock_site',
-          entity_id: site.id,
-          summary: `Opened docked site: ${site.label}`,
-          payload_json: { label: site.label, url: site.url }
-        }]);
-      } catch (logError) {
-        console.error('Failed to log event:', logError);
-        // Don't fail the entire operation if logging fails
-      }
-    }
-    setSelectedSiteId(siteId);
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
   };
 
-  const selectedSite = dockedSites.find(site => site.id === selectedSiteId);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const droppedText = e.dataTransfer.getData('text/plain');
+    
+    // Check if dropped text looks like a URL
+    if (droppedText && (droppedText.includes('.') || droppedText.startsWith('http'))) {
+      navigateToUrl(droppedText);
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse">Loading docked sites...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Card className="w-96">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Shield className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Authentication Required</h3>
-            <p className="text-muted-foreground text-center">
-              Please log in to access the Brokerage Dock feature
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const openInNewTab = () => {
+    window.open(currentUrl, '_blank');
+  };
 
   return (
     <div className="space-y-6">
@@ -268,180 +101,148 @@ export default function BrokerageDock() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Brokerage Dock</h1>
           <p className="text-muted-foreground">
-            Access your external brokerage accounts and trading platforms
+            Simple web browser for accessing trading platforms and financial sites
           </p>
         </div>
-        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Docked Site
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Docked Site</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="label">Site Label</Label>
-                <Input
-                  id="label"
-                  placeholder="e.g., Alpaca Account"
-                  value={newSite.label}
-                  onChange={(e) => setNewSite(prev => ({ ...prev, label: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="url">Site URL</Label>
-                <Input
-                  id="url"
-                  placeholder="e.g., app.alpaca.markets"
-                  value={newSite.url}
-                  onChange={(e) => setNewSite(prev => ({ ...prev, url: e.target.value }))}
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={addDockedSite}>
-                  Add Site
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Compliance Banner */}
       <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
         <Shield className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-800 dark:text-amber-200">
-          <strong>Compliance Notice:</strong> Brokerage Dock is for convenience only. 
-          StagAlgo does not hold, custody, or manage your funds. You are viewing your external brokerage account.
+          <strong>Compliance Notice:</strong> StagAlgo does not hold, custody, or manage your funds. 
+          You are viewing external websites through a secure browser window.
         </AlertDescription>
       </Alert>
 
-      {/* Main Content */}
-      {dockedSites.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="text-center space-y-4">
-              <div className="mx-auto w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                <ExternalLink className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="text-lg font-medium">No Docked Sites Yet</h3>
-                <p className="text-muted-foreground">
-                  Add your first brokerage or trading platform to get started
-                </p>
-              </div>
-              <Button onClick={() => setIsAddModalOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Docked Site
+      {/* Quick Access Buttons */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Quick Access
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {quickAccess.map((site) => (
+              <Button
+                key={site.name}
+                variant="outline"
+                size="sm"
+                onClick={() => navigateToUrl(site.url)}
+                className="text-xs"
+              >
+                {site.name}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar - Docked Sites List */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Your Docked Sites</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {dockedSites.map((site) => (
-                  <div
-                    key={site.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
-                      selectedSiteId === site.id ? 'bg-muted border-primary' : 'border-border'
-                    }`}
-                    onClick={() => openSelectedSite(site.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-sm">{site.label}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {new URL(site.url).hostname}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeDockedSite(site.id, site.label);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Browser Interface */}
+      <Card className="h-[800px]">
+        <CardHeader className="pb-4">
+          {/* Navigation Controls */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBack}
+              className="p-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleForward}
+              className="p-2"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="p-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateToUrl('https://app.alpaca.markets')}
+              className="p-2"
+            >
+              <Home className="h-4 w-4" />
+            </Button>
           </div>
 
-          {/* Main Panel - Selected Site */}
-          <div className="lg:col-span-3">
-            <Card className="h-[800px]">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <Select value={selectedSiteId} onValueChange={openSelectedSite}>
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder="Select a docked site" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dockedSites.map((site) => (
-                          <SelectItem key={site.id} value={site.id}>
-                            {site.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {selectedSite && (
-                      <Badge variant="outline" className="text-xs">
-                        {new URL(selectedSite.url).hostname}
-                      </Badge>
-                    )}
-                  </div>
-                  {selectedSite && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(selectedSite.url, '_blank')}
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Open in New Tab
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                {selectedSite ? (
-                  <div className="relative h-[700px] w-full">
-                    <iframe
-                      src={selectedSite.url}
-                      className="w-full h-full border-0 rounded-b-lg"
-                      title={selectedSite.label}
-                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-[700px] text-muted-foreground">
-                    Select a docked site to view
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* URL Bar */}
+          <form onSubmit={handleUrlSubmit} className="flex gap-2">
+            <Input
+              type="text"
+              value={inputUrl}
+              onChange={(e) => setInputUrl(e.target.value)}
+              placeholder="Enter website URL or drag and drop a link here..."
+              className="flex-1"
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            />
+            <Button type="submit" variant="outline">
+              Go
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openInNewTab}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </form>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          <div 
+            className="relative h-[680px] w-full"
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            {isLoading && (
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+                <div className="animate-pulse text-muted-foreground">Loading...</div>
+              </div>
+            )}
+            
+            <iframe
+              ref={iframeRef}
+              src={currentUrl}
+              className="w-full h-full border-0 rounded-b-lg"
+              title="Brokerage Dock Browser"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation allow-downloads"
+              onLoad={() => setIsLoading(false)}
+              onError={() => setIsLoading(false)}
+            />
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
+
+      {/* Instructions */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p><strong>How to use:</strong></p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Type any website URL in the address bar and click "Go"</li>
+              <li>Use quick access buttons for popular trading platforms</li>
+              <li>Drag and drop URLs from your browser into the address bar</li>
+              <li>Use navigation buttons to go back, forward, or refresh</li>
+              <li>Click the external link button to open the current page in a new tab</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
