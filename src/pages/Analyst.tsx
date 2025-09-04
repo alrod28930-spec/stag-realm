@@ -264,15 +264,15 @@ export default function Analyst(props: AnalystProps = {}) {
             
             <CardContent className="flex-1 flex flex-col min-h-0 p-0 overflow-hidden">
               {/* Messages Area */}
-              <ScrollArea className="flex-1 px-4">
-                <div className="space-y-3 py-4">
+              <ScrollArea className="flex-1 px-6">
+                <div className="space-y-4 py-6">
                   {messages.map((message) => (
                     <div
                       key={message.id}
                       className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[75%] min-w-0 rounded-lg p-3 break-words ${
+                        className={`max-w-[75%] min-w-0 rounded-lg p-4 break-words ${
                           message.type === 'user'
                             ? 'bg-primary text-primary-foreground'
                             : message.type === 'system'
@@ -280,42 +280,42 @@ export default function Analyst(props: AnalystProps = {}) {
                             : 'bg-muted text-foreground'
                         }`}
                       >
-                        <div className="flex items-start gap-2 mb-1.5">
+                        <div className="flex items-start gap-3 mb-2">
                           {message.type === 'user' ? (
-                            <User className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <User className="w-4 h-4 mt-0.5 flex-shrink-0" />
                           ) : message.type === 'analyst' ? (
-                            <Bot className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <Bot className="w-4 h-4 mt-0.5 flex-shrink-0" />
                           ) : (
-                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs opacity-70 truncate">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs opacity-70 truncate font-medium">
                                 {message.type === 'analyst' && message.persona
                                   ? ANALYST_PERSONAS.find(p => p.id === message.persona)?.name
                                   : message.type.charAt(0).toUpperCase() + message.type.slice(1)
                                 }
                               </span>
-                              <span className="text-xs opacity-70 flex-shrink-0 ml-2">
+                              <span className="text-xs opacity-70 flex-shrink-0 ml-3">
                                 {formatTimestamp(message.timestamp)}
                               </span>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="prose prose-sm max-w-none text-current text-sm leading-relaxed">
+                        <div className="prose prose-sm max-w-none text-current leading-relaxed">
                           {message.content.split('\n').map((line, index) => (
                             <div key={index} className="break-words">
                               {line.startsWith('**') && line.endsWith('**') ? (
-                                <h4 className="font-semibold text-current mb-1 text-sm">
+                                <h4 className="font-semibold text-current mb-2 mt-3 text-sm leading-snug">
                                   {line.slice(2, -2)}
                                 </h4>
                               ) : line.startsWith('*') && line.endsWith('*') ? (
-                                <em className="text-current opacity-80 text-sm">
+                                <em className="text-current opacity-80 text-sm block mb-2 leading-relaxed">
                                   {line.slice(1, -1)}
                                 </em>
                               ) : (
-                                <p className="text-current text-sm m-0 leading-relaxed">{line || '\u00A0'}</p>
+                                <p className="text-current text-sm mb-2 leading-relaxed">{line || '\u00A0'}</p>
                               )}
                             </div>
                           ))}
@@ -323,7 +323,7 @@ export default function Analyst(props: AnalystProps = {}) {
 
                         {/* Action Buttons */}
                         {message.actionButtons && message.actionButtons.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-3">
+                          <div className="flex flex-wrap gap-2 mt-4 pt-2 border-t border-border/20">
                             {message.actionButtons.map((button, index) => (
                               <Button
                                 key={index}
@@ -339,12 +339,12 @@ export default function Analyst(props: AnalystProps = {}) {
 
                         {/* Watch Next */}
                         {message.watchNext && (
-                          <div className="mt-3 p-2 bg-accent/10 rounded border-l-2 border-accent">
+                          <div className="mt-4 p-3 bg-accent/10 rounded-md border-l-2 border-accent">
                             <div className="flex items-start gap-2">
-                              <Eye className="w-4 h-4 text-accent mt-0.5" />
-                              <div>
+                              <Eye className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+                              <div className="space-y-1">
                                 <p className="text-xs font-medium text-accent">What to watch next:</p>
-                                <p className="text-xs text-current opacity-80">{message.watchNext}</p>
+                                <p className="text-xs text-current opacity-80 leading-relaxed">{message.watchNext}</p>
                               </div>
                             </div>
                           </div>
@@ -369,24 +369,24 @@ export default function Analyst(props: AnalystProps = {}) {
               </ScrollArea>
 
               {/* Input Area */}
-              <div className="flex-shrink-0 p-4 border-t">
-                <div className="space-y-2">
+              <div className="flex-shrink-0 p-6 border-t">
+                <div className="space-y-3">
                   <LegalFooter component="analyst" variant="standard" />
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <Textarea
                       ref={inputRef}
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Ask about your portfolio, market conditions, or recent trades..."
-                      className="flex-1 min-h-[50px] max-h-24 resize-none text-sm"
+                      className="flex-1 min-h-[56px] max-h-32 resize-none text-sm leading-relaxed"
                       disabled={isLoading}
                     />
                     <Button
                       onClick={handleSendMessage}
                       disabled={!inputMessage.trim() || isLoading}
                       size="default"
-                      className="px-4"
+                      className="px-6 h-[56px]"
                     >
                       <Send className="w-4 h-4" />
                     </Button>
@@ -404,45 +404,45 @@ export default function Analyst(props: AnalystProps = {}) {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">Quick Actions</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-1.5 p-3">
+                <CardContent className="space-y-2 p-4">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start h-8 text-xs px-2 gap-1.5"
+                    className="w-full justify-start h-9 text-xs px-3 gap-2"
                     onClick={() => handleQuickAction('explain-portfolio')}
                     disabled={isLoading}
                   >
-                    <DollarSign className="w-3 h-3 flex-shrink-0" />
+                    <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">Explain Portfolio</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start h-8 text-xs px-2 gap-1.5"
+                    className="w-full justify-start h-9 text-xs px-3 gap-2"
                     onClick={() => handleQuickAction('diagnose-last-trade')}
                     disabled={isLoading}
                   >
-                    <TrendingUp className="w-3 h-3 flex-shrink-0" />
+                    <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">Diagnose Last Trade</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start h-8 text-xs px-2 gap-1.5"
+                    className="w-full justify-start h-9 text-xs px-3 gap-2"
                     onClick={() => handleQuickAction('daily-lessons')}
                     disabled={isLoading}
                   >
-                    <Bot className="w-3 h-3 flex-shrink-0" />
+                    <Bot className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">Daily Lessons</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start h-8 text-xs px-2 gap-1.5"
+                    className="w-full justify-start h-9 text-xs px-3 gap-2"
                     onClick={() => handleQuickAction('compare-execution')}
                     disabled={isLoading}
                   >
-                    <Eye className="w-3 h-3 flex-shrink-0" />
+                    <Eye className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">Compare Execution</span>
                   </Button>
                 </CardContent>
@@ -454,28 +454,28 @@ export default function Analyst(props: AnalystProps = {}) {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Portfolio Context</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 p-3 text-xs">
-                <div className="flex justify-between items-center">
+              <CardContent className="space-y-3 p-4 text-xs">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-muted-foreground truncate">Total Equity</span>
-                  <span className="font-medium ml-2 flex-shrink-0">
+                  <span className="font-medium ml-3 flex-shrink-0">
                     ${portfolioData?.totalEquity?.toLocaleString() || '125,750'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-muted-foreground truncate">Available Cash</span>
-                  <span className="font-medium ml-2 flex-shrink-0">
+                  <span className="font-medium ml-3 flex-shrink-0">
                     ${portfolioData?.availableCash?.toLocaleString() || '15,250'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-muted-foreground truncate">Day Change</span>
-                  <span className={`font-medium ml-2 flex-shrink-0 ${
+                  <span className={`font-medium ml-3 flex-shrink-0 ${
                     (portfolioData?.dayChange || 2650) >= 0 ? 'text-accent' : 'text-destructive'
                   }`}>
                     ${(portfolioData?.dayChange || 2650).toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-muted-foreground truncate">Positions</span>
                   <span className="text-sm font-medium">
                     {portfolioData?.positionCount || 8}
@@ -489,22 +489,22 @@ export default function Analyst(props: AnalystProps = {}) {
               <CardHeader>
                 <CardTitle className="text-sm">Risk Metrics</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
+              <CardContent className="space-y-4 p-4">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-sm text-muted-foreground">Portfolio Beta</span>
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium ml-3">
                     {riskMetrics?.betaToMarket?.toFixed(2) || '1.12'}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-sm text-muted-foreground">Max Drawdown</span>
-                  <span className="text-sm font-medium text-destructive">
+                  <span className="text-sm font-medium text-destructive ml-3">
                     {riskMetrics?.maxDrawdown?.toFixed(1) || '4.2'}%
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-sm text-muted-foreground">Concentration</span>
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium ml-3">
                     {riskMetrics?.concentrationRisk ? (riskMetrics.concentrationRisk * 100).toFixed(1) : '28.5'}%
                   </span>
                 </div>
