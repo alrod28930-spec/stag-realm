@@ -1,18 +1,17 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import {
-  BarChart3,
-  TrendingUp,
-  Briefcase,
-  MessageSquare,
-  Bot,
-  FileText,
+import { 
+  BarChart3, 
+  TrendingUp, 
+  Briefcase, 
+  Activity, 
   Baby,
-  Settings,
+  ExternalLink,
+  Info, 
+  CreditCard, 
+  Settings, 
+  Monitor, 
   Shield,
-  Monitor,
-  Info,
-  CreditCard,
-  Activity
+  ChevronDown
 } from 'lucide-react';
 import {
   Sidebar,
@@ -33,6 +32,7 @@ const navigationItems = [
   { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
   { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
   { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
+  { title: 'Brokerage Dock', url: '/brokerage-dock', icon: ExternalLink, description: 'Access external brokerage accounts' },
   { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
 ];
 
