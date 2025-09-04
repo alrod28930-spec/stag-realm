@@ -7,6 +7,7 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import { AuthPage } from "@/components/auth/AuthPage";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ComplianceProvider } from "@/components/compliance/ComplianceProvider";
+import { PWAInstall } from "@/components/PWAInstall";
 import { useAuthStore } from "@/stores/authStore";
 import { useEffect } from "react";
 import Dashboard from "@/pages/Dashboard";
@@ -21,6 +22,7 @@ import Settings from "@/pages/Settings";
 import SystemMonitor from "@/pages/SystemMonitor";
 import AdminPortal from "@/pages/AdminPortal";
 import VerifyEmail from "@/pages/VerifyEmail";
+import Download from "@/pages/Download";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +40,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ComplianceProvider>
+          <PWAInstall />
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -45,6 +48,7 @@ const App = () => {
               {/* Public routes (no auth required) */}
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/auth/verify" element={<VerifyEmail />} />
+              <Route path="/download" element={<Download />} />
               
               {/* Protected routes */}
               <Route path="/*" element={
