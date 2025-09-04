@@ -33,49 +33,63 @@ import { Textarea } from '@/components/ui/textarea';
 import { RiskToggle } from '@/components/ui/risk-toggle';
 import { toggleService } from '@/services/toggleService';
 import { UserSettingsPanel } from '@/components/settings/UserSettingsPanel';
-
-interface BrokerConfig {
-  id: string;
-  name: string;
-  broker: string;
-  apiKey: string;
-  secretKey: string;
-  isActive: boolean;
-  createdAt: Date;
-}
+import { BrokerageConnectionCard } from '@/components/settings/BrokerageConnectionCard';
+import { supabase } from '@/integrations/supabase/client';
+import type { BrokerageConnection } from '@/types/userSettings';
+import { useEffect } from 'react';
 
 export default function Settings() {
   const { toast } = useToast();
-  const [showApiKeys, setShowApiKeys] = useState<{ [key: string]: boolean }>({});
   const [toggleState, setToggleState] = useState(toggleService.getToggleState());
+  
+  // Brokerage connections state
+  const [brokerageConnections, setBrokerageConnections] = useState<BrokerageConnection[]>([]);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('00000000-0000-0000-0000-000000000001'); // Default test workspace
   
   // Load compliance data
   const [complianceSettings, setComplianceSettings] = useState(complianceService.getComplianceSettings());
   const [acknowledgmentHistory, setAcknowledgmentHistory] = useState(complianceService.getAcknowledgmentHistory(20));
   const [complianceEvents, setComplianceEvents] = useState(complianceService.getComplianceEvents(20));
-  
-  // Mock broker configurations
-  const [brokerConfigs, setBrokerConfigs] = useState<BrokerConfig[]>([
-    {
-      id: '1',
-      name: 'Main Trading Account',
-      broker: 'Interactive Brokers',
-      apiKey: 'IB_API_12345***',
-      secretKey: '***hidden***',
-      isActive: true,
-      createdAt: new Date('2024-01-15')
-    },
-    {
-      id: '2',
-      name: 'Backup Account',
-      broker: 'Alpaca Markets',
-      apiKey: 'ALPACA_67890***',
-      secretKey: '***hidden***',
-      isActive: false,
-      createdAt: new Date('2024-02-01')
-    }
-  ]);
 
+  // Load brokerage connections
+  const loadBrokerageConnections = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('connections_brokerages')
+        .select('*')
+        .eq('workspace_id', currentWorkspaceId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Map the database response to our BrokerageConnection type
+      const connections: BrokerageConnection[] = (data || []).map(conn => ({
+        id: conn.id,
+        workspace_id: conn.workspace_id,
+        provider: conn.provider,
+        account_label: conn.account_label,
+        scope: conn.scope,
+        status: conn.status as 'active' | 'revoked' | 'error',
+        last_sync: conn.last_sync,
+        created_at: conn.created_at,
+        updated_at: conn.updated_at
+      }));
+      
+      setBrokerageConnections(connections);
+    } catch (error) {
+      console.error('Error loading brokerage connections:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load brokerage connections",
+        variant: "destructive"
+      });
+    }
+  };
+
+  useEffect(() => {
+    loadBrokerageConnections();
+  }, [currentWorkspaceId]);
+  
   // Settings state
   const [settings, setSettings] = useState({
     // Risk Controls
@@ -116,21 +130,6 @@ export default function Settings() {
     toast({
       title: "Settings saved",
       description: "Your configuration has been updated successfully.",
-    });
-  };
-
-  const toggleKeyVisibility = (configId: string) => {
-    setShowApiKeys(prev => ({
-      ...prev,
-      [configId]: !prev[configId]
-    }));
-  };
-
-  const handleDeleteBrokerConfig = (configId: string) => {
-    setBrokerConfigs(prev => prev.filter(config => config.id !== configId));
-    toast({
-      title: "Broker configuration deleted",
-      description: "The broker configuration has been removed.",
     });
   };
 
@@ -195,95 +194,11 @@ export default function Settings() {
 
         {/* Broker API Keys */}
         <TabsContent value="brokers" className="space-y-6">
-          <Card className="bg-gradient-card shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="w-5 h-5" />
-                  Broker API Configuration
-                </CardTitle>
-                <CardDescription>
-                  Connect your broker accounts for live trading
-                </CardDescription>
-              </div>
-              <Button className="bg-gradient-primary hover:opacity-90">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Broker
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {brokerConfigs.map((config) => (
-                  <div 
-                    key={config.id}
-                    className="p-4 rounded-lg bg-muted/30 border border-border"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{config.name}</h3>
-                          <Badge 
-                            variant={config.isActive ? "default" : "secondary"}
-                          >
-                            {config.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{config.broker}</p>
-                        <div className="grid grid-cols-2 gap-4 mt-3">
-                          <div>
-                            <Label className="text-xs text-muted-foreground">API Key</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Input
-                                value={showApiKeys[config.id] ? config.apiKey : config.apiKey.replace(/\*/g, '•')}
-                                readOnly
-                                className="text-sm"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleKeyVisibility(config.id)}
-                              >
-                                {showApiKeys[config.id] ? 
-                                  <EyeOff className="w-4 h-4" /> : 
-                                  <Eye className="w-4 h-4" />
-                                }
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Secret Key</Label>
-                            <Input
-                              value="•••••••••••••••••••"
-                              readOnly
-                              className="text-sm mt-1"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch 
-                          checked={config.isActive}
-                          onCheckedChange={(checked) => {
-                            setBrokerConfigs(prev => prev.map(c => 
-                              c.id === config.id ? { ...c, isActive: checked } : c
-                            ));
-                          }}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteBrokerConfig(config.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <BrokerageConnectionCard
+            workspaceId={currentWorkspaceId}
+            connections={brokerageConnections}
+            onUpdate={loadBrokerageConnections}
+          />
 
           {/* Licensing Tier */}
           <Card className="bg-gradient-card shadow-card">
