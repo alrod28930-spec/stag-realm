@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, ExternalLink } from 'lucide-react';
@@ -8,6 +8,7 @@ export default function BrokerageDock() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const formatUrl = (url: string) => {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -16,29 +17,69 @@ export default function BrokerageDock() {
     return url;
   };
 
-  const navigateToUrl = (url: string) => {
-    const formattedUrl = formatUrl(url);
-    setCurrentUrl(formattedUrl);
+  // Handle iframe loading with proper timing
+  useEffect(() => {
+    if (!currentUrl || !iframeRef.current) return;
+
+    console.log('Setting up iframe for URL:', currentUrl);
     setIsLoading(true);
     setLoadError(false);
-    
-    const loadTimeout = setTimeout(() => {
+
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Set up timeout for loading
+    timeoutRef.current = setTimeout(() => {
+      console.log('Iframe load timeout for:', currentUrl);
       setIsLoading(false);
       setLoadError(true);
     }, 10000);
-    
-    if (iframeRef.current) {
-      iframeRef.current.onload = () => {
-        clearTimeout(loadTimeout);
-        setIsLoading(false);
-        setLoadError(false);
-      };
-      iframeRef.current.onerror = () => {
-        clearTimeout(loadTimeout);
-        setIsLoading(false);
-        setLoadError(true);
-      };
-    }
+
+    const iframe = iframeRef.current;
+
+    const handleLoad = () => {
+      console.log('Iframe loaded successfully:', currentUrl);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setIsLoading(false);
+      setLoadError(false);
+    };
+
+    const handleError = () => {
+      console.log('Iframe load error:', currentUrl);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setIsLoading(false);
+      setLoadError(true);
+    };
+
+    // Set up event listeners
+    iframe.onload = handleLoad;
+    iframe.onerror = handleError;
+
+    // Cleanup function
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (iframe) {
+        iframe.onload = null;
+        iframe.onerror = null;
+      }
+    };
+  }, [currentUrl]);
+
+  const navigateToUrl = (url: string) => {
+    const formattedUrl = formatUrl(url);
+    console.log('Navigating to URL:', formattedUrl);
+    setCurrentUrl(formattedUrl);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
