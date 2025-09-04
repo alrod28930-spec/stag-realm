@@ -106,6 +106,7 @@ export default function BrokerageDock() {
   const navigateToUrl = (windowIndex: number, url: string) => {
     const formattedUrl = formatUrl(url);
     console.log(`Navigating window ${windowIndex} to URL:`, formattedUrl);
+    console.log('Current window state before update:', windows[windowIndex]);
     updateWindowState(windowIndex, { url: formattedUrl });
   };
 
@@ -116,10 +117,33 @@ export default function BrokerageDock() {
 
   const handleDrop = (windowIndex: number) => (e: React.DragEvent) => {
     e.preventDefault();
-    const droppedText = e.dataTransfer.getData('text/plain');
+    console.log('Drop event triggered on window', windowIndex);
     
-    if (droppedText && (droppedText.includes('.') || droppedText.startsWith('http'))) {
-      navigateToUrl(windowIndex, droppedText);
+    // Try multiple data transfer types
+    const droppedText = e.dataTransfer.getData('text/plain') || 
+                       e.dataTransfer.getData('text/uri-list') || 
+                       e.dataTransfer.getData('text/html');
+    
+    console.log('Dropped text:', droppedText);
+    
+    if (droppedText) {
+      // More flexible URL detection
+      const urlPattern = /https?:\/\/[^\s]+|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.+[a-zA-Z]{2,}/;
+      const isUrl = droppedText.startsWith('http') || 
+                   droppedText.startsWith('www.') || 
+                   urlPattern.test(droppedText) ||
+                   droppedText.includes('.');
+      
+      console.log('Is URL detected:', isUrl);
+      
+      if (isUrl) {
+        console.log('Attempting to navigate to:', droppedText);
+        navigateToUrl(windowIndex, droppedText);
+      } else {
+        console.log('Dropped text not recognized as URL:', droppedText);
+      }
+    } else {
+      console.log('No text data found in drop event');
     }
   };
 
@@ -167,6 +191,14 @@ export default function BrokerageDock() {
               className="relative h-[500px] w-full border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/10 hover:border-muted-foreground/50 transition-colors"
               onDragOver={handleDragOver}
               onDrop={handleDrop(windowIndex)}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                console.log(`Drag enter on window ${windowIndex}`);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                console.log(`Drag leave on window ${windowIndex}`);
+              }}
             >
               {!window.url && (
                 <div className="absolute inset-0 flex items-center justify-center text-center">
