@@ -34,6 +34,7 @@ import { RiskToggle } from '@/components/ui/risk-toggle';
 import { toggleService } from '@/services/toggleService';
 import { UserSettingsPanel } from '@/components/settings/UserSettingsPanel';
 import { BrokerageConnectionCard } from '@/components/settings/BrokerageConnectionCard';
+import { BrokerageDockSettings } from '@/components/settings/BrokerageDockSettings';
 import { supabase } from '@/integrations/supabase/client';
 import type { BrokerageConnection } from '@/types/userSettings';
 import { useEffect } from 'react';
@@ -175,9 +176,10 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="user" className="w-full">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="user">User</TabsTrigger>
           <TabsTrigger value="brokers">Brokers</TabsTrigger>
+          <TabsTrigger value="dock">Dock</TabsTrigger>
           <TabsTrigger value="risk">Risk Controls</TabsTrigger>
           <TabsTrigger value="capital">Capital Risk</TabsTrigger>
           <TabsTrigger value="gains">Gains</TabsTrigger>
@@ -230,6 +232,11 @@ export default function Settings() {
               <Button variant="outline">Upgrade Plan</Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Brokerage Dock Settings */}
+        <TabsContent value="dock" className="space-y-6">
+          <BrokerageDockSettings />
         </TabsContent>
 
         {/* Risk Controls */}

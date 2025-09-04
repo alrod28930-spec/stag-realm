@@ -10,6 +10,7 @@ import { DailyTradesCard } from '@/components/tradingdesk/DailyTradesCard';
 import { OpenPositionsTable } from '@/components/tradingdesk/OpenPositionsTable';
 import { OrderHistoryTable } from '@/components/tradingdesk/OrderHistoryTable';
 import { ComplianceFooter } from '@/components/tradingdesk/ComplianceFooter';
+import { SymbolIntegrationButton } from '@/components/tradingdesk/SymbolIntegrationButton';
 import TradeBots from '@/pages/TradeBots';
 import { PaperTradingTestPanel } from '@/components/tradingdesk/PaperTradingTestPanel';
 import { SystemAuditPanel } from '@/components/debug/SystemAuditPanel';
@@ -41,6 +42,16 @@ export default function TradingDesk() {
               : "Execute trades manually and manage automated trading bots"
             }
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <SymbolIntegrationButton 
+            symbol="AAPL" 
+            context={{ price: 150.25, direction: 'buy' }}
+          />
+          <SymbolIntegrationButton 
+            symbol="TSLA" 
+            context={{ price: 250.75, direction: 'sell' }}
+          />
         </div>
       </div>
 
