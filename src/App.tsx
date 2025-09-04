@@ -23,6 +23,7 @@ import SystemMonitor from "@/pages/SystemMonitor";
 import AdminPortal from "@/pages/AdminPortal";
 import VerifyEmail from "@/pages/VerifyEmail";
 import Download from "@/pages/Download";
+import Intelligence from "@/pages/Intelligence";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => {
                   <DashboardLayout>
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
+                      <Route path="/intelligence" element={<Intelligence />} />
                       <Route path="/market" element={<Market />} />
                       <Route path="/portfolio" element={<Portfolio />} />
                       <Route path="/trading-desk" element={<TradingDesk />} />

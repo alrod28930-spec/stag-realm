@@ -29,8 +29,13 @@ import { useCompliance } from '@/components/compliance/ComplianceProvider';
 import { ResearchRail } from '@/components/research/ResearchRail';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
 import { LegalFooter } from '@/components/compliance/LegalFooter';
+import type { ProcessedSignal } from '@/types/oracle';
 
-export default function Analyst() {
+interface AnalystProps {
+  selectedSignal?: ProcessedSignal | null;
+}
+
+export default function Analyst({ selectedSignal }: AnalystProps = {}) {
   const [messages, setMessages] = useState<AnalystMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -50,6 +55,14 @@ export default function Analyst() {
     analystService.startSession();
     loadContextData();
     
+    // If we have a selected signal, analyze it automatically
+    if (selectedSignal) {
+      const message = `Please analyze this Oracle signal: "${selectedSignal.signal}" for ${selectedSignal.symbol || 'the market'}. Signal type: ${selectedSignal.type.replace('_', ' ')}, Severity: ${selectedSignal.severity}, Direction: ${selectedSignal.direction}, Confidence: ${Math.round(selectedSignal.confidence * 100)}%. Description: ${selectedSignal.description}`;
+      analystService.processUserMessage(message).then(() => {
+        setMessages(analystService.getMessages());
+      });
+    }
+    
     // Trigger session start disclaimer when Analyst is accessed
     showDisclaimer('analyst', 'view');
     
@@ -63,7 +76,7 @@ export default function Analyst() {
       eventBus.off('portfolio.updated', handlePortfolioUpdate);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Remove showDisclaimer from deps to prevent infinite loop
+  }, [selectedSignal]); // Add selectedSignal to deps
 
   useEffect(() => {
     // Load messages from service
@@ -182,7 +195,10 @@ export default function Analyst() {
             <div className="min-w-0">
               <h1 className="text-xl font-bold truncate">The Analyst</h1>
               <p className="text-sm text-muted-foreground truncate">
-                AI-powered portfolio intelligence and market insights
+                {selectedSignal 
+                  ? `Analyzing: ${selectedSignal.signal}` 
+                  : "AI-powered portfolio intelligence and market insights"
+                }
               </p>
             </div>
           </div>

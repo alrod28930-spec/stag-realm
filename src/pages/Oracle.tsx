@@ -16,8 +16,10 @@ import {
   Search,
   RefreshCw,
   BarChart3,
-  Eye,
-  Signal
+  Brain,
+  ArrowRight,
+  Signal,
+  Eye
 } from 'lucide-react';
 import { oracle } from '@/services/oracle';
 import type { ProcessedSignal, OracleAlert, SectorHeatmap } from '@/types/oracle';
@@ -27,7 +29,11 @@ import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { useDemoMode } from '@/utils/demoMode';
 import { demoDataService } from '@/services/demoDataService';
 
-export default function Oracle() {
+interface OracleProps {
+  onAnalyzeSignal?: (signal: ProcessedSignal) => void;
+}
+
+export default function Oracle({ onAnalyzeSignal }: OracleProps = {}) {
   const [signals, setSignals] = useState<ProcessedSignal[]>([]);
   const [alerts, setAlerts] = useState<OracleAlert[]>([]);
   const [sectorHeatmap, setSectorHeatmap] = useState<SectorHeatmap>({});
@@ -410,6 +416,17 @@ export default function Oracle() {
                               {source}
                             </Badge>
                           ))}
+                          {onAnalyzeSignal && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => onAnalyzeSignal(signal)}
+                              className="flex items-center gap-1 text-xs"
+                            >
+                              <Brain className="w-3 h-3" />
+                              Analyze
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>

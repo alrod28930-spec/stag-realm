@@ -11,7 +11,8 @@ import {
   Monitor, 
   Shield,
   ChevronDown,
-  ExternalLink
+  ExternalLink,
+  Brain
 } from 'lucide-react';
 import {
   Sidebar,
@@ -29,6 +30,7 @@ import { cn } from '@/lib/utils';
 
 const navigationItems = [
   { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
+  { title: 'Intelligence', url: '/intelligence', icon: Brain, description: 'AI analysis & Oracle signals' },
   { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
   { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
   { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
