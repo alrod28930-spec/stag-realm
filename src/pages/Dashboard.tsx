@@ -12,7 +12,9 @@ import {
   Activity,
   Building2,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Settings,
+  ArrowRight
 } from 'lucide-react';
 import { ComplianceStatus } from '@/components/compliance/ComplianceStatus';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
@@ -112,6 +114,35 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
+
+      {/* Brokerage Connection Notice */}
+      <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Building2 className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Connect Your Brokerage Account</h3>
+                <p className="text-xs text-muted-foreground">
+                  Set up live trading by connecting your broker in Settings
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center space-x-2"
+              onClick={() => window.location.href = '/settings'}
+            >
+              <Settings className="h-4 w-4" />
+              <span>Go to Settings</span>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
