@@ -5,13 +5,13 @@ import {
   Briefcase, 
   Activity, 
   Baby,
-  ExternalLink,
   Info, 
   CreditCard, 
   Settings, 
   Monitor, 
   Shield,
-  ChevronDown
+  ChevronDown,
+  ExternalLink
 } from 'lucide-react';
 import {
   Sidebar,
