@@ -1,21 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Shield, ExternalLink, TrendingUp, Settings } from 'lucide-react';
-import { useBrokerageDockStore } from '@/stores/brokerageDockStore';
+import { Shield, ExternalLink } from 'lucide-react';
 
 export default function BrokerageDock() {
-  const { 
-    currentUrl, 
-    setCurrentUrl, 
-    config, 
-    activeSymbol, 
-    contextData, 
-    clearContext 
-  } = useBrokerageDockStore();
-  
+  const [currentUrl, setCurrentUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -93,10 +82,6 @@ export default function BrokerageDock() {
     setCurrentUrl(formattedUrl);
   };
 
-  const navigateToQuickAccess = (url: string) => {
-    navigateToUrl(url);
-  };
-
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
@@ -120,69 +105,12 @@ export default function BrokerageDock() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Brokerage Dock</h1>
-          <p className="text-muted-foreground">
-            Drop any URL into the window below to view websites
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {activeSymbol && (
-            <Badge className="bg-primary/10 text-primary border-primary/20">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              {activeSymbol}
-            </Badge>
-          )}
-          <Button variant="outline" size="sm" onClick={() => window.open('/settings', '_blank')}>
-            <Settings className="h-4 w-4 mr-2" />
-            Configure
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Brokerage Dock</h1>
+        <p className="text-muted-foreground">
+          Drop any URL into the window below to view websites
+        </p>
       </div>
-
-      {/* Context Info */}
-      {contextData && (
-        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-          <TrendingUp className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800 dark:text-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <strong>Trading Context:</strong> {contextData.symbol && `Symbol: ${contextData.symbol}`}
-                {contextData.direction && ` • ${contextData.direction.toUpperCase()}`}
-                {contextData.quantity && ` • Qty: ${contextData.quantity}`}
-              </div>
-              <Button variant="ghost" size="sm" onClick={clearContext}>
-                Clear
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Quick Access Buttons */}
-      {config.quickAccessUrls.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap gap-2">
-              {config.quickAccessUrls.map((site) => (
-                <Button
-                  key={site.name}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigateToQuickAccess(site.url)}
-                  className="text-xs"
-                >
-                  {site.name}
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    {site.category}
-                  </Badge>
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Compliance Banner */}
       <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
