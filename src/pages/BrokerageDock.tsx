@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Trash2, Plus, ExternalLink, Shield, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthStore } from '@/stores/authStore';
 
 interface DockedSite {
   id: string;
@@ -25,22 +26,41 @@ export default function BrokerageDock() {
   const [newSite, setNewSite] = useState({ label: '', url: '' });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuthStore();
   
   // Default workspace ID - this should be updated to use proper workspace context
   const workspaceId = '00000000-0000-0000-0000-000000000001';
 
+  // Check if user is authenticated
   useEffect(() => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to access the Brokerage Dock',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
     loadDockedSites();
-  }, []);
+  }, [user]);
 
   const loadDockedSites = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('brokerage_dock_sites')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading docked sites:', error);
+        throw error;
+      }
 
       setDockedSites(data || []);
       if (data && data.length > 0 && !selectedSiteId) {
@@ -59,6 +79,15 @@ export default function BrokerageDock() {
   };
 
   const addDockedSite = async () => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to add docked sites',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!newSite.label || !newSite.url) {
       toast({
         title: 'Error',
@@ -80,22 +109,31 @@ export default function BrokerageDock() {
         .insert([{ 
           label: newSite.label, 
           url: formattedUrl,
+          user_id: user.id, // ✅ Fixed: Add user_id for RLS policy
         }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
 
       // Log dock site creation event
-      await supabase.from('rec_events').insert([{
-        workspace_id: workspaceId,
-        event_type: 'dock.site_added',
-        severity: 1,
-        entity_type: 'dock_site',
-        entity_id: data.id,
-        summary: `Docked site added: ${newSite.label}`,
-        payload_json: { label: newSite.label, url: formattedUrl }
-      }]);
+      try {
+        await supabase.from('rec_events').insert([{
+          workspace_id: workspaceId,
+          event_type: 'dock.site_added',
+          severity: 1,
+          entity_type: 'dock_site',
+          entity_id: data.id,
+          summary: `Docked site added: ${newSite.label}`,
+          payload_json: { label: newSite.label, url: formattedUrl }
+        }]);
+      } catch (logError) {
+        console.error('Failed to log event:', logError);
+        // Don't fail the entire operation if logging fails
+      }
 
       setDockedSites(prev => [data, ...prev]);
       if (!selectedSiteId) {
@@ -112,31 +150,48 @@ export default function BrokerageDock() {
       console.error('Error adding docked site:', error);
       toast({
         title: 'Error',
-        description: 'Failed to add docked site',
+        description: error.message || 'Failed to add docked site',
         variant: 'destructive',
       });
     }
   };
 
   const removeDockedSite = async (id: string, label: string) => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to remove docked sites',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('brokerage_dock_sites')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
       // Log dock site removal event
-      await supabase.from('rec_events').insert([{
-        workspace_id: workspaceId,
-        event_type: 'dock.site_removed',
-        severity: 1,
-        entity_type: 'dock_site',
-        entity_id: id,
-        summary: `Docked site removed: ${label}`,
-        payload_json: { label }
-      }]);
+      try {
+        await supabase.from('rec_events').insert([{
+          workspace_id: workspaceId,
+          event_type: 'dock.site_removed',
+          severity: 1,
+          entity_type: 'dock_site',
+          entity_id: id,
+          summary: `Docked site removed: ${label}`,
+          payload_json: { label }
+        }]);
+      } catch (logError) {
+        console.error('Failed to log event:', logError);
+        // Don't fail the entire operation if logging fails
+      }
 
       setDockedSites(prev => prev.filter(site => site.id !== id));
       if (selectedSiteId === id) {
@@ -152,7 +207,7 @@ export default function BrokerageDock() {
       console.error('Error removing docked site:', error);
       toast({
         title: 'Error',
-        description: 'Failed to remove docked site',
+        description: error.message || 'Failed to remove docked site',
         variant: 'destructive',
       });
     }
@@ -160,17 +215,22 @@ export default function BrokerageDock() {
 
   const openSelectedSite = async (siteId: string) => {
     const site = dockedSites.find(s => s.id === siteId);
-    if (site) {
+    if (site && user) {
       // Log dock site open event
-      await supabase.from('rec_events').insert([{
-        workspace_id: workspaceId,
-        event_type: 'dock.open',
-        severity: 1,
-        entity_type: 'dock_site',
-        entity_id: site.id,
-        summary: `Opened docked site: ${site.label}`,
-        payload_json: { label: site.label, url: site.url }
-      }]);
+      try {
+        await supabase.from('rec_events').insert([{
+          workspace_id: workspaceId,
+          event_type: 'dock.open',
+          severity: 1,
+          entity_type: 'dock_site',
+          entity_id: site.id,
+          summary: `Opened docked site: ${site.label}`,
+          payload_json: { label: site.label, url: site.url }
+        }]);
+      } catch (logError) {
+        console.error('Failed to log event:', logError);
+        // Don't fail the entire operation if logging fails
+      }
     }
     setSelectedSiteId(siteId);
   };
@@ -181,6 +241,22 @@ export default function BrokerageDock() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-pulse">Loading docked sites...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Card className="w-96">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Shield className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Authentication Required</h3>
+            <p className="text-muted-foreground text-center">
+              Please log in to access the Brokerage Dock feature
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
