@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, TrendingUp } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 export function AuthPage() {
@@ -135,9 +135,11 @@ export function AuthPage() {
       <div className="w-full max-w-md p-6">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="p-3 rounded-full bg-gradient-primary shadow-gold">
-              <TrendingUp className="w-8 h-8 text-primary-foreground" />
-            </div>
+            <img 
+              src="/lovable-uploads/baf7293f-10f5-46a9-b201-e541075bca9e.png" 
+              alt="StagAlgo Logo" 
+              className="w-16 h-16 object-contain"
+            />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             StagAlgo
