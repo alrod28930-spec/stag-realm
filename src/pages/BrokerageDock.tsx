@@ -14,19 +14,20 @@ import {
 } from 'lucide-react';
 
 export default function BrokerageDock() {
-  const [currentUrl, setCurrentUrl] = useState('https://app.alpaca.markets');
-  const [inputUrl, setInputUrl] = useState('https://app.alpaca.markets');
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState('https://www.tradingview.com'); // ✅ Changed to TradingView (iframe-friendly)
+  const [inputUrl, setInputUrl] = useState('https://www.tradingview.com');
+  const [isLoading, setIsLoading] = useState(true); // ✅ Start with loading true
+  const [loadError, setLoadError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Popular trading platforms for quick access
   const quickAccess = [
-    { name: 'Alpaca', url: 'https://app.alpaca.markets' },
-    { name: 'TradingView', url: 'https://www.tradingview.com' },
-    { name: 'Interactive Brokers', url: 'https://www.interactivebrokers.com' },
-    { name: 'TD Ameritrade', url: 'https://invest.ameritrade.com' },
-    { name: 'E*TRADE', url: 'https://us.etrade.com' },
-    { name: 'Yahoo Finance', url: 'https://finance.yahoo.com' }
+    { name: 'TradingView', url: 'https://www.tradingview.com' }, // ✅ Moved to top - iframe friendly
+    { name: 'Yahoo Finance', url: 'https://finance.yahoo.com' },
+    { name: 'MarketWatch', url: 'https://www.marketwatch.com' },
+    { name: 'Investing.com', url: 'https://www.investing.com' },
+    { name: 'Alpaca (External)', url: 'https://app.alpaca.markets' }, // ✅ Note: external only
+    { name: 'IBKR (External)', url: 'https://www.interactivebrokers.com' }
   ];
 
   const formatUrl = (url: string) => {
@@ -41,6 +42,27 @@ export default function BrokerageDock() {
     setCurrentUrl(formattedUrl);
     setInputUrl(formattedUrl);
     setIsLoading(true);
+    setLoadError(false); // ✅ Reset error state
+    
+    // ✅ Add timeout to prevent infinite loading
+    const loadTimeout = setTimeout(() => {
+      setIsLoading(false);
+      setLoadError(true);
+    }, 10000); // 10 second timeout
+    
+    // ✅ Store timeout to clear it if load succeeds
+    if (iframeRef.current) {
+      iframeRef.current.onload = () => {
+        clearTimeout(loadTimeout);
+        setIsLoading(false);
+        setLoadError(false);
+      };
+      iframeRef.current.onerror = () => {
+        clearTimeout(loadTimeout);
+        setIsLoading(false);
+        setLoadError(true);
+      };
+    }
   };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
@@ -50,8 +72,29 @@ export default function BrokerageDock() {
 
   const handleRefresh = () => {
     if (iframeRef.current) {
-      iframeRef.current.src = currentUrl;
       setIsLoading(true);
+      setLoadError(false);
+      
+      // ✅ Force reload by changing src
+      const currentSrc = iframeRef.current.src;
+      iframeRef.current.src = 'about:blank';
+      setTimeout(() => {
+        if (iframeRef.current) {
+          iframeRef.current.src = currentSrc;
+        }
+      }, 100);
+      
+      // ✅ Add timeout for refresh too
+      const refreshTimeout = setTimeout(() => {
+        setIsLoading(false);
+        setLoadError(true);
+      }, 10000);
+      
+      iframeRef.current.onload = () => {
+        clearTimeout(refreshTimeout);
+        setIsLoading(false);
+        setLoadError(false);
+      };
     }
   };
 
@@ -172,7 +215,7 @@ export default function BrokerageDock() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigateToUrl('https://app.alpaca.markets')}
+              onClick={() => navigateToUrl('https://www.tradingview.com')} // ✅ Changed home to TradingView
               className="p-2"
             >
               <Home className="h-4 w-4" />
@@ -211,7 +254,31 @@ export default function BrokerageDock() {
           >
             {isLoading && (
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
-                <div className="animate-pulse text-muted-foreground">Loading...</div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="ml-3 text-muted-foreground">Loading website...</div>
+              </div>
+            )}
+            
+            {loadError && (
+              <div className="absolute inset-0 bg-background/90 flex items-center justify-center z-10">
+                <div className="text-center space-y-4">
+                  <div className="text-destructive">
+                    <Shield className="h-12 w-12 mx-auto mb-2" />
+                    <h3 className="text-lg font-medium">Cannot Load Site</h3>
+                    <p className="text-sm text-muted-foreground">
+                      This website blocks iframe embedding for security.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => openInNewTab()} variant="outline">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open Externally
+                    </Button>
+                    <Button onClick={() => navigateToUrl('https://www.tradingview.com')} variant="outline">
+                      Try TradingView
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
             
@@ -221,8 +288,7 @@ export default function BrokerageDock() {
               className="w-full h-full border-0 rounded-b-lg"
               title="Brokerage Dock Browser"
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation allow-downloads"
-              onLoad={() => setIsLoading(false)}
-              onError={() => setIsLoading(false)}
+              style={{ display: loadError ? 'none' : 'block' }}
             />
           </div>
         </CardContent>
