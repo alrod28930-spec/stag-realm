@@ -10,6 +10,24 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+          charts: ['recharts'],
+          supabase: ['@supabase/supabase-js'],
+          services: [
+            './src/services/oracle.ts',
+            './src/services/compliance.ts', 
+            './src/services/eventBus.ts',
+            './src/services/scaffold.ts'
+          ]
+        }
+      }
+    }
+  },
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
@@ -17,6 +35,7 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\./,
