@@ -29,6 +29,7 @@ import { useCompliance } from '@/components/compliance/ComplianceProvider';
 import { ResearchRail } from '@/components/research/ResearchRail';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
 import { LegalFooter } from '@/components/compliance/LegalFooter';
+import { useScreenSize } from '@/hooks/use-mobile';
 import type { ProcessedSignal } from '@/types/oracle';
 
 interface AnalystProps {
@@ -44,6 +45,7 @@ export default function Analyst(props: AnalystProps = {}) {
   const [showQuickActions, setShowQuickActions] = useState(true);
   const { toast } = useToast();
   const { showDisclaimer } = useCompliance();
+  const { isMobile, isTablet } = useScreenSize();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -203,16 +205,16 @@ export default function Analyst(props: AnalystProps = {}) {
   const currentPersona = ANALYST_PERSONAS.find(p => p.id === selectedPersona);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className={`${isMobile ? 'flex flex-col h-[calc(100vh-8rem)]' : 'flex h-screen'} bg-background overflow-hidden`}>
       {/* Left side - Chat with personas */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b">
+        <div className={`flex-shrink-0 flex ${isMobile ? 'flex-col space-y-3 p-3' : 'flex-row items-center justify-between p-4'} border-b`}>
           <div className="flex items-center space-x-3 min-w-0">
             <Crown className="w-6 h-6 text-accent flex-shrink-0" />
             <div className="min-w-0">
-              <h1 className="text-xl font-bold truncate">The Analyst</h1>
-              <p className="text-sm text-muted-foreground truncate">
+              <h1 className={`font-bold truncate ${isMobile ? 'text-lg' : 'text-xl'}`}>The Analyst</h1>
+              <p className={`text-muted-foreground truncate ${isMobile ? 'text-xs' : 'text-sm'}`}>
                 {selectedSignal 
                   ? `Analyzing: ${selectedSignal.signal}` 
                   : "AI-powered portfolio intelligence and market insights"
@@ -220,9 +222,9 @@ export default function Analyst(props: AnalystProps = {}) {
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className={`flex items-center space-x-2 flex-shrink-0 ${isMobile ? 'w-full' : ''}`}>
             <Select value={selectedPersona} onValueChange={handlePersonaChange}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className={`${isMobile ? 'flex-1' : 'w-40'}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -248,11 +250,11 @@ export default function Analyst(props: AnalystProps = {}) {
           </div>
         </div>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 p-4 min-h-0 overflow-hidden">
+        <div className={`flex-1 ${isMobile ? 'flex flex-col space-y-4 p-3' : 'grid grid-cols-1 lg:grid-cols-4 gap-4 p-4'} min-h-0 overflow-hidden`}>
           {/* Main Chat Area */}
-          <Card className="lg:col-span-3 bg-gradient-card shadow-card flex flex-col min-h-0">
+          <Card className={`${isMobile ? 'flex-1' : 'lg:col-span-3'} bg-gradient-card shadow-card flex flex-col min-h-0`}>
             <CardHeader className="flex-shrink-0 pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
                 <MessageSquare className="w-4 h-4" />
                 Chat with {currentPersona?.name}
                 <DisclaimerBadge variant="minimal" component="analyst" />
@@ -265,14 +267,14 @@ export default function Analyst(props: AnalystProps = {}) {
             <CardContent className="flex-1 flex flex-col min-h-0 p-0 overflow-hidden">
               {/* Messages Area */}
               <ScrollArea className="flex-1 px-6">
-                <div className="space-y-4 py-6">
+                <div className={`space-y-4 ${isMobile ? 'py-3' : 'py-6'}`}>
                   {messages.map((message) => (
                     <div
                       key={message.id}
                       className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[75%] min-w-0 rounded-lg p-4 break-words ${
+                        className={`${isMobile ? 'max-w-[90%]' : 'max-w-[75%]'} min-w-0 rounded-lg ${isMobile ? 'p-3' : 'p-4'} break-words ${
                           message.type === 'user'
                             ? 'bg-primary text-primary-foreground'
                             : message.type === 'system'
@@ -369,26 +371,27 @@ export default function Analyst(props: AnalystProps = {}) {
               </ScrollArea>
 
               {/* Input Area */}
-              <div className="flex-shrink-0 p-6 border-t">
+              <div className={`flex-shrink-0 border-t ${isMobile ? 'p-3' : 'p-6'}`}>
                 <div className="space-y-3">
                   <LegalFooter component="analyst" variant="standard" />
-                  <div className="flex gap-3">
+                  <div className={`flex gap-3 ${isMobile ? 'flex-col space-y-2' : ''}`}>
                     <Textarea
                       ref={inputRef}
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Ask about your portfolio, market conditions, or recent trades..."
-                      className="flex-1 min-h-[56px] max-h-32 resize-none text-sm leading-relaxed"
+                      className={`${isMobile ? 'w-full min-h-[48px]' : 'flex-1 min-h-[56px]'} max-h-32 resize-none text-sm leading-relaxed`}
                       disabled={isLoading}
                     />
                     <Button
                       onClick={handleSendMessage}
                       disabled={!inputMessage.trim() || isLoading}
                       size="default"
-                      className="px-6 h-[56px]"
+                      className={`${isMobile ? 'w-full h-[48px]' : 'px-6 h-[56px]'}`}
                     >
                       <Send className="w-4 h-4" />
+                      {isMobile && <span className="ml-2">Send</span>}
                     </Button>
                   </div>
                 </div>
@@ -397,7 +400,8 @@ export default function Analyst(props: AnalystProps = {}) {
           </Card>
 
           {/* Context Rail */}
-          <div className="w-80 min-w-[280px] max-w-[320px] space-y-3 overflow-y-auto min-h-0 flex-shrink-0">
+          {(!isMobile || showQuickActions) && (
+            <div className={`${isMobile ? 'order-first' : 'w-80 min-w-[280px] max-w-[320px]'} space-y-3 overflow-y-auto min-h-0 flex-shrink-0`}>
             {/* Quick Actions */}
             {showQuickActions && (
               <Card className="bg-gradient-card shadow-card">
@@ -511,6 +515,7 @@ export default function Analyst(props: AnalystProps = {}) {
               </CardContent>
             </Card>
           </div>
+          )}
         </div>
       </div>
       
