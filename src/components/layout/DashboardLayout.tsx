@@ -10,21 +10,23 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full bg-background starfield">
         <AppSidebar />
         
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <DemoModeIndicator />
           <TopBar />
           
           {/* Sidebar toggle for mobile */}
-          <div className="lg:hidden p-2">
+          <div className="lg:hidden p-2 border-b border-border">
             <SidebarTrigger className="glow-gold" />
           </div>
           
-          <main className="flex-1 p-6 overflow-auto tab-transition">
-            {children}
+          <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto tab-transition">
+            <div className="max-w-full overflow-x-auto">
+              {children}
+            </div>
           </main>
         </div>
       </div>
