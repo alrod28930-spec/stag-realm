@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FileText, Shield, Lock, Scale } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -457,6 +457,9 @@ Last Updated: ${new Date().toLocaleDateString()}
             <FileText className="w-6 h-6" />
             Legal Documentation & Compliance
           </DialogTitle>
+          <DialogDescription>
+            Review and acknowledge legal documents required for platform usage
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
