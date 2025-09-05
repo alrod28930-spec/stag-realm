@@ -47,11 +47,11 @@ const adminItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
   const location = useLocation();
   const { user, hasPermission } = useAuthStore();
   const currentPath = location.pathname;
-  const collapsed = state === 'collapsed';
+  const collapsed = state === 'collapsed' && !isMobile;
 
   const isActive = (path: string) => {
     if (path === '/') {
