@@ -3,6 +3,7 @@ import { SpreadsheetGrid } from './SpreadsheetGrid';
 import { SpreadsheetToolbar } from './SpreadsheetToolbar';
 import { FormulaBar } from './FormulaBar';
 import { ComplianceBanner } from './ComplianceBanner';
+import { CradleErrorBoundary } from './CradleErrorBoundary';
 import { useSpreadsheetEngine } from '@/hooks/useSpreadsheetEngine';
 import { useCradleSheets } from '@/hooks/useCradleSheets';
 import { useToast } from '@/hooks/use-toast';
@@ -219,73 +220,75 @@ export function CradleSpreadsheet() {
   }
 
   return (
-    <div className="space-y-4">
-      <ComplianceBanner />
-      
-      <div className="flex flex-col h-full">
-        {/* Sheet Tabs */}
-        <Tabs value={activeSheetId} onValueChange={handleSheetSwitch} className="w-full">
-          <div className="border-b border-border">
-            <TabsList className="h-10 p-0 bg-transparent">
-              {sheets.map((sheet) => (
-                <TabsTrigger
-                  key={sheet.id}
-                  value={sheet.id}
-                  className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 py-2"
+    <CradleErrorBoundary>
+      <div className="space-y-4">
+        <ComplianceBanner />
+        
+        <div className="flex flex-col h-full">
+          {/* Sheet Tabs */}
+          <Tabs value={activeSheetId} onValueChange={handleSheetSwitch} className="w-full">
+            <div className="border-b border-border">
+              <TabsList className="h-10 p-0 bg-transparent">
+                {sheets.map((sheet) => (
+                  <TabsTrigger
+                    key={sheet.id}
+                    value={sheet.id}
+                    className="data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 py-2"
+                  >
+                    {sheet.name}
+                  </TabsTrigger>
+                ))}
+                <Button
+                  onClick={handleNewSheet}
+                  size="sm"
+                  variant="ghost"
+                  className="ml-2 h-8 w-8 p-0"
                 >
-                  {sheet.name}
-                </TabsTrigger>
-              ))}
-              <Button
-                onClick={handleNewSheet}
-                size="sm"
-                variant="ghost"
-                className="ml-2 h-8 w-8 p-0"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </TabsList>
-          </div>
-
-          <TabsContent value={activeSheetId} className="space-y-0 mt-0">
-            {/* Toolbar */}
-            <SpreadsheetToolbar
-              currentSheet={activeSheet?.name || ''}
-              onNewSheet={handleNewSheet}
-              onSaveSheet={handleSaveSheet}
-              onRenameSheet={handleRenameSheet}
-              onDeleteSheet={handleDeleteSheet}
-              onImportData={handleImportData}
-              onExportData={handleExportData}
-              onUndo={undo}
-              onRedo={redo}
-              canUndo={canUndo}
-              canRedo={canRedo}
-            />
-
-            {/* Formula Bar */}
-            <FormulaBar
-              activeCell={activeCell}
-              formula={currentFormula}
-              onFormulaChange={setCurrentFormula}
-              onFormulaSubmit={handleFormulaSubmit}
-            />
-
-            {/* Spreadsheet Grid */}
-            <div className="flex-1 overflow-hidden">
-              <SpreadsheetGrid
-                data={data.cells}
-                rows={data.rows}
-                cols={data.cols}
-                activeCell={activeCell}
-                onCellChange={handleCellChange}
-                onActiveCellChange={setActiveCell}
-                onFormulaChange={setCurrentFormula}
-              />
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </TabsList>
             </div>
-          </TabsContent>
-        </Tabs>
+
+            <TabsContent value={activeSheetId} className="space-y-0 mt-0">
+              {/* Toolbar */}
+              <SpreadsheetToolbar
+                currentSheet={activeSheet?.name || ''}
+                onNewSheet={handleNewSheet}
+                onSaveSheet={handleSaveSheet}
+                onRenameSheet={handleRenameSheet}
+                onDeleteSheet={handleDeleteSheet}
+                onImportData={handleImportData}
+                onExportData={handleExportData}
+                onUndo={undo}
+                onRedo={redo}
+                canUndo={canUndo}
+                canRedo={canRedo}
+              />
+
+              {/* Formula Bar */}
+              <FormulaBar
+                activeCell={activeCell}
+                formula={currentFormula}
+                onFormulaChange={setCurrentFormula}
+                onFormulaSubmit={handleFormulaSubmit}
+              />
+
+              {/* Spreadsheet Grid */}
+              <div className="flex-1 overflow-hidden">
+                <SpreadsheetGrid
+                  data={data.cells}
+                  rows={data.rows}
+                  cols={data.cols}
+                  activeCell={activeCell}
+                  onCellChange={handleCellChange}
+                  onActiveCellChange={setActiveCell}
+                  onFormulaChange={setCurrentFormula}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-    </div>
+    </CradleErrorBoundary>
   );
 }

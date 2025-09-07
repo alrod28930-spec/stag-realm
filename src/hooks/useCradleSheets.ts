@@ -78,11 +78,19 @@ export function useCradleSheets() {
         sheets: [{ id: 'sheet1', name: 'Sheet1', active: true }]
       };
 
+      // Get user's default workspace for the sheet
+      const { data: workspaces } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1);
+
       const { data, error } = await supabase
         .from('cradle_sheets')
         .insert({
           name,
           user_id: user.id,
+          workspace_id: workspaces?.[0]?.workspace_id || null,
           data: defaultData
         })
         .select()
@@ -234,25 +242,40 @@ export function useCradleSheets() {
   const logCradleAction = async (eventType: string, payload: any) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.warn('No authenticated user for logging cradle action');
+        return;
+      }
 
-      // Get user's default workspace (simplified - you may want to get this differently)
-      const { data: workspaces } = await supabase
+      // Get user's workspaces
+      const { data: workspaces, error: workspaceError } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
         .limit(1);
 
-      if (workspaces && workspaces.length > 0) {
-        await supabase.rpc('recorder_log', {
-          p_workspace: workspaces[0].workspace_id,
-          p_event_type: eventType,
-          p_severity: 1,
-          p_entity_type: 'cradle_sheet',
-          p_entity_id: payload.id || '',
-          p_summary: `Cradle action: ${eventType}`,
-          p_payload: payload
-        });
+      if (workspaceError) {
+        console.error('Error fetching user workspaces:', workspaceError);
+        return;
+      }
+
+      if (!workspaces || workspaces.length === 0) {
+        console.warn('User has no workspace memberships, skipping action logging');
+        return;
+      }
+
+      const { error: logError } = await supabase.rpc('recorder_log', {
+        p_workspace: workspaces[0].workspace_id,
+        p_event_type: eventType,
+        p_severity: 1,
+        p_entity_type: 'cradle_sheet',
+        p_entity_id: payload.id || '',
+        p_summary: `Cradle action: ${eventType}`,
+        p_payload: payload
+      });
+
+      if (logError) {
+        console.error('Error recording cradle action:', logError);
       }
     } catch (error) {
       console.error('Error logging cradle action:', error);

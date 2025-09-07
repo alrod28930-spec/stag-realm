@@ -209,41 +209,79 @@ export function useSpreadsheetEngine(initialData?: SpreadsheetData) {
     }
   }, [history, historyIndex]);
 
+  // Helper function to convert column number to letter
+  const getColumnLetter = (col: number): string => {
+    let result = '';
+    let tempCol = col;
+    while (true) {
+      result = String.fromCharCode(65 + (tempCol % 26)) + result;
+      tempCol = Math.floor(tempCol / 26);
+      if (tempCol === 0) break;
+      tempCol--; // Adjust for 1-based indexing in Excel style
+    }
+    return result;
+  };
+
+  // Helper function to parse column letters to number
+  const parseColumnLetter = (colStr: string): number => {
+    let col = 0;
+    for (let i = 0; i < colStr.length; i++) {
+      col = col * 26 + (colStr.charCodeAt(i) - 65 + 1);
+    }
+    return col - 1; // Convert to 0-based indexing
+  };
+
   const exportToCSV = useCallback(() => {
     const rows: string[] = [];
-    const maxRow = Math.max(...Object.keys(data.cells).map(cellId => {
+    
+    // Find the actual range of data
+    const cellIds = Object.keys(data.cells);
+    if (cellIds.length === 0) {
+      toast({
+        title: "No data to export",
+        description: "The spreadsheet is empty.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const maxRow = Math.max(...cellIds.map(cellId => {
       const match = cellId.match(/\d+/);
       return match ? parseInt(match[0]) : 0;
-    }), 1);
+    }));
     
-    const maxCol = Math.max(...Object.keys(data.cells).map(cellId => {
+    const maxCol = Math.max(...cellIds.map(cellId => {
       const match = cellId.match(/[A-Z]+/);
       if (!match) return 0;
-      let col = 0;
-      for (let i = 0; i < match[0].length; i++) {
-        col = col * 26 + (match[0].charCodeAt(i) - 64);
-      }
-      return col;
-    }), 1);
+      return parseColumnLetter(match[0]);
+    }));
 
+    // Generate CSV content
     for (let row = 1; row <= maxRow; row++) {
       const rowData: string[] = [];
-      for (let col = 1; col <= maxCol; col++) {
-        const colLetter = String.fromCharCode(64 + col);
+      for (let col = 0; col <= maxCol; col++) {
+        const colLetter = getColumnLetter(col);
         const cellId = `${colLetter}${row}`;
         const cell = data.cells[cellId];
-        rowData.push(cell?.value ? `"${cell.value}"` : '');
+        const value = cell?.value || '';
+        // Escape quotes and wrap in quotes if contains comma, quote, or newline
+        const escapedValue = value.includes(',') || value.includes('"') || value.includes('\n') 
+          ? `"${value.replace(/"/g, '""')}"` 
+          : value;
+        rowData.push(escapedValue);
       }
       rows.push(rowData.join(','));
     }
     
     const csvContent = rows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'spreadsheet.csv';
+    a.download = 'cradle-spreadsheet.csv';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
     toast({

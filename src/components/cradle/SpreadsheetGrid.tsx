@@ -40,9 +40,12 @@ export function SpreadsheetGrid({
   // Convert column number to letter (A, B, C, ..., Z, AA, AB, ...)
   const getColumnLetter = (col: number): string => {
     let result = '';
-    while (col >= 0) {
-      result = String.fromCharCode(65 + (col % 26)) + result;
-      col = Math.floor(col / 26) - 1;
+    let tempCol = col;
+    while (true) {
+      result = String.fromCharCode(65 + (tempCol % 26)) + result;
+      tempCol = Math.floor(tempCol / 26);
+      if (tempCol === 0) break;
+      tempCol--; // Adjust for 1-based indexing in Excel style
     }
     return result;
   };
@@ -62,7 +65,7 @@ export function SpreadsheetGrid({
     
     let col = 0;
     for (let i = 0; i < colStr.length; i++) {
-      col = col * 26 + (colStr.charCodeAt(i) - 64);
+      col = col * 26 + (colStr.charCodeAt(i) - 65 + 1);
     }
     col -= 1;
     
@@ -94,64 +97,64 @@ export function SpreadsheetGrid({
     }
   };
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (editingCell) return;
-
-    const { row, col } = parseCellId(activeCell);
-    let newRow = row;
-    let newCol = col;
-
-    switch (e.key) {
-      case 'ArrowUp':
-        newRow = Math.max(0, row - 1);
-        break;
-      case 'ArrowDown':
-        newRow = Math.min(rows - 1, row + 1);
-        break;
-      case 'ArrowLeft':
-        newCol = Math.max(0, col - 1);
-        break;
-      case 'ArrowRight':
-        newCol = Math.min(cols - 1, col + 1);
-        break;
-      case 'Enter':
-        if (e.shiftKey) {
-          newRow = Math.max(0, row - 1);
-        } else {
-          newRow = Math.min(rows - 1, row + 1);
-        }
-        break;
-      case 'Tab':
-        e.preventDefault();
-        if (e.shiftKey) {
-          newCol = Math.max(0, col - 1);
-        } else {
-          newCol = Math.min(cols - 1, col + 1);
-        }
-        break;
-      case 'F2':
-        handleCellDoubleClick(activeCell);
-        return;
-      default:
-        return;
-    }
-
-    const newCellId = getCellId(newRow, newCol);
-    if (newCellId !== activeCell) {
-      onActiveCellChange(newCellId);
-      const cell = data[newCellId];
-      if (cell?.formula) {
-        onFormulaChange(cell.formula);
-      } else {
-        onFormulaChange('');
-      }
-    }
-  }, [activeCell, data, rows, cols, editingCell, onActiveCellChange, onFormulaChange]);
-
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+    const handleKeyDownWrapper = (e: KeyboardEvent) => {
+      if (editingCell) return;
+
+      const { row, col } = parseCellId(activeCell);
+      let newRow = row;
+      let newCol = col;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          newRow = Math.max(0, row - 1);
+          break;
+        case 'ArrowDown':
+          newRow = Math.min(rows - 1, row + 1);
+          break;
+        case 'ArrowLeft':
+          newCol = Math.max(0, col - 1);
+          break;
+        case 'ArrowRight':
+          newCol = Math.min(cols - 1, col + 1);
+          break;
+        case 'Enter':
+          if (e.shiftKey) {
+            newRow = Math.max(0, row - 1);
+          } else {
+            newRow = Math.min(rows - 1, row + 1);
+          }
+          break;
+        case 'Tab':
+          e.preventDefault();
+          if (e.shiftKey) {
+            newCol = Math.max(0, col - 1);
+          } else {
+            newCol = Math.min(cols - 1, col + 1);
+          }
+          break;
+        case 'F2':
+          handleCellDoubleClick(activeCell);
+          return;
+        default:
+          return;
+      }
+
+      const newCellId = getCellId(newRow, newCol);
+      if (newCellId !== activeCell) {
+        onActiveCellChange(newCellId);
+        const cell = data[newCellId];
+        if (cell?.formula) {
+          onFormulaChange(cell.formula);
+        } else {
+          onFormulaChange('');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDownWrapper);
+    return () => document.removeEventListener('keydown', handleKeyDownWrapper);
+  }, [activeCell, rows, cols, editingCell, onActiveCellChange, onFormulaChange, data]);
 
   return (
     <div className="relative overflow-auto border border-border rounded-lg bg-background">
