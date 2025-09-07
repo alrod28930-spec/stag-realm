@@ -90,6 +90,114 @@ export type Database = {
           },
         ]
       }
+      billing_customers: {
+        Row: {
+          created_at: string | null
+          stripe_customer_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          stripe_customer_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          stripe_customer_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_invoices: {
+        Row: {
+          amount_total: number
+          created_at: string | null
+          currency: string
+          hosted_invoice_url: string | null
+          id: string
+          stripe_invoice_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          amount_total: number
+          created_at?: string | null
+          currency?: string
+          hosted_invoice_url?: string | null
+          id?: string
+          stripe_invoice_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          amount_total?: number
+          created_at?: string | null
+          currency?: string
+          hosted_invoice_url?: string | null
+          id?: string
+          stripe_invoice_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          id: string
+          plan_code: string
+          status: string
+          stripe_subscription_id: string
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          plan_code: string
+          status: string
+          stripe_subscription_id: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          plan_code?: string
+          status?: string
+          stripe_subscription_id?: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_subscriptions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blacklists: {
         Row: {
           created_at: string
@@ -1830,6 +1938,10 @@ export type Database = {
         Returns: unknown
       }
       is_member_of_workspace: {
+        Args: { w_id: string }
+        Returns: boolean
+      }
+      is_owner_of_workspace: {
         Args: { w_id: string }
         Returns: boolean
       }
