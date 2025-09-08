@@ -1934,6 +1934,10 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_default_entitlements: {
+        Args: { p_workspace_id: string }
+        Returns: undefined
+      }
       gen_workspace_safe_name: {
         Args: {
           p_display: string
