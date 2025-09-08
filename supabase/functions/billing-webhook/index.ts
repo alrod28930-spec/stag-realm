@@ -24,6 +24,50 @@ const getPlanCodeFromPrice = (priceId: string): string => {
   return priceMap[priceId] || "unknown";
 };
 
+// Plan feature mapping for entitlements
+const PLAN_FEATURES = {
+  lite: ['DEMO_TRADING','ANALYST_BASIC','RECORDER_BASIC','CRADLE_SHEET'],
+  standard: ['TRADING_DESK','BROKERAGE_DOCK','PORTFOLIO_MIRROR','CORE_BOTS','ORACLE_BASIC'],
+  pro: ['ADV_BOTS','DAY_TRADE_MODE','ORACLE_EXPANDED','SEEKER','LEARNING_BOT','RECORDER_ADV','CRADLE_CODE'],
+  elite: ['VOICE_ANALYST','WORLD_MARKETS','UNLIMITED_WORKSPACES','PRIORITY_SUPPORT'],
+};
+
+// Apply entitlements based on subscription plan
+async function applyEntitlements(supabaseAdmin: any, workspaceId: string, planCode: string, active: boolean) {
+  logStep("Applying entitlements", { workspaceId, planCode, active });
+  
+  // Reset all entitlements to false
+  const allFeatures = Object.values(PLAN_FEATURES).flat();
+  await supabaseAdmin
+    .from('workspace_entitlements')
+    .upsert(allFeatures.map(code => ({
+      workspace_id: workspaceId,
+      feature_code: code,
+      enabled: false,
+      source: 'subscription'
+    })));
+
+  if (active && PLAN_FEATURES[planCode as keyof typeof PLAN_FEATURES]) {
+    const enabledFeatures = [...PLAN_FEATURES[planCode as keyof typeof PLAN_FEATURES]];
+    
+    // Include all lower-tier features
+    if (planCode === 'standard') enabledFeatures.push(...PLAN_FEATURES.lite);
+    if (planCode === 'pro') enabledFeatures.push(...PLAN_FEATURES.lite, ...PLAN_FEATURES.standard);
+    if (planCode === 'elite') enabledFeatures.push(...PLAN_FEATURES.lite, ...PLAN_FEATURES.standard, ...PLAN_FEATURES.pro);
+    
+    await supabaseAdmin.from('workspace_entitlements').upsert(
+      enabledFeatures.map(code => ({ 
+        workspace_id: workspaceId, 
+        feature_code: code, 
+        enabled: true, 
+        source: 'subscription' 
+      }))
+    );
+    
+    logStep("Entitlements applied", { workspaceId, enabledFeatures });
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -97,6 +141,10 @@ serve(async (req) => {
             updated_at: new Date().toISOString()
           });
 
+        // Apply entitlements based on subscription status
+        const isActive = ['active', 'trialing'].includes(subscription.status);
+        await applyEntitlements(supabaseClient, customer.workspace_id, planCode, isActive);
+
         // Log subscription status change
         await supabaseClient.rpc('recorder_log', {
           p_workspace: customer.workspace_id,
@@ -119,6 +167,13 @@ serve(async (req) => {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         
+        // Get workspace_id from subscription
+        const { data: subData } = await supabaseClient
+          .from('billing_subscriptions')
+          .select('workspace_id')
+          .eq('stripe_subscription_id', subscription.id)
+          .single();
+        
         await supabaseClient
           .from('billing_subscriptions')
           .update({ 
@@ -126,6 +181,11 @@ serve(async (req) => {
             updated_at: new Date().toISOString()
           })
           .eq('stripe_subscription_id', subscription.id);
+
+        // Disable all entitlements for canceled subscription
+        if (subData) {
+          await applyEntitlements(supabaseClient, subData.workspace_id, 'lite', false);
+        }
 
         logStep("Subscription deleted", { subscription_id: subscription.id });
         break;
