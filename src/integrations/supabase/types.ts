@@ -578,6 +578,24 @@ export type Database = {
         }
         Relationships: []
       }
+      features: {
+        Row: {
+          code: string
+          description: string
+          tier_min: string
+        }
+        Insert: {
+          code: string
+          description: string
+          tier_min: string
+        }
+        Update: {
+          code?: string
+          description?: string
+          tier_min?: string
+        }
+        Relationships: []
+      }
       glossary: {
         Row: {
           created_at: string | null
@@ -1802,6 +1820,45 @@ export type Database = {
           },
         ]
       }
+      workspace_entitlements: {
+        Row: {
+          enabled: boolean
+          feature_code: string
+          source: string
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          feature_code: string
+          source?: string
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          enabled?: boolean
+          feature_code?: string
+          source?: string
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_entitlements_feature_code_fkey"
+            columns: ["feature_code"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "workspace_entitlements_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           created_at: string
@@ -1920,6 +1977,10 @@ export type Database = {
       halfvec_typmod_in: {
         Args: { "": unknown[] }
         Returns: number
+      }
+      has_entitlement: {
+        Args: { p_feature: string; p_workspace: string }
+        Returns: boolean
       }
       hnsw_bit_support: {
         Args: { "": unknown }
