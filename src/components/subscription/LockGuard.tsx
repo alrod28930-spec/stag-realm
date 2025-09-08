@@ -21,7 +21,7 @@ export function LockGuard({ feature, workspaceId, children, fallback }: LockGuar
   }
 
   if (!hasFeature(feature)) {
-    return fallback || <LockedCard feature={feature} />;
+    return fallback || <LockedCard feature={feature} workspaceId={workspaceId} />;
   }
 
   return <>{children}</>;

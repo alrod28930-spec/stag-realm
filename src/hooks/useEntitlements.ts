@@ -17,6 +17,8 @@ export function useEntitlements(workspaceId: string | undefined) {
   useEffect(() => {
     if (!workspaceId || !user) {
       setLoading(false);
+      setEntitlements([]);
+      setError(null);
       return;
     }
 
@@ -36,6 +38,7 @@ export function useEntitlements(workspaceId: string | undefined) {
       } catch (err) {
         console.error('Error fetching entitlements:', err);
         setError(err instanceof Error ? err.message : 'Failed to load entitlements');
+        setEntitlements([]);
       } finally {
         setLoading(false);
       }

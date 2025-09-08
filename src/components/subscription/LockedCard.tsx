@@ -53,11 +53,20 @@ const FEATURE_META: Record<string, {
   }
 };
 
+interface LockedCardProps {
+  feature: string;
+  title?: string;
+  description?: string;
+  onUpgrade?: () => void;
+  workspaceId?: string;
+}
+
 export function LockedCard({ 
   feature, 
   title, 
   description, 
-  onUpgrade 
+  onUpgrade,
+  workspaceId 
 }: LockedCardProps) {
   const { toast } = useToast();
   const demoMode = isDemoMode();
@@ -75,10 +84,10 @@ export function LockedCard({
 
   useEffect(() => {
     // Log that user viewed a locked feature
-    logFeatureLock(null, feature, 'viewed', { 
+    logFeatureLock(workspaceId, feature, 'viewed', { 
       required_tier: requiredTier 
     });
-  }, [feature, requiredTier]);
+  }, [feature, requiredTier, workspaceId]);
 
   const handleUpgrade = async () => {
     if (demoMode) {
@@ -91,7 +100,7 @@ export function LockedCard({
     }
 
     // Log upgrade CTA click
-    await logFeatureLock(null, feature, 'upgrade_clicked', { 
+    await logFeatureLock(workspaceId, feature, 'upgrade_clicked', { 
       target_tier: requiredTier 
     });
 
