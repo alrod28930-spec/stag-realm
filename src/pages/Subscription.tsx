@@ -13,7 +13,7 @@ import { BillingManagement } from '@/components/subscription/BillingManagement';
 import { isDemoMode } from '@/utils/demoMode';
 import { Shield, AlertTriangle } from 'lucide-react';
 
-// Plan configurations
+// Plan configurations - using placeholder price IDs that should be configured when Stripe is set up
 const PLANS: Plan[] = [
   {
     code: 'lite',
@@ -29,7 +29,7 @@ const PLANS: Plan[] = [
       { name: 'Live Trading', included: false },
       { name: 'Advanced Analytics', included: false },
     ],
-    priceId: process.env.VITE_STRIPE_PRICE_LITE || 'price_lite_default',
+    priceId: 'price_lite_placeholder', // TODO: Replace with actual Stripe price ID
   },
   {
     code: 'standard',
@@ -47,7 +47,7 @@ const PLANS: Plan[] = [
       { name: 'Risk Management Tools', included: true },
       { name: 'Advanced Features', included: false },
     ],
-    priceId: process.env.VITE_STRIPE_PRICE_STANDARD || 'price_standard_default',
+    priceId: 'price_standard_placeholder', // TODO: Replace with actual Stripe price ID
   },
   {
     code: 'pro',
@@ -63,7 +63,7 @@ const PLANS: Plan[] = [
       { name: 'Priority Support', included: true },
       { name: 'Advanced Analytics', included: true },
     ],
-    priceId: process.env.VITE_STRIPE_PRICE_PRO || 'price_pro_default',
+    priceId: 'price_pro_placeholder', // TODO: Replace with actual Stripe price ID
   },
   {
     code: 'elite',
@@ -79,7 +79,7 @@ const PLANS: Plan[] = [
       { name: 'V2 Platform Preview', included: true },
       { name: 'API Access', included: true },
     ],
-    priceId: process.env.VITE_STRIPE_PRICE_ELITE || 'price_elite_default',
+    priceId: 'price_elite_placeholder', // TODO: Replace with actual Stripe price ID
   },
 ];
 
@@ -88,10 +88,10 @@ export default function Subscription() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   
-  // For now, we'll use a mock workspace ID - this should come from workspace context
-  const workspaceId = 'mock-workspace-id'; // TODO: Get from workspace context
-  const isWorkspaceOwner = true; // TODO: Get from workspace context
-  const workspaceName = 'My Workspace'; // TODO: Get from workspace context
+  // TODO: Get these from workspace context when implemented
+  const workspaceId = undefined; // Disabled until workspace system is implemented
+  const isWorkspaceOwner = true; 
+  const workspaceName = 'My Workspace';
   const demoMode = isDemoMode();
 
   const {
@@ -147,23 +147,6 @@ export default function Subscription() {
       console.error('Checkout error:', err);
       toast({
         title: "Failed to start checkout",
-        description: err instanceof Error ? err.message : "Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManagePayment = async () => {
-    try {
-      setLoading(true);
-      const portalUrl = await createPortalSession();
-      window.open(portalUrl, '_blank');
-    } catch (err) {
-      console.error('Portal error:', err);
-      toast({
-        title: "Failed to open billing portal",
         description: err instanceof Error ? err.message : "Please try again later.",
         variant: "destructive",
       });
@@ -259,7 +242,7 @@ export default function Subscription() {
             <BillingManagement
               invoices={invoices}
               hasActiveSubscription={hasActiveSubscription}
-              onManagePayment={handleManagePayment}
+              onManagePayment={handleOpenPortal}
               onOpenPortal={handleOpenPortal}
               isOwner={isWorkspaceOwner}
             />

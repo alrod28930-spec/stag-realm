@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -26,7 +26,7 @@ export function useSubscription(workspaceId: string | undefined) {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuthStore();
 
-  const fetchSubscriptionData = async () => {
+  const fetchSubscriptionData = useCallback(async () => {
     if (!workspaceId || !user) {
       setLoading(false);
       return;
@@ -77,7 +77,7 @@ export function useSubscription(workspaceId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId, user]);
 
   const createCheckoutSession = async (priceId: string, trialDays?: number) => {
     if (!workspaceId) throw new Error('No workspace selected');
@@ -110,7 +110,7 @@ export function useSubscription(workspaceId: string | undefined) {
 
   useEffect(() => {
     fetchSubscriptionData();
-  }, [workspaceId, user]);
+  }, [fetchSubscriptionData]);
 
   return {
     subscription,
