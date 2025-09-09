@@ -78,19 +78,42 @@ export function useCradleSheets() {
         sheets: [{ id: 'sheet1', name: 'Sheet1', active: true }]
       };
 
-      // Get user's default workspace for the sheet
-      const { data: workspaces } = await supabase
+      // Get user's default workspace for the sheet, create if none exists
+      let { data: workspaces } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
-        .limit(1);
+        .maybeSingle();
+      
+      let workspace_id: string | null = workspaces?.workspace_id || null;
+      
+      // Create default workspace if user doesn't have one
+      if (!workspace_id) {
+        const { data: newWorkspace } = await supabase
+          .from('workspaces')
+          .insert({
+            name: `${user.email}'s Workspace`,
+            owner_id: user.id
+          })
+          .select()
+          .single();
+          
+        if (newWorkspace) {
+          await supabase.from('workspace_members').insert({
+            workspace_id: newWorkspace.id,
+            user_id: user.id,
+            role: 'owner'
+          });
+          workspace_id = newWorkspace.id;
+        }
+      }
 
       const { data, error } = await supabase
         .from('cradle_sheets')
         .insert({
           name,
           user_id: user.id,
-          workspace_id: workspaces?.[0]?.workspace_id || null,
+          workspace_id: workspace_id,
           data: defaultData
         })
         .select()
@@ -247,25 +270,46 @@ export function useCradleSheets() {
         return;
       }
 
-      // Get user's workspaces
-      const { data: workspaces, error: workspaceError } = await supabase
+      // Get user's workspaces, create if none exists
+      let { data: workspaces, error: workspaceError } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
-        .limit(1);
+        .maybeSingle();
 
       if (workspaceError) {
         console.error('Error fetching user workspaces:', workspaceError);
         return;
       }
 
-      if (!workspaces || workspaces.length === 0) {
-        console.warn('User has no workspace memberships, skipping action logging');
-        return;
+      let workspace_id: string | null = workspaces?.workspace_id || null;
+      
+      // Create default workspace if user doesn't have one
+      if (!workspace_id) {
+        const { data: newWorkspace } = await supabase
+          .from('workspaces')
+          .insert({
+            name: `${user.email}'s Workspace`,
+            owner_id: user.id
+          })
+          .select()
+          .single();
+          
+        if (newWorkspace) {
+          await supabase.from('workspace_members').insert({
+            workspace_id: newWorkspace.id,
+            user_id: user.id,
+            role: 'owner'
+          });
+          workspace_id = newWorkspace.id;
+        } else {
+          console.warn('Failed to create workspace for user, skipping action logging');
+          return;
+        }
       }
 
       const { error: logError } = await supabase.rpc('recorder_log', {
-        p_workspace: workspaces[0].workspace_id,
+        p_workspace: workspace_id,
         p_event_type: eventType,
         p_severity: 1,
         p_entity_type: 'cradle_sheet',
