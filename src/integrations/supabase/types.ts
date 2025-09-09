@@ -90,6 +90,76 @@ export type Database = {
           },
         ]
       }
+      analyst_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          summary: Json | null
+          updated_at: string | null
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          summary?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          summary?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyst_sessions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analyst_telemetry: {
+        Row: {
+          created_at: string | null
+          event: string
+          id: string
+          payload: Json | null
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event: string
+          id?: string
+          payload?: Json | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event?: string
+          id?: string
+          payload?: Json | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyst_telemetry_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_customers: {
         Row: {
           created_at: string | null
@@ -1693,6 +1763,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_prefs: {
+        Row: {
+          created_at: string | null
+          favored_assets: string[] | null
+          horizon: string | null
+          risk_profile: string | null
+          teach_level: string | null
+          updated_at: string | null
+          user_id: string
+          voice_enabled: boolean | null
+          voice_rate: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          favored_assets?: string[] | null
+          horizon?: string | null
+          risk_profile?: string | null
+          teach_level?: string | null
+          updated_at?: string | null
+          user_id: string
+          voice_enabled?: boolean | null
+          voice_rate?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          favored_assets?: string[] | null
+          horizon?: string | null
+          risk_profile?: string | null
+          teach_level?: string | null
+          updated_at?: string | null
+          user_id?: string
+          voice_enabled?: boolean | null
+          voice_rate?: number | null
+        }
+        Relationships: []
       }
       user_settings: {
         Row: {
