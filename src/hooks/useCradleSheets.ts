@@ -26,13 +26,8 @@ export function useCradleSheets() {
 
   const loadSheets = async () => {
     try {
-      if (!user || !isAuthenticated) {
-        setLoading(false);
-        return;
-      }
-
-      // Handle demo mode with local storage
-      if (isDemoMode) {
+      // Handle demo mode first - never touch database for demo users
+      if (isDemoMode || (user && (user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000'))) {
         const demoSheets = localStorage.getItem('demo-cradle-sheets');
         if (demoSheets) {
           setSheets(JSON.parse(demoSheets));
@@ -43,10 +38,12 @@ export function useCradleSheets() {
             name: 'Demo Sheet',
             data: {
               cells: {},
-              rows: 100,
-              cols: 26,
-              activeCell: 'A1',
-              sheets: [{ id: 'sheet1', name: 'Sheet1', active: true }]
+              rows: 1000,
+              cols: 100,
+              columnWidths: {},
+              rowHeights: {},
+              frozenRows: 0,
+              frozenCols: 0
             },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -54,6 +51,11 @@ export function useCradleSheets() {
           setSheets([defaultSheet]);
           localStorage.setItem('demo-cradle-sheets', JSON.stringify([defaultSheet]));
         }
+        setLoading(false);
+        return;
+      }
+
+      if (!user || !isAuthenticated) {
         setLoading(false);
         return;
       }
@@ -70,13 +72,14 @@ export function useCradleSheets() {
           description: error.message,
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
 
       setSheets(data || []);
       
-      // Create default sheet if none exist (only for real users, not demo)
-      if (!isDemoMode && (!data || data.length === 0)) {
+      // Create default sheet if none exist for real authenticated users
+      if ((!data || data.length === 0)) {
         await createSheet('My First Sheet');
       }
     } catch (error: any) {
@@ -93,25 +96,18 @@ export function useCradleSheets() {
 
   const createSheet = async (name: string): Promise<CradleSheet | null> => {
     try {
-      if (!user || !isAuthenticated) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to create sheets.",
-          variant: "destructive"
-        });
-        return null;
-      }
-
       const defaultData = {
         cells: {},
-        rows: 100,
-        cols: 26,
-        activeCell: 'A1',
-        sheets: [{ id: 'sheet1', name: 'Sheet1', active: true }]
+        rows: 1000,
+        cols: 100,
+        columnWidths: {},
+        rowHeights: {},
+        frozenRows: 0,
+        frozenCols: 0
       };
 
-      // Handle demo mode
-      if (isDemoMode) {
+      // Handle demo mode first - never touch database for demo users
+      if (isDemoMode || (user && (user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000'))) {
         const newSheet: CradleSheet = {
           id: `demo-sheet-${Date.now()}`,
           name,
@@ -132,9 +128,12 @@ export function useCradleSheets() {
         return newSheet;
       }
 
-      // Only proceed with database operations for real users
-      if (!user.id || user.email === 'demo@example.com') {
-        console.warn('Attempted database operation with demo user');
+      if (!user || !isAuthenticated) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to create sheets.",
+          variant: "destructive"
+        });
         return null;
       }
 
@@ -213,8 +212,8 @@ export function useCradleSheets() {
 
   const updateSheet = async (id: string, data: any): Promise<boolean> => {
     try {
-      // Handle demo mode
-      if (isDemoMode) {
+      // Handle demo mode first - never touch database for demo users
+      if (isDemoMode || (user && (user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000'))) {
         const updatedSheets = sheets.map(sheet => 
           sheet.id === id ? { ...sheet, data, updated_at: new Date().toISOString() } : sheet
         );
@@ -249,8 +248,8 @@ export function useCradleSheets() {
 
   const renameSheet = async (id: string, name: string): Promise<boolean> => {
     try {
-      // Handle demo mode
-      if (isDemoMode) {
+      // Handle demo mode first - never touch database for demo users
+      if (isDemoMode || (user && (user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000'))) {
         const updatedSheets = sheets.map(sheet => 
           sheet.id === id ? { ...sheet, name, updated_at: new Date().toISOString() } : sheet
         );
@@ -302,8 +301,8 @@ export function useCradleSheets() {
 
   const deleteSheet = async (id: string): Promise<boolean> => {
     try {
-      // Handle demo mode
-      if (isDemoMode) {
+      // Handle demo mode first - never touch database for demo users
+      if (isDemoMode || (user && (user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000'))) {
         const updatedSheets = sheets.filter(sheet => sheet.id !== id);
         setSheets(updatedSheets);
         localStorage.setItem('demo-cradle-sheets', JSON.stringify(updatedSheets));

@@ -1,5 +1,5 @@
 // Main Excel-like spreadsheet component
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ExcelGrid } from './ExcelGrid';
 import { ExcelToolbar } from './ExcelToolbar';
 import { ExcelFormulaBar } from './ExcelFormulaBar';
@@ -48,7 +48,7 @@ export function ExcelSpreadsheet() {
   const handleCellChange = useCallback((cellId: string, value: string) => {
     engine.updateCell(cellId, value);
     
-    // Auto-save to database
+    // Auto-save to database/localStorage
     if (activeSheet) {
       const updatedData = {
         ...activeSheet.data,
@@ -78,8 +78,21 @@ export function ExcelSpreadsheet() {
     if (!selection) return {};
     
     const selectedCells = selection.isSelecting ? [] : 
-      selection.selectedRange ? [] : // Get cells in range
-      [getCellId(selection.activeCell.row, selection.activeCell.col)];
+      selection.selectedRange ? 
+        // Get all cells in range
+        (() => {
+          const cells: string[] = [];
+          if (selection.selectedRange) {
+            const { startRow, endRow, startCol, endCol } = selection.selectedRange;
+            for (let r = startRow; r <= endRow; r++) {
+              for (let c = startCol; c <= endCol; c++) {
+                cells.push(getCellId(r, c));
+              }
+            }
+          }
+          return cells;
+        })() :
+        [getCellId(selection.activeCell.row, selection.activeCell.col)];
     
     const cellData: Record<string, Cell> = {};
     selectedCells.forEach(cellId => {
@@ -89,6 +102,32 @@ export function ExcelSpreadsheet() {
     });
     
     return cellData;
+  }, [selection, engine.data.cells]);
+
+  const getSelectedCellIds = useCallback((): string[] => {
+    if (!selection) return [];
+    
+    if (selection.selectedRange) {
+      const cells: string[] = [];
+      const { startRow, endRow, startCol, endCol } = selection.selectedRange;
+      for (let r = startRow; r <= endRow; r++) {
+        for (let c = startCol; c <= endCol; c++) {
+          cells.push(getCellId(r, c));
+        }
+      }
+      return cells;
+    }
+    
+    return [getCellId(selection.activeCell.row, selection.activeCell.col)];
+  }, [selection]);
+
+  // Update formula bar when selection changes
+  useEffect(() => {
+    if (selection) {
+      const cellId = getCellId(selection.activeCell.row, selection.activeCell.col);
+      const cell = engine.data.cells[cellId];
+      setCurrentFormula(cell?.formula || cell?.value || '');
+    }
   }, [selection, engine.data.cells]);
 
   if (loading) {
@@ -148,31 +187,66 @@ export function ExcelSpreadsheet() {
           <TabsContent value={activeSheetId} className="space-y-0 mt-0">
             <ExcelToolbar
               currentSheet={activeSheet?.name || ''}
-              selectedCells={selection ? [getCellId(selection.activeCell.row, selection.activeCell.col)] : []}
+              selectedCells={getSelectedCellIds()}
               selectedCellData={getSelectedCellData()}
               onNewSheet={handleNewSheet}
-              onSaveSheet={() => {}}
+              onSaveSheet={() => {
+                if (activeSheet) {
+                  updateSheet(activeSheet.id, engine.data);
+                  toast({
+                    title: "Sheet saved",
+                    description: "Your changes have been saved."
+                  });
+                }
+              }}
               onRenameSheet={(name) => activeSheet && renameSheet(activeSheet.id, name)}
-              onDeleteSheet={() => activeSheet && deleteSheet(activeSheet.id)}
-              onImportData={() => {}}
+              onDeleteSheet={() => {
+                if (activeSheet && sheets.length > 1) {
+                  deleteSheet(activeSheet.id);
+                  // Switch to first remaining sheet
+                  const remainingSheets = sheets.filter(s => s.id !== activeSheet.id);
+                  if (remainingSheets.length > 0) {
+                    setActiveSheetId(remainingSheets[0].id);
+                  }
+                }
+              }}
+              onImportData={(data) => {
+                engine.updateCells(data, 'Import data');
+                if (activeSheet) {
+                  updateSheet(activeSheet.id, { ...activeSheet.data, cells: engine.data.cells });
+                }
+              }}
               onExportData={engine.exportToCSV}
               onUndo={engine.undo}
               onRedo={engine.redo}
               canUndo={engine.canUndo}
               canRedo={engine.canRedo}
-              onCopy={() => {}}
-              onCut={() => {}}
-              onPaste={() => {}}
-              onApplyFormatting={(formatting) => {
+              onCopy={() => {
+                const selectedCells = getSelectedCellIds();
+                engine.copyCells(selectedCells);
+              }}
+              onCut={() => {
+                const selectedCells = getSelectedCellIds();
+                engine.cutCells(selectedCells);
+              }}
+              onPaste={() => {
                 if (selection) {
-                  const cellIds = [getCellId(selection.activeCell.row, selection.activeCell.col)];
-                  engine.applyCellFormatting(cellIds, formatting);
+                  const cellId = getCellId(selection.activeCell.row, selection.activeCell.col);
+                  engine.pasteCells(cellId);
+                }
+              }}
+              onApplyFormatting={(formatting) => {
+                const selectedCells = getSelectedCellIds();
+                engine.applyCellFormatting(selectedCells, formatting);
+                if (activeSheet) {
+                  updateSheet(activeSheet.id, { ...activeSheet.data, cells: engine.data.cells });
                 }
               }}
               onSetFormat={(format) => {
-                if (selection) {
-                  const cellIds = [getCellId(selection.activeCell.row, selection.activeCell.col)];
-                  engine.setCellFormat(cellIds, format);
+                const selectedCells = getSelectedCellIds();
+                engine.setCellFormat(selectedCells, format);
+                if (activeSheet) {
+                  updateSheet(activeSheet.id, { ...activeSheet.data, cells: engine.data.cells });
                 }
               }}
             />
