@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthStore } from '@/stores/authStore';
+import { useDemoMode } from '@/utils/demoMode';
 
 interface CradleSheet {
   id: string;
@@ -14,6 +16,8 @@ export function useCradleSheets() {
   const [sheets, setSheets] = useState<CradleSheet[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuthStore();
+  const { isDemoMode } = useDemoMode();
 
   // Load user's sheets
   useEffect(() => {
@@ -22,8 +26,37 @@ export function useCradleSheets() {
 
   const loadSheets = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !isAuthenticated) {
+        setLoading(false);
+        return;
+      }
+
+      // Handle demo mode with local storage
+      if (isDemoMode) {
+        const demoSheets = localStorage.getItem('demo-cradle-sheets');
+        if (demoSheets) {
+          setSheets(JSON.parse(demoSheets));
+        } else {
+          // Create default demo sheet
+          const defaultSheet = {
+            id: 'demo-sheet-1',
+            name: 'Demo Sheet',
+            data: {
+              cells: {},
+              rows: 100,
+              cols: 26,
+              activeCell: 'A1',
+              sheets: [{ id: 'sheet1', name: 'Sheet1', active: true }]
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          setSheets([defaultSheet]);
+          localStorage.setItem('demo-cradle-sheets', JSON.stringify([defaultSheet]));
+        }
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('cradle_sheets')
@@ -60,8 +93,7 @@ export function useCradleSheets() {
 
   const createSheet = async (name: string): Promise<CradleSheet | null> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!user || !isAuthenticated) {
         toast({
           title: "Authentication required",
           description: "Please log in to create sheets.",
@@ -77,6 +109,28 @@ export function useCradleSheets() {
         activeCell: 'A1',
         sheets: [{ id: 'sheet1', name: 'Sheet1', active: true }]
       };
+
+      // Handle demo mode
+      if (isDemoMode) {
+        const newSheet: CradleSheet = {
+          id: `demo-sheet-${Date.now()}`,
+          name,
+          data: defaultData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        const updatedSheets = [newSheet, ...sheets];
+        setSheets(updatedSheets);
+        localStorage.setItem('demo-cradle-sheets', JSON.stringify(updatedSheets));
+        
+        toast({
+          title: "Sheet created",
+          description: `"${name}" has been created successfully.`
+        });
+        
+        return newSheet;
+      }
 
       // Get user's default workspace for the sheet, create if none exists
       let { data: workspaces } = await supabase
@@ -153,6 +207,16 @@ export function useCradleSheets() {
 
   const updateSheet = async (id: string, data: any): Promise<boolean> => {
     try {
+      // Handle demo mode
+      if (isDemoMode) {
+        const updatedSheets = sheets.map(sheet => 
+          sheet.id === id ? { ...sheet, data, updated_at: new Date().toISOString() } : sheet
+        );
+        setSheets(updatedSheets);
+        localStorage.setItem('demo-cradle-sheets', JSON.stringify(updatedSheets));
+        return true;
+      }
+
       const { error } = await supabase
         .from('cradle_sheets')
         .update({ data })
@@ -179,6 +243,21 @@ export function useCradleSheets() {
 
   const renameSheet = async (id: string, name: string): Promise<boolean> => {
     try {
+      // Handle demo mode
+      if (isDemoMode) {
+        const updatedSheets = sheets.map(sheet => 
+          sheet.id === id ? { ...sheet, name, updated_at: new Date().toISOString() } : sheet
+        );
+        setSheets(updatedSheets);
+        localStorage.setItem('demo-cradle-sheets', JSON.stringify(updatedSheets));
+        
+        toast({
+          title: "Sheet renamed",
+          description: `Sheet renamed to "${name}" successfully.`
+        });
+        return true;
+      }
+
       const { error } = await supabase
         .from('cradle_sheets')
         .update({ name })
@@ -217,6 +296,19 @@ export function useCradleSheets() {
 
   const deleteSheet = async (id: string): Promise<boolean> => {
     try {
+      // Handle demo mode
+      if (isDemoMode) {
+        const updatedSheets = sheets.filter(sheet => sheet.id !== id);
+        setSheets(updatedSheets);
+        localStorage.setItem('demo-cradle-sheets', JSON.stringify(updatedSheets));
+        
+        toast({
+          title: "Sheet deleted",
+          description: "Sheet has been deleted successfully."
+        });
+        return true;
+      }
+
       const sheetToDelete = sheets.find(s => s.id === id);
       
       const { error } = await supabase
@@ -264,8 +356,7 @@ export function useCradleSheets() {
   // Log cradle actions for compliance
   const logCradleAction = async (eventType: string, payload: any) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!user || !isAuthenticated) {
         console.warn('No authenticated user for logging cradle action');
         return;
       }
