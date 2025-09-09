@@ -75,8 +75,8 @@ export function useCradleSheets() {
 
       setSheets(data || []);
       
-      // Create default sheet if none exist
-      if (!data || data.length === 0) {
+      // Create default sheet if none exist (only for real users, not demo)
+      if (!isDemoMode && (!data || data.length === 0)) {
         await createSheet('My First Sheet');
       }
     } catch (error: any) {
@@ -130,6 +130,12 @@ export function useCradleSheets() {
         });
         
         return newSheet;
+      }
+
+      // Only proceed with database operations for real users
+      if (!user.id || user.email === 'demo@example.com') {
+        console.warn('Attempted database operation with demo user');
+        return null;
       }
 
       // Get user's default workspace for the sheet, create if none exists
