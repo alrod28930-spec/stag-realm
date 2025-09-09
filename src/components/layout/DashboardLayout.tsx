@@ -18,8 +18,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <DemoModeIndicator />
           <TopBar />
           
-          {/* Sidebar toggle for mobile */}
-          <div className="lg:hidden p-2 border-b border-border">
+          {/* Sidebar toggle */}
+          <div className="p-2 border-b border-border">
             <SidebarTrigger className="glow-gold" />
           </div>
           
