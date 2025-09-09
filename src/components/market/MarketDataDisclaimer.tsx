@@ -1,9 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, TrendingUp, Settings, ExternalLink } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { AlertTriangle, TrendingUp, Settings, ExternalLink, Search } from 'lucide-react';
+import { useState } from 'react';
 
 export function MarketDataDisclaimer() {
+  const [searchTerm, setSearchTerm] = useState('');
+
   return (
     <div className="space-y-6">
       {/* Main Disclaimer Card */}
@@ -14,37 +18,44 @@ export function MarketDataDisclaimer() {
               <AlertTriangle className="w-8 h-8 text-warning" />
             </div>
           </div>
-          <CardTitle className="text-xl">Market Data Integration Required</CardTitle>
+          <CardTitle className="text-xl">Brokerage API Connection Required</CardTitle>
           <CardDescription className="text-base">
-            Configure your market data API to access real-time quotes, charts, and analysis
+            Connect your brokerage API to access market indexes and real-time data
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Market indexes and data are displayed when you submit a brokerage API key. 
+              StagAlgo connects to your brokerage API with custom data feed support.
+            </p>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div className="space-y-3">
               <h4 className="font-semibold flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-accent" />
-                Real-time Features Available
+                Available with Connection
               </h4>
               <ul className="space-y-1 text-muted-foreground ml-6">
-                <li>• Live stock prices & indices</li>
-                <li>• Real-time market movers</li>
-                <li>• Volume & market cap data</li>
-                <li>• Interactive price charts</li>
-                <li>• Technical indicators</li>
+                <li>• Market indexes (S&P 500, NASDAQ, DOW)</li>
+                <li>• Live stock positions</li>
+                <li>• Current trading prices</li>
+                <li>• BID integration data</li>
+                <li>• Custom data feeds</li>
               </ul>
             </div>
             <div className="space-y-3">
               <h4 className="font-semibold flex items-center gap-2">
                 <Settings className="w-4 h-4 text-accent" />
-                Supported Data Sources
+                Integration Features
               </h4>
               <ul className="space-y-1 text-muted-foreground ml-6">
-                <li>• Alpaca Markets (Free tier available)</li>
-                <li>• Alpha Vantage</li>
-                <li>• Polygon.io</li>
-                <li>• Brokerage API connections</li>
-                <li>• Custom data feeds</li>
+                <li>• Brokerage API connectivity</li>
+                <li>• Custom data feed support</li>
+                <li>• StagAlgo BID integration</li>
+                <li>• Minimal data search</li>
+                <li>• Real-time sync</li>
               </ul>
             </div>
           </div>
@@ -52,13 +63,48 @@ export function MarketDataDisclaimer() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center pt-4 border-t">
             <Button className="w-full sm:w-auto">
               <Settings className="w-4 h-4 mr-2" />
-              Configure Data Source
+              Connect Brokerage API
             </Button>
             <Button variant="outline" className="w-full sm:w-auto">
               <ExternalLink className="w-4 h-4 mr-2" />
-              Documentation
+              Setup Guide
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Simple Stock Search */}
+      <Card className="bg-gradient-card shadow-card">
+        <CardHeader>
+          <CardTitle>Stock Search</CardTitle>
+          <CardDescription>Search for basic stock information and current positions</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search stocks (e.g., AAPL, TSLA)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          {searchTerm && (
+            <div className="space-y-2 pt-4 border-t">
+              <p className="text-sm text-muted-foreground text-center">
+                Stock data available after brokerage API connection
+              </p>
+              <div className="grid grid-cols-1 gap-2 opacity-50">
+                {['Current Position', 'Trading Price', 'Market Status'].map((item, i) => (
+                  <div key={i} className="flex justify-between items-center p-2 rounded bg-muted/30">
+                    <span className="text-sm font-medium">{item}</span>
+                    <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
