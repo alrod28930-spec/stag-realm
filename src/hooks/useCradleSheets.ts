@@ -26,16 +26,17 @@ export function useCradleSheets() {
 
   const loadSheets = async () => {
     try {
-      // Handle demo mode first - never touch database for demo users
-      if (isDemoMode || !user || !isAuthenticated || user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000') {
+      // Check if this is a test account (demo or owner) - never touch database
+      if (isDemoMode) {
         const demoSheets = localStorage.getItem('demo-cradle-sheets');
         if (demoSheets) {
           setSheets(JSON.parse(demoSheets));
         } else {
           // Create default demo sheet
+          const sheetName = user?.email === 'john.trader@stagalgo.com' ? 'Owner Sheet' : 'Demo Sheet';
           const defaultSheet = {
             id: 'demo-sheet-1',
-            name: 'Demo Sheet',
+            name: sheetName,
             data: {
               cells: {},
               rows: 1000,
@@ -55,7 +56,11 @@ export function useCradleSheets() {
         return;
       }
 
-      // This should never be reached now due to the check above
+      // Only proceed with database operations for genuine authenticated users
+      if (!user || !isAuthenticated) {
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('cradle_sheets')
@@ -103,8 +108,8 @@ export function useCradleSheets() {
         frozenCols: 0
       };
 
-      // Handle demo mode first - never touch database for demo users
-      if (isDemoMode || !user || !isAuthenticated || user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000') {
+      // Check if this is a test account (demo or owner) - never touch database
+      if (isDemoMode) {
         const newSheet: CradleSheet = {
           id: `demo-sheet-${Date.now()}`,
           name,
@@ -125,7 +130,15 @@ export function useCradleSheets() {
         return newSheet;
       }
 
-      // This should never be reached now due to the check above
+      // Only proceed with database operations for genuine authenticated users
+      if (!user || !isAuthenticated) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to create sheets.",
+          variant: "destructive"
+        });
+        return null;
+      }
 
       // Get user's default workspace for the sheet, create if none exists
       let { data: workspaces } = await supabase
@@ -202,8 +215,8 @@ export function useCradleSheets() {
 
   const updateSheet = async (id: string, data: any): Promise<boolean> => {
     try {
-      // Handle demo mode first - never touch database for demo users
-      if (isDemoMode || !user || !isAuthenticated || user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000') {
+      // Check if this is a test account (demo or owner) - never touch database
+      if (isDemoMode) {
         const updatedSheets = sheets.map(sheet => 
           sheet.id === id ? { ...sheet, data, updated_at: new Date().toISOString() } : sheet
         );
@@ -238,8 +251,8 @@ export function useCradleSheets() {
 
   const renameSheet = async (id: string, name: string): Promise<boolean> => {
     try {
-      // Handle demo mode first - never touch database for demo users
-      if (isDemoMode || !user || !isAuthenticated || user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000') {
+      // Check if this is a test account (demo or owner) - never touch database
+      if (isDemoMode) {
         const updatedSheets = sheets.map(sheet => 
           sheet.id === id ? { ...sheet, name, updated_at: new Date().toISOString() } : sheet
         );
@@ -291,8 +304,8 @@ export function useCradleSheets() {
 
   const deleteSheet = async (id: string): Promise<boolean> => {
     try {
-      // Handle demo mode first - never touch database for demo users
-      if (isDemoMode || !user || !isAuthenticated || user.email === 'demo@example.com' || user.id === '00000000-0000-0000-0000-000000000000') {
+      // Check if this is a test account (demo or owner) - never touch database
+      if (isDemoMode) {
         const updatedSheets = sheets.filter(sheet => sheet.id !== id);
         setSheets(updatedSheets);
         localStorage.setItem('demo-cradle-sheets', JSON.stringify(updatedSheets));
@@ -351,8 +364,9 @@ export function useCradleSheets() {
   // Log cradle actions for compliance
   const logCradleAction = async (eventType: string, payload: any) => {
     try {
-      if (!user || !isAuthenticated) {
-        console.warn('No authenticated user for logging cradle action');
+      // Never log actions for test accounts to prevent database issues
+      if (isDemoMode || !user || !isAuthenticated) {
+        console.log('Skipping action logging for test account or unauthenticated user');
         return;
       }
 

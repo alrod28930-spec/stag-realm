@@ -2,15 +2,18 @@ import { useAuthStore } from '@/stores/authStore';
 import { demoDataService } from '@/services/demoDataService';
 
 /**
- * Check if the current user is using the demo account
+ * Check if the current user is using the demo account or owner test account
  */
 export function isDemoMode(): boolean {
   const authState = useAuthStore.getState();
-  return authState.user?.email === 'demo@example.com';
+  return authState.user?.email === 'demo@example.com' || 
+         authState.user?.email === 'john.trader@stagalgo.com' ||
+         authState.user?.id === '00000000-0000-0000-0000-000000000000' ||
+         authState.user?.id === '00000000-0000-0000-0000-000000000002';
 }
 
 /**
- * Initialize demo mode when demo user logs in
+ * Initialize demo mode when demo user or owner test account logs in
  */
 export function initializeDemoMode(): void {
   if (isDemoMode()) {
@@ -28,8 +31,8 @@ export function getDemoSafeUser() {
   if (isDemoMode()) {
     return {
       ...authState.user,
-      name: 'Demo User',
-      email: 'demo@example.com'
+      name: authState.user?.email === 'john.trader@stagalgo.com' ? 'Owner User' : 'Demo User',
+      email: authState.user?.email || 'demo@example.com'
     };
   }
   return authState.user;
@@ -40,8 +43,12 @@ export function getDemoSafeUser() {
  */
 export function useDemoMode() {
   const user = useAuthStore(state => state.user);
+  const isDemo = user?.email === 'demo@example.com' || 
+                 user?.email === 'john.trader@stagalgo.com' ||
+                 user?.id === '00000000-0000-0000-0000-000000000000' ||
+                 user?.id === '00000000-0000-0000-0000-000000000002';
   return {
-    isDemoMode: user?.email === 'demo@example.com',
-    demoUser: user?.email === 'demo@example.com' ? user : null
+    isDemoMode: isDemo,
+    demoUser: isDemo ? user : null
   };
 }

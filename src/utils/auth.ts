@@ -5,11 +5,16 @@ export async function getCurrentUserWorkspace(): Promise<string | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Handle demo user specially
-    if (!user) {
-      // Check if we have a demo user from the auth store
+    // Handle test accounts specially - never query database
+    if (!user || 
+        user.id === '00000000-0000-0000-0000-000000000000' || 
+        user.id === '00000000-0000-0000-0000-000000000002') {
+      // Check if we have a test user from the auth store
       const authStore = (window as any).__authStore;
-      if (authStore?.user?.email === 'demo@example.com' || authStore?.user?.email === 'john.trader@stagalgo.com') {
+      if (authStore?.user?.email === 'demo@example.com' || 
+          authStore?.user?.email === 'john.trader@stagalgo.com' ||
+          authStore?.user?.id === '00000000-0000-0000-0000-000000000000' ||
+          authStore?.user?.id === '00000000-0000-0000-0000-000000000002') {
         return '00000000-0000-0000-0000-000000000001'; // Default workspace for test accounts
       }
       return null;

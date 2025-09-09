@@ -31,7 +31,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         try {
           // Check for special test users in persisted state first
           const currentState = get();
-          if (currentState.user?.email === 'demo@example.com' || currentState.user?.email === 'john.trader@stagalgo.com') {
+          if (currentState.user?.email === 'demo@example.com' || 
+              currentState.user?.email === 'john.trader@stagalgo.com' ||
+              currentState.user?.id === '00000000-0000-0000-0000-000000000000' ||
+              currentState.user?.id === '00000000-0000-0000-0000-000000000002') {
             set({
               user: currentState.user,
               isAuthenticated: true,
@@ -172,6 +175,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               isAuthenticated: true,
               isLoading: false
             });
+            
+            // Initialize demo mode for owner account too
+            const { initializeDemoMode } = await import('@/utils/demoMode');
+            initializeDemoMode();
             
             eventBus.emit('user-login' as any, { email: ownerUser.email, timestamp: new Date() });
             return { data: { user: ownerUser }, error: null };

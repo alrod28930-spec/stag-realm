@@ -264,8 +264,12 @@ class OracleService {
       
       // Get current user to determine workspace
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        // Store in memory only if no user - don't spam logs
+      
+      // Skip database operations for test accounts to prevent RLS errors
+      if (!user || 
+          user.id === '00000000-0000-0000-0000-000000000000' || 
+          user.id === '00000000-0000-0000-0000-000000000002') {
+        // Store in memory only for test accounts
         return;
       }
 
@@ -482,8 +486,12 @@ class OracleService {
       
       // Get current user to determine workspace
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.warn('No authenticated user for database query');
+      
+      // Skip database operations for test accounts to prevent RLS errors  
+      if (!user || 
+          user.id === '00000000-0000-0000-0000-000000000000' || 
+          user.id === '00000000-0000-0000-0000-000000000002') {
+        // Return in-memory signals only for test accounts
         return this.signals.slice(0, limit);
       }
 
