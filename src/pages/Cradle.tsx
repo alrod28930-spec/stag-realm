@@ -1,4 +1,4 @@
-import { CradleSpreadsheet } from '@/components/cradle/CradleSpreadsheet';
+import { ExcelSpreadsheet } from '@/components/cradle/ExcelSpreadsheet';
 import { FileSpreadsheet } from 'lucide-react';
 
 export default function Cradle() {
@@ -18,7 +18,7 @@ export default function Cradle() {
       </div>
 
       {/* Spreadsheet Workspace */}
-      <CradleSpreadsheet />
+      <ExcelSpreadsheet />
     </div>
   );
 }
