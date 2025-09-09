@@ -51,29 +51,38 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           const { data: { session } } = await supabase.auth.getSession();
           
           if (session?.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
+            // Only proceed if user is confirmed or is a demo user
+            const isDemo = session.user.email === 'demo@example.com' || session.user.email === 'john.trader@stagalgo.com';
+            const isConfirmed = session.user.email_confirmed_at || isDemo;
+            
+            if (isConfirmed) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
 
-            const user: User = {
-              id: session.user.id,
-              email: session.user.email || '',
-              name: profile?.display_name || session.user.email || '',
-              role: 'Member',
-              organizationId: '00000000-0000-0000-0000-000000000001',
-              avatar: undefined,
-              isActive: true,
-              createdAt: new Date(session.user.created_at),
-              lastLogin: new Date()
-            };
+              const user: User = {
+                id: session.user.id,
+                email: session.user.email || '',
+                name: profile?.display_name || session.user.email || '',
+                role: 'Member',
+                organizationId: '00000000-0000-0000-0000-000000000001',
+                avatar: undefined,
+                isActive: true,
+                createdAt: new Date(session.user.created_at),
+                lastLogin: new Date()
+              };
 
-            set({
-              user,
-              isAuthenticated: true,
-              isLoading: false
-            });
+              set({
+                user,
+                isAuthenticated: true,
+                isLoading: false
+              });
+            } else {
+              console.log('User session exists but email not confirmed');
+              set({ isLoading: false, isAuthenticated: false, user: null });
+            }
           } else {
             set({ isLoading: false });
           }
@@ -193,19 +202,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           if (error) {
             // Handle email not confirmed error
             if (error.message === 'Email not confirmed') {
-              // Auto-resend confirmation for better UX
-              await supabase.auth.resend({
-                type: 'signup',
-                email: credentials.email,
-                options: {
-                  emailRedirectTo: `${window.location.origin}/auth/verify`
-                }
-              });
-              
               return { 
                 error: { 
                   ...error, 
-                  message: 'Please check your email and click the confirmation link. We\'ve sent a new one just in case.' 
+                  message: 'Your account exists but your email isn\'t confirmed yet. Please check your email (including spam folder) and click the confirmation link. If you can\'t find it, wait 60 seconds and try signing in again to get a new confirmation email.' 
                 }, 
                 data: null 
               };
