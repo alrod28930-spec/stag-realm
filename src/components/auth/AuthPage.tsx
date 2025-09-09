@@ -109,22 +109,43 @@ export function AuthPage() {
       const success = await signUp(email, password);
       if (success) {
         toast({
-          title: "Account Created",
-          description: "Your account has been created. Please check your email for verification.",
+          title: "Account Created Successfully",
+          description: "Please check your email (including spam folder) for a verification link. Click the link to activate your account.",
         });
+        // Clear form after successful signup
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
       } else {
         toast({
           title: "Sign Up Failed",
-          description: "Unable to create account. Please try again.",
+          description: "Unable to create account. Please try again or contact support.",
           variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Sign Up Error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
-        variant: "destructive",
-      });
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+      
+      // Handle specific error cases
+      if (errorMessage.includes('User already registered')) {
+        toast({
+          title: "Account Already Exists",
+          description: "This email is already registered. Try signing in instead, or use the forgot password option.",
+          variant: "destructive",
+        });
+      } else if (errorMessage.includes('Invalid email')) {
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sign Up Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

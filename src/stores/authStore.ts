@@ -246,34 +246,48 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
         
         try {
+          console.log('Starting signup process for:', email);
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/`
+              emailRedirectTo: `${window.location.origin}/auth/verify`
             }
           });
 
-          if (error) throw error;
+          console.log('Signup response:', { data: data ? 'received' : 'null', error: error?.message });
+
+          if (error) {
+            console.error('Signup error:', error);
+            throw error;
+          }
 
           if (data.user) {
+            console.log('User created, confirmation required:', !data.session);
             logger.info('User signed up successfully', { 
               userId: data.user.id,
-              email 
+              email,
+              needsConfirmation: !data.session
             });
+            
+            // Store email for verification page
+            localStorage.setItem('last_signin_email', email);
             
             return true;
           }
           
           return false;
         } catch (error) {
+          console.error('Signup failed:', error);
           logger.error('Sign up failed', { 
             email,
             error: error instanceof Error ? error.message : 'Unknown error'
           });
           
           set({ isLoading: false });
-          return false;
+          throw error;
+        } finally {
+          set({ isLoading: false });
         }
       },
 
