@@ -90,7 +90,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           // Listen for auth changes - set up only once with proper user handling
           supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('🔄 Auth state change event:', event, { hasSession: !!session, userId: session?.user?.id });
+            
             if (event === 'SIGNED_IN' && session?.user) {
+              console.log('📝 Processing SIGNED_IN event');
               // Ensure profile exists and fetch it
               const { data: profile } = await supabase
                 .from('profiles')
@@ -117,7 +120,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               });
               
               eventBus.emit('user-login' as any, { email: user.email, timestamp: new Date() });
+              console.log('✅ User signed in successfully:', user.email);
             } else if (event === 'SIGNED_OUT') {
+              console.log('🚪 Processing SIGNED_OUT event');
               set({
                 user: null,
                 organization: null,
@@ -126,6 +131,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               });
               
               eventBus.emit('user-logout' as any, { timestamp: new Date() });
+              console.log('✅ User signed out successfully');
+            } else if (event === 'TOKEN_REFRESHED') {
+              console.log('🔄 Token refreshed');
             }
           });
         } catch (error) {
@@ -293,11 +301,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       },
 
       logout: async () => {
+        console.log('🚪 Logout initiated');
         const { user } = get();
+        console.log('🔍 Current user during logout:', { email: user?.email, id: user?.id });
         
         try {
           // Handle special test account logout  
           if (user?.email === 'demo@example.com' || user?.email === 'john.trader@stagalgo.com') {
+            console.log('🎭 Logging out demo/test user');
             set({
               user: null,
               organization: null,
@@ -305,14 +316,48 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               isLoading: false
             });
             eventBus.emit('user-logout' as any, { timestamp: new Date() });
+            console.log('✅ Demo user logged out successfully');
             return;
           }
 
-          await supabase.auth.signOut();
+          console.log('🔐 Calling supabase.auth.signOut()');
+          const { error } = await supabase.auth.signOut();
+          
+          if (error) {
+            console.error('❌ Supabase signOut error:', error);
+            throw error;
+          }
+          
+          console.log('✅ Supabase signOut completed');
+          
+          // Force clear state if auth state change doesn't fire
+          setTimeout(() => {
+            const currentState = get();
+            if (currentState.isAuthenticated) {
+              console.log('⚠️ Forcing logout state clear');
+              set({
+                user: null,
+                organization: null,
+                isAuthenticated: false,
+                isLoading: false
+              });
+              eventBus.emit('user-logout' as any, { timestamp: new Date() });
+            }
+          }, 1000);
           
           logger.info('User logged out', { userId: user?.id });
         } catch (error) {
+          console.error('❌ Logout failed:', error);
           logger.error('Logout failed', { error });
+          
+          // Force logout even if there's an error
+          set({
+            user: null,
+            organization: null,
+            isAuthenticated: false,
+            isLoading: false
+          });
+          eventBus.emit('user-logout' as any, { timestamp: new Date() });
         }
       },
 
