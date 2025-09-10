@@ -9,6 +9,8 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading, user, initializeAuth } = useAuthStore();
+  
+  console.log('🔐 AuthGuard render:', { isAuthenticated, isLoading, user: user?.email });
 
   // Initialize auth on mount
   useEffect(() => {
@@ -38,6 +40,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   // Show loading state during authentication
   if (isLoading) {
+    console.log('🔄 AuthGuard: Showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -51,9 +54,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   // Show login form if not authenticated
   if (!isAuthenticated || !user) {
+    console.log('🚫 AuthGuard: Showing login form');
     return <LoginForm />;
   }
 
   // Show protected content
+  console.log('✅ AuthGuard: Showing protected content');
   return <>{children}</>;
 }

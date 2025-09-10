@@ -29,6 +29,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
+  console.log('🚀 App component rendering');
   useEffect(() => {
     const initApp = async () => {
       // Initialize auth first - critical for all other services

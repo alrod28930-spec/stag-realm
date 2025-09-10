@@ -24,6 +24,7 @@ import { useDemoMode } from '@/utils/demoMode';
 import { demoDataService } from '@/services/demoDataService';
 
 export default function Dashboard() {
+  console.log('📊 Dashboard component rendering');
   const { portfolio, positions, loadPortfolio, subscribeToUpdates } = useRealPortfolioStore();
   const { isDemoMode } = useDemoMode();
 

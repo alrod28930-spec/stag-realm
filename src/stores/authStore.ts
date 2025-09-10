@@ -28,6 +28,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       isAuthenticated: false,
 
       initializeAuth: async () => {
+        console.log('🚀 Starting auth initialization');
         try {
           // Check for special test users in persisted state first
           const currentState = get();
