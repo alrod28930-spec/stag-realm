@@ -94,9 +94,21 @@ export default function Settings() {
 
   // Subscribe to toggle service changes with error handling
   useEffect(() => {
+    console.log('Settings: Setting up toggleService subscription');
     const unsubscribe = toggleService.subscribe((newState) => {
+      console.log('Settings: Received state update from toggleService:', {
+        riskGovernorsEnabled: newState.riskGovernorsEnabled,
+        currentState: toggleState.riskGovernorsEnabled
+      });
       setToggleState(newState);
       setToggleError(null); // Clear errors on successful updates
+      console.log('Settings: State updated in component');
+    });
+    
+    // Also log the initial state
+    const initialState = toggleService.getToggleState();
+    console.log('Settings: Initial toggle state:', {
+      riskGovernorsEnabled: initialState.riskGovernorsEnabled
     });
     
     return unsubscribe;
@@ -329,7 +341,11 @@ export default function Settings() {
                 label="Risk Governors"
                 description="Master control for all risk checks - Monarch & Overseer enforcement"
                 enabled={toggleState.riskGovernorsEnabled}
-                onChange={(enabled) => handleToggleChange('riskGovernorsEnabled', enabled)}
+                onChange={(enabled) => {
+                  console.log('Risk Governors toggle onChange called with:', enabled);
+                  console.log('Current toggleState.riskGovernorsEnabled:', toggleState.riskGovernorsEnabled);
+                  handleToggleChange('riskGovernorsEnabled', enabled);
+                }}
                 riskLevel="critical"
                 requiresConfirmation={true}
               />
