@@ -287,6 +287,8 @@ export default function Settings() {
           <BrokerageDockSettings />
         </TabsContent>
 
+        {/* Risk Controls */}
+        <TabsContent value="risk" className="space-y-6">
           {/* Error Display */}
           {toggleError && (
             <Card className="bg-destructive/10 border-destructive/20">
