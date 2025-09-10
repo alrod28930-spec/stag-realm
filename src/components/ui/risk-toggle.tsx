@@ -48,14 +48,31 @@ export function RiskToggle({
   };
 
   const handleToggle = (checked: boolean) => {
+    console.log(`Toggle ${label}: current=${enabled}, new=${checked}, requiresConfirmation=${requiresConfirmation}`);
+    
     if (requiresConfirmation && !enabled && checked) {
-      // Show confirmation dialog for high-risk toggles
+      // Show confirmation dialog for high-risk toggles when enabling
       const confirmed = window.confirm(
         `Are you sure you want to enable ${label}? This may increase trading risk.`
       );
-      if (!confirmed) return;
+      if (!confirmed) {
+        console.log(`Toggle ${label}: confirmation cancelled`);
+        return;
+      }
     }
     
+    if (requiresConfirmation && enabled && !checked) {
+      // Show confirmation dialog for high-risk toggles when disabling
+      const confirmed = window.confirm(
+        `Are you sure you want to disable ${label}? This may reduce safety controls.`
+      );
+      if (!confirmed) {
+        console.log(`Toggle ${label}: disable confirmation cancelled`);
+        return;
+      }
+    }
+    
+    console.log(`Toggle ${label}: calling onChange with ${checked}`);
     onChange(checked);
   };
 
