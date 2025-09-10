@@ -253,13 +253,8 @@ class ToggleService {
 
   // Risk Toggles
   public setRiskToggle(toggleKey: keyof ToggleState, enabled: boolean, reason?: string) {
-    console.log(`ToggleService.setRiskToggle: ${String(toggleKey)} = ${enabled}, current = ${this.toggleState[toggleKey]}`);
-    
     const oldValue = this.toggleState[toggleKey];
     (this.toggleState as any)[toggleKey] = enabled;
-    
-    console.log(`ToggleService: State updated from ${oldValue} to ${enabled}`);
-    console.log(`ToggleService: New state:`, JSON.stringify(this.toggleState, null, 2));
     
     this.logToggleChange(toggleKey, oldValue, enabled, reason);
     this.saveToggleState();
@@ -269,8 +264,6 @@ class ToggleService {
     if (['riskGovernorsEnabled', 'hardPullEnabled'].includes(toggleKey) && !enabled) {
       eventBus.emit('risk.safety_disabled', { toggleKey, reason });
     }
-    
-    console.log(`ToggleService: setRiskToggle complete for ${String(toggleKey)}`);
   }
 
   public getRiskToggle(toggleKey: keyof ToggleState): boolean {

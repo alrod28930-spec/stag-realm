@@ -60,11 +60,8 @@ export function RiskToggle({
   };
 
   const handleToggle = (checked: boolean) => {
-    console.log(`RiskToggle.handleToggle: ${label} - current=${enabled}, new=${checked}, requiresConfirmation=${requiresConfirmation}`);
-    
     // Prevent unnecessary re-renders and calls
     if (checked === enabled) {
-      console.log(`RiskToggle.handleToggle: ${label} - no change needed, returning early`);
       return;
     }
     
@@ -81,9 +78,7 @@ export function RiskToggle({
 
   const executeToggle = (checked: boolean) => {
     try {
-      console.log(`Toggle ${label}: calling onChange with ${checked}`);
       onChange(checked);
-      console.log(`Toggle ${label}: onChange completed`);
     } catch (error) {
       console.error(`Toggle ${label}: Error in onChange handler:`, error);
     }
@@ -98,7 +93,6 @@ export function RiskToggle({
   };
 
   const handleCancel = () => {
-    console.log(`Toggle ${label}: confirmation cancelled`);
     setShowConfirmDialog(false);
     setPendingValue(null);
   };

@@ -94,44 +94,45 @@ export default function Settings() {
 
   // Subscribe to toggle service changes with error handling
   useEffect(() => {
-    console.log('Settings: Setting up toggleService subscription');
     const unsubscribe = toggleService.subscribe((newState) => {
-      console.log('Settings: Received state update from toggleService:', {
-        riskGovernorsEnabled: newState.riskGovernorsEnabled,
-        currentState: toggleState.riskGovernorsEnabled
-      });
       setToggleState(newState);
       setToggleError(null); // Clear errors on successful updates
-      console.log('Settings: State updated in component');
-    });
-    
-    // Also log the initial state
-    const initialState = toggleService.getToggleState();
-    console.log('Settings: Initial toggle state:', {
-      riskGovernorsEnabled: initialState.riskGovernorsEnabled
     });
     
     return unsubscribe;
   }, []);
 
+  // Force refresh from service to ensure synchronization
+  const refreshState = () => {
+    const currentState = toggleService.getToggleState();
+    setToggleState(currentState);
+    setToggleError(null);
+  };
+
+  // Refresh state on mount to ensure sync
+  useEffect(() => {
+    refreshState();
+  }, []);
+
   // Enhanced toggle handler with validation and error handling
   const handleToggleChange = async (toggleKey: keyof typeof toggleState, enabled: boolean) => {
-    console.log(`Settings.handleToggleChange: ${toggleKey} from ${toggleState[toggleKey]} to ${enabled}`);
-    
     try {
       setToggleError(null);
       
+      // Get fresh state for validation
+      const currentState = toggleService.getToggleState();
+      
       // Validate critical combinations
-      if (toggleKey === 'hardPullEnabled' && !enabled && !toggleState.softPullEnabled) {
+      if (toggleKey === 'hardPullEnabled' && !enabled && !currentState.softPullEnabled) {
         throw new Error('Cannot disable Hard Pull while Soft Pull is also disabled. Enable Soft Pull first.');
       }
       
       if (toggleKey === 'riskGovernorsEnabled' && !enabled) {
         const activeRiskControls = [
-          toggleState.hardPullEnabled,
-          toggleState.softPullEnabled,
-          toggleState.exposureLimitsEnabled,
-          toggleState.dailyDrawdownGuard
+          currentState.hardPullEnabled,
+          currentState.softPullEnabled,
+          currentState.exposureLimitsEnabled,
+          currentState.dailyDrawdownGuard
         ].filter(Boolean).length;
         
         if (activeRiskControls < 2) {
@@ -139,9 +140,10 @@ export default function Settings() {
         }
       }
       
-      console.log(`Settings.handleToggleChange: Calling toggleService.setRiskToggle`);
       toggleService.setRiskToggle(toggleKey, enabled, 'user_settings_change');
-      console.log(`Settings.handleToggleChange: toggleService.setRiskToggle completed`);
+      
+      // Force refresh to ensure UI synchronization
+      setTimeout(() => refreshState(), 100);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Toggle update failed';
@@ -341,11 +343,7 @@ export default function Settings() {
                 label="Risk Governors"
                 description="Master control for all risk checks - Monarch & Overseer enforcement"
                 enabled={toggleState.riskGovernorsEnabled}
-                onChange={(enabled) => {
-                  console.log('Risk Governors toggle onChange called with:', enabled);
-                  console.log('Current toggleState.riskGovernorsEnabled:', toggleState.riskGovernorsEnabled);
-                  handleToggleChange('riskGovernorsEnabled', enabled);
-                }}
+                onChange={(enabled) => handleToggleChange('riskGovernorsEnabled', enabled)}
                 riskLevel="critical"
                 requiresConfirmation={true}
               />
