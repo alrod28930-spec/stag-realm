@@ -17,6 +17,8 @@ import { SystemAuditPanel } from '@/components/debug/SystemAuditPanel';
 import { Bot } from 'lucide-react';
 import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
+import { RiskAwareTradePanel } from '@/components/tradingdesk/RiskAwareTradePanel';
 import { useDemoMode } from '@/utils/demoMode';
 
 export default function TradingDesk() {
@@ -24,10 +26,16 @@ export default function TradingDesk() {
 
   return (
     <div className="space-y-6">
+      {/* Risk Disclaimer Banner */}
+      <RiskDisclaimerBanner />
+      
       {/* Demo Disclaimer */}
       {isDemoMode && (
         <DemoDisclaimer feature="Trading Desk" />
       )}
+      
+      {/* Floating Risk Indicator */}
+      <FloatingRiskIndicator />
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -73,9 +81,9 @@ export default function TradingDesk() {
 
         <TabsContent value="manual" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Left Panel - Manual Order */}
+            {/* Left Panel - Risk-Aware Manual Trading */}
             <div className="lg:col-span-1">
-              <ManualOrderCard />
+              <RiskAwareTradePanel />
             </div>
 
             {/* Center Panel - Bot Execution */}

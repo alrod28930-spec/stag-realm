@@ -20,6 +20,7 @@ import { ComplianceStatus } from '@/components/compliance/ComplianceStatus';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
 import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
 import { useDemoMode } from '@/utils/demoMode';
 import { demoDataService } from '@/services/demoDataService';
 
@@ -95,10 +96,16 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Risk Disclaimer Banner */}
+      <RiskDisclaimerBanner />
+      
       {/* Demo Disclaimer */}
       {isDemoMode && (
         <DemoDisclaimer feature="Trading Dashboard" />
       )}
+      
+      {/* Floating Risk Indicator */}
+      <FloatingRiskIndicator />
 
       {/* Header */}
       <div className="flex items-center justify-between">

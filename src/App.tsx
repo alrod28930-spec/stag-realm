@@ -10,6 +10,8 @@ import { ComplianceProvider } from "@/components/compliance/ComplianceProvider";
 import { PWAInstall } from "@/components/PWAInstall";
 import { useAuthStore } from "@/stores/authStore";
 import { useEffect } from "react";
+import { toggleService } from '@/services/toggleService';
+import { riskEnforcement } from '@/services/riskEnforcement';
 import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
 import Portfolio from "@/pages/Portfolio";
@@ -34,6 +36,13 @@ const App = () => {
     const initApp = async () => {
       // Initialize auth first - critical for all other services
       await useAuthStore.getState().initializeAuth();
+      
+      // Initialize risk enforcement system
+      console.log('🛡️ Risk enforcement system initialized');
+      
+      // Log current risk status for monitoring
+      const riskStatus = toggleService.getRiskStatus();
+      console.log('🛡️ Initial risk status:', riskStatus);
     };
     initApp();
   }, []);

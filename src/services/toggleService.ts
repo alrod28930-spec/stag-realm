@@ -67,6 +67,62 @@ class ToggleService {
     // Initialize with default safe settings
     this.toggleState = this.getDefaultToggleState();
     this.loadToggleState();
+    this.initializeSafetyProtocols();
+  }
+
+  private initializeSafetyProtocols() {
+    // Always reset to safe defaults on app initialization for user protection
+    // This ensures users don't accidentally start with disabled safety controls
+    const shouldResetToSafe = this.shouldResetToSafeDefaults();
+    
+    if (shouldResetToSafe) {
+      console.log('🛡️ Resetting to safe defaults on app initialization');
+      this.resetToSafeDefaults('Application restart - safety protocol');
+    }
+
+    // Set up periodic safety checks (every 5 minutes)
+    setInterval(() => {
+      this.performSafetyCheck();
+    }, 5 * 60 * 1000);
+  }
+
+  private shouldResetToSafeDefaults(): boolean {
+    // Check if this is a fresh session (no recent activity)
+    const lastActivity = localStorage.getItem('staghog_last_activity');
+    const now = Date.now();
+    
+    if (!lastActivity) {
+      return true; // First time user
+    }
+    
+    const timeSinceLastActivity = now - parseInt(lastActivity);
+    const oneHour = 60 * 60 * 1000;
+    
+    // Reset if more than 1 hour since last activity
+    if (timeSinceLastActivity > oneHour) {
+      return true;
+    }
+
+    // Reset if critical risk controls are disabled
+    if (!this.toggleState.riskGovernorsEnabled) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private performSafetyCheck() {
+    // Update last activity timestamp
+    localStorage.setItem('staghog_last_activity', Date.now().toString());
+    
+    // Log current risk status for monitoring
+    const riskStatus = this.getRiskStatus();
+    if (!riskStatus.safeModeEnabled) {
+      console.warn('⚠️ Safety check: Operating with reduced risk controls', {
+        riskLevel: riskStatus.riskLevel,
+        disabledControls: riskStatus.disabledRiskControls
+      });
+    }
   }
 
   private getDefaultToggleState(): ToggleState {
