@@ -48,32 +48,36 @@ export function RiskToggle({
   };
 
   const handleToggle = (checked: boolean) => {
+    // Prevent unnecessary re-renders and calls
+    if (checked === enabled) return;
+    
     console.log(`Toggle ${label}: current=${enabled}, new=${checked}, requiresConfirmation=${requiresConfirmation}`);
     
-    if (requiresConfirmation && !enabled && checked) {
-      // Show confirmation dialog for high-risk toggles when enabling
+    // Enhanced confirmation logic with better UX
+    if (requiresConfirmation) {
+      const action = checked ? 'enable' : 'disable';
+      const riskMessage = checked 
+        ? `This may increase trading risk and expose you to potential losses.`
+        : `This will reduce safety controls and may increase your risk exposure.`;
+        
       const confirmed = window.confirm(
-        `Are you sure you want to enable ${label}? This may increase trading risk.`
+        `Are you sure you want to ${action} ${label}?\n\n${riskMessage}\n\nOnly proceed if you understand the implications.`
       );
+      
       if (!confirmed) {
-        console.log(`Toggle ${label}: confirmation cancelled`);
+        console.log(`Toggle ${label}: ${action} confirmation cancelled`);
         return;
       }
     }
     
-    if (requiresConfirmation && enabled && !checked) {
-      // Show confirmation dialog for high-risk toggles when disabling
-      const confirmed = window.confirm(
-        `Are you sure you want to disable ${label}? This may reduce safety controls.`
-      );
-      if (!confirmed) {
-        console.log(`Toggle ${label}: disable confirmation cancelled`);
-        return;
-      }
+    // Add error boundary around onChange call
+    try {
+      console.log(`Toggle ${label}: calling onChange with ${checked}`);
+      onChange(checked);
+    } catch (error) {
+      console.error(`Toggle ${label}: Error in onChange handler:`, error);
+      // Optionally show user-friendly error message
     }
-    
-    console.log(`Toggle ${label}: calling onChange with ${checked}`);
-    onChange(checked);
   };
 
   return (

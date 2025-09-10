@@ -42,6 +42,7 @@ import { useEffect } from 'react';
 export default function Settings() {
   const { toast } = useToast();
   const [toggleState, setToggleState] = useState(toggleService.getToggleState());
+  const [toggleError, setToggleError] = useState<string | null>(null);
   
   // Brokerage connections state
   const [brokerageConnections, setBrokerageConnections] = useState<BrokerageConnection[]>([]);
@@ -91,14 +92,52 @@ export default function Settings() {
     loadBrokerageConnections();
   }, [currentWorkspaceId]);
 
-  // Subscribe to toggle service changes
+  // Subscribe to toggle service changes with error handling
   useEffect(() => {
     const unsubscribe = toggleService.subscribe((newState) => {
       setToggleState(newState);
+      setToggleError(null); // Clear errors on successful updates
     });
     
     return unsubscribe;
   }, []);
+
+  // Enhanced toggle handler with validation and error handling
+  const handleToggleChange = async (toggleKey: keyof typeof toggleState, enabled: boolean) => {
+    try {
+      setToggleError(null);
+      
+      // Validate critical combinations
+      if (toggleKey === 'hardPullEnabled' && !enabled && !toggleState.softPullEnabled) {
+        throw new Error('Cannot disable Hard Pull while Soft Pull is also disabled. Enable Soft Pull first.');
+      }
+      
+      if (toggleKey === 'riskGovernorsEnabled' && !enabled) {
+        const activeRiskControls = [
+          toggleState.hardPullEnabled,
+          toggleState.softPullEnabled,
+          toggleState.exposureLimitsEnabled,
+          toggleState.dailyDrawdownGuard
+        ].filter(Boolean).length;
+        
+        if (activeRiskControls < 2) {
+          throw new Error('Cannot disable Risk Governors with insufficient active risk controls. Enable more controls first.');
+        }
+      }
+      
+      toggleService.setRiskToggle(toggleKey, enabled, 'user_settings_change');
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Toggle update failed';
+      setToggleError(errorMessage);
+      
+      toast({
+        title: "Toggle Update Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    }
+  };
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -248,8 +287,26 @@ export default function Settings() {
           <BrokerageDockSettings />
         </TabsContent>
 
-        {/* Risk Controls */}
-        <TabsContent value="risk" className="space-y-6">
+          {/* Error Display */}
+          {toggleError && (
+            <Card className="bg-destructive/10 border-destructive/20">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                  <p className="text-sm text-destructive font-medium">{toggleError}</p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setToggleError(null)}
+                    className="ml-auto"
+                  >
+                    ×
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="bg-gradient-card shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -266,7 +323,7 @@ export default function Settings() {
                 label="Risk Governors"
                 description="Master control for all risk checks - Monarch & Overseer enforcement"
                 enabled={toggleState.riskGovernorsEnabled}
-                onChange={(enabled) => toggleService.setRiskToggle('riskGovernorsEnabled', enabled)}
+                onChange={(enabled) => handleToggleChange('riskGovernorsEnabled', enabled)}
                 riskLevel="critical"
                 requiresConfirmation={true}
               />
@@ -276,7 +333,7 @@ export default function Settings() {
                 label="Soft Pull Enforcement"
                 description="Allow risk adjustments (position size, stops) instead of outright blocks"
                 enabled={toggleState.softPullEnabled}
-                onChange={(enabled) => toggleService.setRiskToggle('softPullEnabled', enabled)}
+                onChange={(enabled) => handleToggleChange('softPullEnabled', enabled)}
                 riskLevel="medium"
               />
 
@@ -285,7 +342,7 @@ export default function Settings() {
                 label="Hard Pull Enforcement"
                 description="Force block trades or close positions when thresholds breached"
                 enabled={toggleState.hardPullEnabled}
-                onChange={(enabled) => toggleService.setRiskToggle('hardPullEnabled', enabled)}
+                onChange={(enabled) => handleToggleChange('hardPullEnabled', enabled)}
                 riskLevel="high"
                 requiresConfirmation={true}
               />
@@ -295,7 +352,7 @@ export default function Settings() {
                 label="Blacklist Enforcement"
                 description="Block trades in symbols flagged by risk governors"
                 enabled={toggleState.blacklistEnforced}
-                onChange={(enabled) => toggleService.setRiskToggle('blacklistEnforced', enabled)}
+                onChange={(enabled) => handleToggleChange('blacklistEnforced', enabled)}
                 riskLevel="medium"
               />
 
@@ -304,7 +361,7 @@ export default function Settings() {
                 label="Exposure Limits"
                 description="Enforce maximum exposure per ticker, sector, or region"
                 enabled={toggleState.exposureLimitsEnabled}
-                onChange={(enabled) => toggleService.setRiskToggle('exposureLimitsEnabled', enabled)}
+                onChange={(enabled) => handleToggleChange('exposureLimitsEnabled', enabled)}
                 riskLevel="high"
               />
 
@@ -313,7 +370,7 @@ export default function Settings() {
                 label="Daily Drawdown Guard"
                 description="Auto-halt trading if daily losses exceed threshold"
                 enabled={toggleState.dailyDrawdownGuard}
-                onChange={(enabled) => toggleService.setRiskToggle('dailyDrawdownGuard', enabled)}
+                onChange={(enabled) => handleToggleChange('dailyDrawdownGuard', enabled)}
                 riskLevel="high"
               />
 
@@ -322,7 +379,7 @@ export default function Settings() {
                 label="Minimum Trade Thresholds" 
                 description="Enforce minimum stock price and trade size requirements"
                 enabled={toggleState.minimumTradeThresholds}
-                onChange={(enabled) => toggleService.setRiskToggle('minimumTradeThresholds', enabled)}
+                onChange={(enabled) => handleToggleChange('minimumTradeThresholds', enabled)}
                 riskLevel="low"
               />
             </CardContent>
@@ -396,7 +453,7 @@ export default function Settings() {
                 label="Per Trade Capital Risk"
                 description="Limit risk exposure per individual trade (e.g., max 2% of equity per trade)"
                 enabled={toggleState.perTradeRiskEnabled}
-                onChange={(enabled) => toggleService.setRiskToggle('perTradeRiskEnabled', enabled)}
+                onChange={(enabled) => handleToggleChange('perTradeRiskEnabled', enabled)}
                 riskLevel="medium"
               />
 
@@ -405,7 +462,7 @@ export default function Settings() {
                 label="Per Sector Risk Limits"
                 description="Cap exposure to any sector/industry (e.g., max 15% in tech)"
                 enabled={toggleState.sectorRiskEnabled}
-                onChange={(enabled) => toggleService.setRiskToggle('sectorRiskEnabled', enabled)}
+                onChange={(enabled) => handleToggleChange('sectorRiskEnabled', enabled)}
                 riskLevel="medium"
               />
 
@@ -414,7 +471,7 @@ export default function Settings() {
                 label="Total Portfolio Risk"
                 description="Daily maximum drawdown enforcement (halt trades at -3% daily loss)"
                 enabled={toggleState.portfolioRiskEnabled}
-                onChange={(enabled) => toggleService.setRiskToggle('portfolioRiskEnabled', enabled)}
+                onChange={(enabled) => handleToggleChange('portfolioRiskEnabled', enabled)}
                 riskLevel="high"
               />
 
@@ -423,7 +480,7 @@ export default function Settings() {
                 label="Leverage Risk Controls"
                 description="Restrict leverage usage and margin requirements"
                 enabled={toggleState.leverageRiskEnabled}
-                onChange={(enabled) => toggleService.setRiskToggle('leverageRiskEnabled', enabled)}
+                onChange={(enabled) => handleToggleChange('leverageRiskEnabled', enabled)}
                 riskLevel="high"
               />
             </CardContent>
