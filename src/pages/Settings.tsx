@@ -90,6 +90,15 @@ export default function Settings() {
   useEffect(() => {
     loadBrokerageConnections();
   }, [currentWorkspaceId]);
+
+  // Subscribe to toggle service changes
+  useEffect(() => {
+    const unsubscribe = toggleService.subscribe((newState) => {
+      setToggleState(newState);
+    });
+    
+    return unsubscribe;
+  }, []);
   
   // Settings state
   const [settings, setSettings] = useState({
