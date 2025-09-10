@@ -104,6 +104,8 @@ export default function Settings() {
 
   // Enhanced toggle handler with validation and error handling
   const handleToggleChange = async (toggleKey: keyof typeof toggleState, enabled: boolean) => {
+    console.log(`Settings.handleToggleChange: ${toggleKey} from ${toggleState[toggleKey]} to ${enabled}`);
+    
     try {
       setToggleError(null);
       
@@ -125,7 +127,9 @@ export default function Settings() {
         }
       }
       
+      console.log(`Settings.handleToggleChange: Calling toggleService.setRiskToggle`);
       toggleService.setRiskToggle(toggleKey, enabled, 'user_settings_change');
+      console.log(`Settings.handleToggleChange: toggleService.setRiskToggle completed`);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Toggle update failed';
