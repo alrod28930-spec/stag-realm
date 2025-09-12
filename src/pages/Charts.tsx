@@ -133,7 +133,7 @@ const Charts = () => {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Layout:</span>
                 <div className="flex rounded-md border border-border">
-                  {['1', '2', '4'].map((layoutType) => (
+                  {(['1', '2', '4'] as const).map((layoutType) => (
                     <Button
                       key={layoutType}
                       variant="ghost"

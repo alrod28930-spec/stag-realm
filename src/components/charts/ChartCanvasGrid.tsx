@@ -129,40 +129,13 @@ const ChartPane: React.FC<{
 
     chartRef.current = chart;
 
-    // Create series based on chart type
-    let series;
-    if (chartType === 'candle' || chartType === 'heikin') {
-        series = chart.addSeries('Candlestick', {
-          upColor: 'hsl(var(--success))',
-          downColor: 'hsl(var(--destructive))',
-          borderVisible: false,
-          wickUpColor: 'hsl(var(--success))',
-          wickDownColor: 'hsl(var(--destructive))',
-        });
-      } else {
-        series = chart.addSeries('Line', {
-          color: 'hsl(var(--primary))',
-          lineWidth: 2,
-        });
-    }
+    // Create main series - using basic line chart
+    const series = chart.addSeries('Line', {
+      color: 'hsl(var(--primary))',
+      lineWidth: 2,
+    });
 
     seriesRef.current = series;
-
-    // Add volume series
-      const volumeSeries = chart.addSeries('Histogram', {
-        color: 'hsl(var(--muted-foreground))',
-        priceFormat: {
-          type: 'volume',
-        },
-        priceScaleId: 'volume',
-      });
-
-    chart.priceScale('volume').applyOptions({
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
-    });
 
     // Resize handler
     const handleResize = () => {
@@ -196,59 +169,16 @@ const ChartPane: React.FC<{
       setChartData(data);
       
       if (seriesRef.current) {
-        if (chartType === 'candle' || chartType === 'heikin') {
-          const candleData = data.map(d => ({
-            time: d.time,
-            open: d.open,
-            high: d.high,
-            low: d.low,
-            close: d.close
-          }));
-          seriesRef.current.setData(candleData);
-        } else {
-          const lineData = data.map(d => ({
-            time: d.time,
-            value: d.close
-          }));
-          seriesRef.current.setData(lineData);
-        }
+        const lineData = data.map(d => ({
+          time: d.time,
+          value: d.close
+        }));
+        seriesRef.current.setData(lineData);
       }
       
       setIsLoading(false);
     }, 300);
   }, [symbol, timeframe, chartType]);
-
-  // Add indicators
-  useEffect(() => {
-    if (!chartRef.current || !seriesRef.current || chartData.length === 0) return;
-
-    // Remove existing indicator series (simplified)
-    // In a real implementation, you'd track indicator series separately
-
-    // Add requested indicators
-    Object.entries(indicators).forEach(([indicator, enabled]) => {
-      if (enabled && chartData.length > 0) {
-        switch (indicator) {
-          case 'SMA20':
-            // Add SMA20 line series
-            const sma20Series = chartRef.current!.addLineSeries({
-              color: 'rgba(255, 152, 0, 0.8)',
-              lineWidth: 1,
-            });
-            // Calculate and set SMA20 data (simplified)
-            break;
-          case 'VWAP':
-            // Add VWAP line series
-            const vwapSeries = chartRef.current!.addLineSeries({
-              color: 'rgba(156, 39, 176, 0.8)',
-              lineWidth: 2,
-            });
-            break;
-          // Add other indicators...
-        }
-      }
-    });
-  }, [indicators, chartData]);
 
   const latestData = chartData[chartData.length - 1];
   const previousData = chartData[chartData.length - 2];
