@@ -12,7 +12,8 @@ import {
   Shield,
   ChevronDown,
   ExternalLink,
-  Brain
+  Brain,
+  LineChart
 } from 'lucide-react';
 import {
   Sidebar,
@@ -34,6 +35,7 @@ const navigationItems = [
   { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
   { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
   { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
+  { title: 'Charts', url: '/charts', icon: LineChart, description: 'Live streaming charts & trading' },
   { title: 'Brokerage Dock', url: '/brokerage-dock', icon: ExternalLink, description: 'Access external brokerage accounts' },
   { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
 ];

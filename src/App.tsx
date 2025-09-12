@@ -16,6 +16,7 @@ import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
 import Portfolio from "@/pages/Portfolio";
 import TradingDesk from "@/pages/TradingDesk";
+import Charts from "@/pages/Charts";
 import BrokerageDock from "@/pages/BrokerageDock";
 import Cradle from "@/pages/Cradle";
 import About from "@/pages/About";
@@ -71,6 +72,7 @@ const App = () => {
                       <Route path="/market" element={<Market />} />
                       <Route path="/portfolio" element={<Portfolio />} />
                       <Route path="/trading-desk" element={<TradingDesk />} />
+                      <Route path="/charts" element={<Charts />} />
                       <Route path="/brokerage-dock" element={<BrokerageDock />} />
                       <Route path="/cradle" element={<Cradle />} />
                       <Route path="/about" element={<About />} />
