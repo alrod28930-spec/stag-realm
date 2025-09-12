@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ExternalLink, TrendingUp, TrendingDown } from 'lucide-react';
+import { DividendButton } from '@/components/tradingdesk/DividendButton';
 
 export function OpenPositionsTable() {
   const { positions, isLoading } = useRealPortfolioStore();
@@ -111,10 +112,17 @@ export function OpenPositionsTable() {
                       </div>
                     </td>
                     <td className="py-3">
-                      <Button variant="ghost" size="sm">
-                        <ExternalLink className="w-3 h-3 mr-1" />
-                        View
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm">
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          View
+                        </Button>
+                        <DividendButton
+                          symbol={position.symbol}
+                          shares={Math.abs(position.qty)}
+                          currentPrice={position.mv / Math.abs(position.qty)}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );

@@ -621,6 +621,117 @@ export type Database = {
           },
         ]
       }
+      div_calculations: {
+        Row: {
+          adps: number
+          created_at: string
+          current_price: number
+          drip_enabled: boolean
+          frequency: string
+          growth_rate: number
+          id: string
+          months_horizon: number
+          price_assumption: number | null
+          shares: number
+          symbol: string
+          updated_at: string
+          user_id: string
+          withholding_pct: number
+          workspace_id: string
+        }
+        Insert: {
+          adps: number
+          created_at?: string
+          current_price: number
+          drip_enabled?: boolean
+          frequency: string
+          growth_rate?: number
+          id?: string
+          months_horizon?: number
+          price_assumption?: number | null
+          shares: number
+          symbol: string
+          updated_at?: string
+          user_id: string
+          withholding_pct?: number
+          workspace_id: string
+        }
+        Update: {
+          adps?: number
+          created_at?: string
+          current_price?: number
+          drip_enabled?: boolean
+          frequency?: string
+          growth_rate?: number
+          id?: string
+          months_horizon?: number
+          price_assumption?: number | null
+          shares?: number
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+          withholding_pct?: number
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      div_overrides: {
+        Row: {
+          adps: number | null
+          created_at: string
+          frequency: string | null
+          growth_rate: number | null
+          symbol: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          adps?: number | null
+          created_at?: string
+          frequency?: string | null
+          growth_rate?: number | null
+          symbol: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          adps?: number | null
+          created_at?: string
+          frequency?: string | null
+          growth_rate?: number | null
+          symbol?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      div_ref: {
+        Row: {
+          adps: number
+          ex_date: string | null
+          frequency: string
+          pay_date: string | null
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          adps?: number
+          ex_date?: string | null
+          frequency?: string
+          pay_date?: string | null
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          adps?: number
+          ex_date?: string | null
+          frequency?: string
+          pay_date?: string | null
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       faqs: {
         Row: {
           answer: string

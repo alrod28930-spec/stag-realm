@@ -25,6 +25,8 @@ import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { useDemoMode } from '@/utils/demoMode';
 import { demoDataService } from '@/services/demoDataService';
 import Recorder from '@/pages/Recorder';
+import { DividendCalculator } from '@/components/dividends/DividendCalculator';
+import { DividendButton } from '@/components/tradingdesk/DividendButton';
 
 export default function Portfolio() {
   const {
@@ -183,8 +185,9 @@ export default function Portfolio() {
 
       <Tabs defaultValue="positions" className="w-full">
         <ScrollArea className="w-full">
-          <TabsList className="grid w-full grid-cols-3 min-w-max">
+          <TabsList className="grid w-full grid-cols-4 min-w-max">
             <TabsTrigger value="positions">Positions</TabsTrigger>
+            <TabsTrigger value="dividends">Dividends</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="recorder" className="gap-2">
               <FileText className="w-4 h-4" />
@@ -220,51 +223,69 @@ export default function Portfolio() {
               ) : (
                 <div className="space-y-4">
                   {currentPositions.map((position, index) => (
-                    <div 
-                      key={`${position.symbol}-${index}`}
-                      className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <Badge 
-                          variant={position.qty > 0 ? 'default' : 'secondary'}
-                          className="w-16 justify-center"
-                        >
-                          {position.qty > 0 ? 'Long' : 'Short'}
-                        </Badge>
-                        <div>
-                          <p className="font-semibold text-lg">{position.symbol}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {Math.abs(position.qty)} shares @ ${position.avg_cost.toFixed(2)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Market Value: ${(position.mv || 0).toLocaleString()}
-                          </p>
+                      <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <Badge 
+                            variant={position.qty > 0 ? 'default' : 'secondary'}
+                            className="w-16 justify-center"
+                          >
+                            {position.qty > 0 ? 'Long' : 'Short'}
+                          </Badge>
+                          <div>
+                            <p className="font-semibold text-lg">{position.symbol}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {Math.abs(position.qty)} shares @ ${position.avg_cost.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Market Value: ${(position.mv || 0).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className={`font-semibold text-lg ${
+                              (position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'
+                            }`}>
+                              {(position.unr_pnl || 0) >= 0 ? '+' : ''}${(position.unr_pnl || 0).toFixed(2)}
+                            </p>
+                            <p className={`text-sm ${
+                              (position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'
+                            }`}>
+                              {position.mv > 0 ? 
+                                `${(((position.unr_pnl || 0) / (position.mv - (position.unr_pnl || 0))) * 100).toFixed(2)}%` : 
+                                '0.00%'
+                              }
+                            </p>
+                            {position.r_pnl && position.r_pnl !== 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                Realized: ${position.r_pnl.toFixed(2)}
+                              </p>
+                            )}
+                          </div>
+                          <DividendButton
+                            symbol={position.symbol}
+                            shares={Math.abs(position.qty)}
+                            currentPrice={position.mv / Math.abs(position.qty)}
+                          />
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className={`font-semibold text-lg ${
-                          (position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'
-                        }`}>
-                          {(position.unr_pnl || 0) >= 0 ? '+' : ''}${(position.unr_pnl || 0).toFixed(2)}
-                        </p>
-                        <p className={`text-sm ${
-                          (position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'
-                        }`}>
-                          {position.mv > 0 ? 
-                            `${(((position.unr_pnl || 0) / (position.mv - (position.unr_pnl || 0))) * 100).toFixed(2)}%` : 
-                            '0.00%'
-                          }
-                        </p>
-                        {position.r_pnl && position.r_pnl !== 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Realized: ${position.r_pnl.toFixed(2)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="dividends" className="space-y-4">
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle>Dividend Calculator</CardTitle>
+              <CardDescription>
+                Calculate dividend projections for your positions and potential investments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DividendCalculator />
             </CardContent>
           </Card>
         </TabsContent>
