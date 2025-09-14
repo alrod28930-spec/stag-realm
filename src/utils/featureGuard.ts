@@ -1,10 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
+import { isDemoMode } from './demoMode';
 
 /**
  * Check if a feature is available for a workspace
  */
 export async function checkFeatureAccess(workspaceId: string, feature: string): Promise<boolean> {
   try {
+    // Demo users get access to all features for viewing
+    if (isDemoMode()) {
+      return true;
+    }
+
     const { data, error } = await supabase.rpc('has_entitlement', {
       p_workspace: workspaceId,
       p_feature: feature
@@ -93,28 +99,26 @@ export async function logFeatureLock(
 export function getFeatureTier(feature: string): string {
   const tierMap: Record<string, string> = {
     // Standard tier - First 3 tabs
-    'TAB_DASHBOARD': 'demo',
+    'TAB_DASHBOARD': 'standard',
     'TAB_INTELLIGENCE': 'standard',
     'TAB_MARKET': 'standard',
+    'PAPER_TRADING': 'standard',
+    'LIVE_TRADING': 'standard',
+    'CORE_BOTS': 'standard',
+    'ORACLE_BASIC': 'standard',
     
     // Pro tier - Next 3 tabs  
     'TAB_PORTFOLIO': 'pro',
     'TAB_TRADING_DESK': 'pro',
     'TAB_CHARTS': 'pro',
+    'ADV_BOTS': 'pro',
+    'DAY_TRADE_MODE': 'pro',
+    'ORACLE_EXPANDED': 'pro',
     
     // Elite tier - Remaining tabs
     'TAB_BROKERAGE_DOCK': 'elite',
     'TAB_CRADLE': 'elite',
     'WORKSPACE_MULTI_PANEL': 'elite',
-    
-    // Feature-specific entitlements
-    'LIVE_TRADING': 'standard',
-    'PAPER_TRADING': 'demo',
-    'CORE_BOTS': 'standard',
-    'ADV_BOTS': 'pro',
-    'DAY_TRADE_MODE': 'pro',
-    'ORACLE_BASIC': 'standard',
-    'ORACLE_EXPANDED': 'pro',
     'VOICE_ANALYST': 'elite',
     'PRIORITY_SUPPORT': 'elite'
   };
@@ -127,7 +131,6 @@ export function getFeatureTier(feature: string): string {
  */
 export function getTierDisplayName(tier: string): string {
   const displayNames: Record<string, string> = {
-    demo: 'Demo',
     standard: 'Standard', 
     pro: 'Pro',
     elite: 'Elite'
