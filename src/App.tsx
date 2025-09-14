@@ -34,64 +34,14 @@ const queryClient = new QueryClient();
 
 const App = () => {
   console.log('🚀 App component rendering');
-  useEffect(() => {
-    const initApp = async () => {
-      // Initialize auth first - critical for all other services
-      await useAuthStore.getState().initializeAuth();
-      
-      // Initialize risk enforcement system
-      console.log('🛡️ Risk enforcement system initialized');
-      
-      // Log current risk status for monitoring
-      const riskStatus = toggleService.getRiskStatus();
-      console.log('🛡️ Initial risk status:', riskStatus);
-    };
-    initApp();
-  }, []);
-
+  
+  // Simplified version - just render a basic structure to test
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ComplianceProvider>
-          <PWAInstall />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Public routes (no auth required) */}
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/auth/verify" element={<VerifyEmail />} />
-              <Route path="/download" element={<Download />} />
-              
-              {/* Protected routes */}
-              <Route path="/*" element={
-                <AuthGuard>
-                  <DashboardLayout>
-                    <Routes>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/intelligence" element={<Intelligence />} />
-                      <Route path="/market" element={<Market />} />
-                      <Route path="/portfolio" element={<Portfolio />} />
-                      <Route path="/trading-desk" element={<TradingDesk />} />
-                      <Route path="/charts" element={<Charts />} />
-                      <Route path="/workspace" element={<Workspace />} />
-                      <Route path="/brokerage-dock" element={<BrokerageDock />} />
-                      <Route path="/cradle" element={<Cradle />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/subscription" element={<Subscription />} />
-                      <Route path="/settings" element={<Settings />} />
-                      <Route path="/system-monitor" element={<SystemMonitor />} />
-                      <Route path="/admin" element={<AdminPortal />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </DashboardLayout>
-                </AuthGuard>
-              } />
-            </Routes>
-          </BrowserRouter>
-        </ComplianceProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <div style={{ padding: '20px', color: 'white', backgroundColor: '#1a1a1a', minHeight: '100vh' }}>
+      <h1>StagAlgo Loading...</h1>
+      <p>If you see this, React is working!</p>
+      <p>Now loading the full application...</p>
+    </div>
   );
 };
 
