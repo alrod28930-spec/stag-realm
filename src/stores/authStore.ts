@@ -88,54 +88,58 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             set({ isLoading: false });
           }
 
-          // Listen for auth changes - set up only once with proper user handling
-          supabase.auth.onAuthStateChange(async (event, session) => {
+          // Listen for auth changes - avoid async work in the callback
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             console.log('🔄 Auth state change event:', event, { hasSession: !!session, userId: session?.user?.id });
-            
-            if (event === 'SIGNED_IN' && session?.user) {
-              console.log('📝 Processing SIGNED_IN event');
-              // Ensure profile exists and fetch it
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle();
 
-              const user: User = {
+            if (event === 'SIGNED_IN' && session?.user) {
+              // Minimal synchronous state update
+              const minimalUser: User = {
                 id: session.user.id,
                 email: session.user.email || '',
-                name: profile?.display_name || session.user.email || '',
+                name: session.user.email || '',
                 role: 'Member',
                 organizationId: '00000000-0000-0000-0000-000000000001',
-                avatar: profile?.avatar_url,
+                avatar: undefined,
                 isActive: true,
                 createdAt: new Date(session.user.created_at),
                 lastLogin: new Date()
               };
 
-              set({
-                user,
-                isAuthenticated: true,
-                isLoading: false
-              });
-              
-              eventBus.emit('user-login' as any, { email: user.email, timestamp: new Date() });
-              console.log('✅ User signed in successfully:', user.email);
+              set({ user: minimalUser, isAuthenticated: true, isLoading: false });
+              eventBus.emit('user-login' as any, { email: minimalUser.email, timestamp: new Date() });
+
+              // Defer profile fetch to avoid deadlocks
+              setTimeout(async () => {
+                try {
+                  const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user!.id)
+                    .maybeSingle();
+
+                  if (profile) {
+                    set((current) => ({
+                      user: current.user ? { ...current.user, name: profile.display_name || current.user.name, avatar: profile.avatar_url } : current.user
+                    }));
+                  }
+                } catch (e) {
+                  console.warn('Deferred profile fetch failed:', e);
+                }
+              }, 0);
+
+              console.log('✅ User signed in successfully:', minimalUser.email);
             } else if (event === 'SIGNED_OUT') {
               console.log('🚪 Processing SIGNED_OUT event');
-              set({
-                user: null,
-                organization: null,
-                isAuthenticated: false,
-                isLoading: false
-              });
-              
+              set({ user: null, organization: null, isAuthenticated: false, isLoading: false });
               eventBus.emit('user-logout' as any, { timestamp: new Date() });
-              console.log('✅ User signed out successfully');
             } else if (event === 'TOKEN_REFRESHED') {
               console.log('🔄 Token refreshed');
             }
           });
+
+          // Optionally store subscription ref if needed
+          (window as any).__supabaseAuthSub = subscription;
         } catch (error) {
           logger.error('Auth initialization failed', { error });
           set({ isLoading: false });
