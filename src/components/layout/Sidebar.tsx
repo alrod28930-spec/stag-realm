@@ -13,7 +13,9 @@ import {
   ExternalLink,
   Brain,
   LineChart,
-  Crown
+  Crown,
+  Circle,
+  Star
 } from 'lucide-react';
 import {
   Sidebar,
@@ -41,6 +43,22 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const collapsed = state === 'collapsed' && !isMobile;
   
+  const getTierIcon = (path: string) => {
+    const tabAccess = checkTabAccess(path);
+    const tier = tabAccess.requiresTier;
+    
+    switch (tier) {
+      case 'standard':
+        return { Icon: Circle, className: 'text-info' };
+      case 'pro': 
+        return { Icon: Star, className: 'text-accent' };
+      case 'elite':
+        return { Icon: Crown, className: 'text-warning' };
+      default:
+        return null;
+    }
+  };
+
   const navigationItems = [
     { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
     { title: 'Intelligence', url: '/intelligence', icon: Brain, description: 'AI analysis & Oracle signals' },
@@ -159,9 +177,10 @@ export function AppSidebar() {
                                   <div className="flex flex-col min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-medium truncate">{item.title}</span>
-                                      {item.title === 'Workspace' && (
-                                        <Crown className="w-3 h-3 text-warning" />
-                                      )}
+                                      {(() => {
+                                        const tierIcon = getTierIcon(item.url);
+                                        return tierIcon ? <tierIcon.Icon className={`w-3 h-3 ${tierIcon.className}`} /> : null;
+                                      })()}
                                       {subscriptionStatus.isDemo && (
                                         <Badge variant="secondary" className="text-xs px-1 py-0 ml-auto">
                                           DEMO
