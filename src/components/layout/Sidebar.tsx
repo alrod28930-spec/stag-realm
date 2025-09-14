@@ -45,9 +45,7 @@ export function AppSidebar() {
     { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
     { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
     { title: 'Charts', url: '/charts', icon: LineChart, description: 'Live streaming charts & trading' },
-    ...(hasFeature('WORKSPACE_MULTI_PANEL') ? [
-      { title: 'Workspace', url: '/workspace', icon: Crown, description: 'Elite multi-panel workspace' }
-    ] : []),
+    { title: 'Workspace', url: '/workspace', icon: Crown, description: 'Elite multi-panel workspace' },
     { title: 'Brokerage Dock', url: '/brokerage-dock', icon: ExternalLink, description: 'Access external brokerage accounts' },
     { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
   ];
