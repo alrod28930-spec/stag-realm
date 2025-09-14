@@ -10,10 +10,10 @@ import {
   Settings, 
   Monitor, 
   Shield,
-  ChevronDown,
   ExternalLink,
   Brain,
-  LineChart
+  LineChart,
+  Crown
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,33 +27,38 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuthStore } from '@/stores/authStore';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { cn } from '@/lib/utils';
-
-const navigationItems = [
-  { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
-  { title: 'Intelligence', url: '/intelligence', icon: Brain, description: 'AI analysis & Oracle signals' },
-  { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
-  { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
-  { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
-  { title: 'Charts', url: '/charts', icon: LineChart, description: 'Live streaming charts & trading' },
-  { title: 'Brokerage Dock', url: '/brokerage-dock', icon: ExternalLink, description: 'Access external brokerage accounts' },
-  { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
-];
-
-const adminItems = [
-  { title: 'About', url: '/about', icon: Info, description: 'Platform overview' },
-  { title: 'Subscription', url: '/subscription', icon: CreditCard, description: 'Manage your plan' },
-  { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
-  { title: 'System Monitor', url: '/system-monitor', icon: Monitor, description: 'Core scaffold health' },
-  { title: 'Admin Portal', url: '/admin', icon: Shield, description: 'Admin controls', adminOnly: true },
-];
 
 export function AppSidebar() {
   const { state, isMobile } = useSidebar();
   const location = useLocation();
   const { user, hasPermission } = useAuthStore();
+  const { hasFeature } = useEntitlements(user?.organizationId);
   const currentPath = location.pathname;
   const collapsed = state === 'collapsed' && !isMobile;
+  
+  const navigationItems = [
+    { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
+    { title: 'Intelligence', url: '/intelligence', icon: Brain, description: 'AI analysis & Oracle signals' },
+    { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
+    { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
+    { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
+    { title: 'Charts', url: '/charts', icon: LineChart, description: 'Live streaming charts & trading' },
+    ...(hasFeature('WORKSPACE_MULTI_PANEL') ? [
+      { title: 'Workspace', url: '/workspace', icon: Crown, description: 'Elite multi-panel workspace' }
+    ] : []),
+    { title: 'Brokerage Dock', url: '/brokerage-dock', icon: ExternalLink, description: 'Access external brokerage accounts' },
+    { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
+  ];
+
+  const adminItems = [
+    { title: 'About', url: '/about', icon: Info, description: 'Platform overview' },
+    { title: 'Subscription', url: '/subscription', icon: CreditCard, description: 'Manage your plan' },
+    { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
+    { title: 'System Monitor', url: '/system-monitor', icon: Monitor, description: 'Core scaffold health' },
+    { title: 'Admin Portal', url: '/admin', icon: Shield, description: 'Admin controls', adminOnly: true },
+  ];
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -113,7 +118,12 @@ export function AppSidebar() {
                       <item.icon className="w-4 h-4 flex-shrink-0 group-hover:text-primary-glow transition-colors" />
                       {!collapsed && (
                         <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-medium truncate">{item.title}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">{item.title}</span>
+                            {item.title === 'Workspace' && (
+                              <Crown className="w-3 h-3 text-warning" />
+                            )}
+                          </div>
                           <span className="text-xs text-sidebar-foreground/60 truncate">
                             {item.description}
                           </span>

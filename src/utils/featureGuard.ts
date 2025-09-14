@@ -118,7 +118,8 @@ export function getFeatureTier(feature: string): string {
     'VOICE_ANALYST': 'elite',
     'WORLD_MARKETS': 'elite',
     'UNLIMITED_WORKSPACES': 'elite', 
-    'PRIORITY_SUPPORT': 'elite'
+    'PRIORITY_SUPPORT': 'elite',
+    'WORKSPACE_MULTI_PANEL': 'elite'
   };
 
   return tierMap[feature] || 'pro';

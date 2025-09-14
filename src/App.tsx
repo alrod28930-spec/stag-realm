@@ -21,6 +21,7 @@ import BrokerageDock from "@/pages/BrokerageDock";
 import Cradle from "@/pages/Cradle";
 import About from "@/pages/About";
 import Subscription from "@/pages/Subscription";
+import Workspace from "@/pages/Workspace";
 import Settings from "@/pages/Settings";
 import SystemMonitor from "@/pages/SystemMonitor";
 import AdminPortal from "@/pages/AdminPortal";
@@ -73,6 +74,7 @@ const App = () => {
                       <Route path="/portfolio" element={<Portfolio />} />
                       <Route path="/trading-desk" element={<TradingDesk />} />
                       <Route path="/charts" element={<Charts />} />
+                      <Route path="/workspace" element={<Workspace />} />
                       <Route path="/brokerage-dock" element={<BrokerageDock />} />
                       <Route path="/cradle" element={<Cradle />} />
                       <Route path="/about" element={<About />} />
