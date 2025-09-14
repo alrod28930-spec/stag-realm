@@ -188,4 +188,5 @@ const TierComplianceGuard: React.FC<TierComplianceGuardProps> = ({
   );
 };
 
+export { TierComplianceGuard };
 export default TierComplianceGuard;
