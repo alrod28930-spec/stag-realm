@@ -2,14 +2,22 @@ import { useAuthStore } from '@/stores/authStore';
 import { demoDataService } from '@/services/demoDataService';
 
 /**
- * Check if the current user is using the demo account or owner test account
+ * Check if the current user is using the demo account or should have demo access
  */
 export function isDemoMode(): boolean {
   const authState = useAuthStore.getState();
+  // Demo account users get full access to view all features (but with demo data)
   return authState.user?.email === 'demo@example.com' || 
          authState.user?.email === 'john.trader@stagalgo.com' ||
          authState.user?.id === '00000000-0000-0000-0000-000000000000' ||
          authState.user?.id === '00000000-0000-0000-0000-000000000002';
+}
+
+/**
+ * Check if user should have demo-level access to all tabs for viewing
+ */
+export function isDemoAccess(): boolean {
+  return isDemoMode();
 }
 
 /**

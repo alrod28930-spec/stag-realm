@@ -16,70 +16,54 @@ import { Shield, AlertTriangle } from 'lucide-react';
 // Plan configurations - using placeholder price IDs that should be configured when Stripe is set up
 const PLANS: Plan[] = [
   {
-    code: 'lite',
-    name: 'Lite',
-    price: 49,
-    description: 'Perfect for getting started with algorithmic trading',
-    features: [
-      { name: 'Analyst AI Assistant', included: true },
-      { name: 'Demo Mode Access', included: true },
-      { name: 'Paper Trading', included: true },
-      { name: 'Basic Market Data', included: true },
-      { name: 'Community Support', included: true },
-      { name: 'Live Trading', included: false },
-      { name: 'Advanced Analytics', included: false },
-    ],
-    priceId: 'price_lite_placeholder', // TODO: Replace with actual Stripe price ID
-  },
-  {
     code: 'standard',
     name: 'Standard',
     price: 99,
-    description: 'Unlock live trading and core automation features',
+    description: 'Access to first 3 tabs + live trading',
     popular: true,
     trial: 7,
     features: [
-      { name: 'Everything in Lite', included: true },
+      { name: 'Dashboard, Intelligence & Market tabs', included: true },
       { name: 'Live Trading Access', included: true },
-      { name: 'Trading Desk Interface', included: true },
+      { name: 'Paper Trading', included: true },
+      { name: 'Basic Market Data', included: true },
       { name: 'Core Trade Bots', included: true },
       { name: 'Basic Oracle Signals', included: true },
-      { name: 'Risk Management Tools', included: true },
-      { name: 'Advanced Features', included: false },
+      { name: 'Portfolio & Charts access', included: false },
     ],
-    priceId: 'price_standard_placeholder', // TODO: Replace with actual Stripe price ID
+    priceId: 'price_standard_placeholder',
   },
   {
     code: 'pro',
     name: 'Pro',
     price: 199,
-    description: 'Advanced trading capabilities for serious traders',
+    description: 'Access to first 6 tabs + advanced features',
     features: [
       { name: 'Everything in Standard', included: true },
+      { name: 'Portfolio & Trading Desk tabs', included: true },
+      { name: 'Charts tab access', included: true },
       { name: 'Day Trading Mode', included: true },
       { name: 'Advanced Oracle & Seeker', included: true },
-      { name: 'Brokerage Dock Integration', included: true },
       { name: 'Custom Strategy Builder', included: true },
-      { name: 'Priority Support', included: true },
       { name: 'Advanced Analytics', included: true },
     ],
-    priceId: 'price_pro_placeholder', // TODO: Replace with actual Stripe price ID
+    priceId: 'price_pro_placeholder',
   },
   {
     code: 'elite',
     name: 'Elite',
     price: 299,
-    description: 'The ultimate trading platform for professionals',
+    description: 'Full platform access + workspace',
     features: [
       { name: 'Everything in Pro', included: true },
+      { name: 'All tabs including Brokerage Dock', included: true },
+      { name: 'Cradle Strategy Incubator', included: true },
+      { name: 'Multi-Panel Workspace', included: true },
       { name: 'White-Glove Onboarding', included: true },
-      { name: 'Dedicated Support Channel', included: true },
-      { name: 'Custom Integrations', included: true },
-      { name: 'Advanced Reporting', included: true },
-      { name: 'V2 Platform Preview', included: true },
+      { name: 'Priority Support', included: true },
       { name: 'API Access', included: true },
     ],
-    priceId: 'price_elite_placeholder', // TODO: Replace with actual Stripe price ID
+    priceId: 'price_elite_placeholder',
   },
 ];
 

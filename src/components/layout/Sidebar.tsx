@@ -39,18 +39,18 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed' && !isMobile;
   
   const navigationItems = [
-    { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
-    { title: 'Intelligence', url: '/intelligence', icon: Brain, description: 'AI analysis & Oracle signals' },
-    { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
-    { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
-    { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
-    { title: 'Charts', url: '/charts', icon: LineChart, description: 'Live streaming charts & trading' },
+    { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics', feature: 'TAB_DASHBOARD' },
+    { title: 'Intelligence', url: '/intelligence', icon: Brain, description: 'AI analysis & Oracle signals', feature: 'TAB_INTELLIGENCE' },
+    { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights', feature: 'TAB_MARKET' },
+    { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail', feature: 'TAB_PORTFOLIO' },
+    { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading', feature: 'TAB_TRADING_DESK' },
+    { title: 'Charts', url: '/charts', icon: LineChart, description: 'Live streaming charts & trading', feature: 'TAB_CHARTS' },
     ...(hasFeature('WORKSPACE_MULTI_PANEL') ? [
-      { title: 'Workspace', url: '/workspace', icon: Crown, description: 'Elite multi-panel workspace' }
+      { title: 'Workspace', url: '/workspace', icon: Crown, description: 'Elite multi-panel workspace', feature: 'WORKSPACE_MULTI_PANEL' }
     ] : []),
-    { title: 'Brokerage Dock', url: '/brokerage-dock', icon: ExternalLink, description: 'Access external brokerage accounts' },
-    { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
-  ];
+    { title: 'Brokerage Dock', url: '/brokerage-dock', icon: ExternalLink, description: 'Access external brokerage accounts', feature: 'TAB_BROKERAGE_DOCK' },
+    { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator', feature: 'TAB_CRADLE' },
+  ].filter(item => !item.feature || hasFeature(item.feature));
 
   const adminItems = [
     { title: 'About', url: '/about', icon: Info, description: 'Platform overview' },

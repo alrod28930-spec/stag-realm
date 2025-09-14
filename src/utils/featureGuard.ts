@@ -92,34 +92,31 @@ export async function logFeatureLock(
  */
 export function getFeatureTier(feature: string): string {
   const tierMap: Record<string, string> = {
-    // Lite tier
-    'DEMO_TRADING': 'lite',
-    'ANALYST_BASIC': 'lite', 
-    'RECORDER_BASIC': 'lite',
-    'CRADLE_SHEET': 'lite',
+    // Standard tier - First 3 tabs
+    'TAB_DASHBOARD': 'demo',
+    'TAB_INTELLIGENCE': 'standard',
+    'TAB_MARKET': 'standard',
     
-    // Standard tier  
-    'TRADING_DESK': 'standard',
-    'BROKERAGE_DOCK': 'standard',
-    'PORTFOLIO_MIRROR': 'standard',
+    // Pro tier - Next 3 tabs  
+    'TAB_PORTFOLIO': 'pro',
+    'TAB_TRADING_DESK': 'pro',
+    'TAB_CHARTS': 'pro',
+    
+    // Elite tier - Remaining tabs
+    'TAB_BROKERAGE_DOCK': 'elite',
+    'TAB_CRADLE': 'elite',
+    'WORKSPACE_MULTI_PANEL': 'elite',
+    
+    // Feature-specific entitlements
+    'LIVE_TRADING': 'standard',
+    'PAPER_TRADING': 'demo',
     'CORE_BOTS': 'standard',
-    'ORACLE_BASIC': 'standard',
-    
-    // Pro tier
     'ADV_BOTS': 'pro',
-    'DAY_TRADE_MODE': 'pro', 
+    'DAY_TRADE_MODE': 'pro',
+    'ORACLE_BASIC': 'standard',
     'ORACLE_EXPANDED': 'pro',
-    'SEEKER': 'pro',
-    'LEARNING_BOT': 'pro',
-    'RECORDER_ADV': 'pro',
-    'CRADLE_CODE': 'pro',
-    
-    // Elite tier
     'VOICE_ANALYST': 'elite',
-    'WORLD_MARKETS': 'elite',
-    'UNLIMITED_WORKSPACES': 'elite', 
-    'PRIORITY_SUPPORT': 'elite',
-    'WORKSPACE_MULTI_PANEL': 'elite'
+    'PRIORITY_SUPPORT': 'elite'
   };
 
   return tierMap[feature] || 'pro';
@@ -130,7 +127,7 @@ export function getFeatureTier(feature: string): string {
  */
 export function getTierDisplayName(tier: string): string {
   const displayNames: Record<string, string> = {
-    lite: 'Lite',
+    demo: 'Demo',
     standard: 'Standard', 
     pro: 'Pro',
     elite: 'Elite'
