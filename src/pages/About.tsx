@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function About() {
+  console.log('🏠 About page: Rendering started');
   const steps = [
     {
       icon: Lock,

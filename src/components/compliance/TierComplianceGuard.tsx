@@ -21,6 +21,7 @@ const TierComplianceGuard: React.FC<TierComplianceGuardProps> = ({
   feature,
   requiresLiveTrading = false 
 }) => {
+  console.log('🛡️ TierComplianceGuard: Rendering with props:', { requiredTier, feature, requiresLiveTrading });
   const { subscriptionStatus } = useSubscriptionAccess();
   const { user } = useAuthStore();
   const [showComplianceModal, setShowComplianceModal] = useState(false);

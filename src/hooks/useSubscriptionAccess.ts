@@ -40,6 +40,7 @@ const TIER_HIERARCHY: Record<SubscriptionTier, number> = {
 };
 
 export function useSubscriptionAccess() {
+  console.log('🔄 useSubscriptionAccess: Hook called');
   const { user } = useAuthStore();
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
     tier: 'lite',
@@ -48,6 +49,7 @@ export function useSubscriptionAccess() {
     loading: true,
     error: null,
   });
+  console.log('🔄 useSubscriptionAccess: Current user:', user?.id, 'Status:', subscriptionStatus);
 
   useEffect(() => {
     const fetchSubscriptionStatus = async () => {
