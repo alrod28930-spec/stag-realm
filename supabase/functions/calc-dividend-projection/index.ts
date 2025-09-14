@@ -72,10 +72,20 @@ serve(async (req) => {
     const monthsBetweenPayments = 12 / paymentsPerYear;
 
     for (let monthOffset = 0; monthOffset < input.monthsHorizon; monthOffset++) {
-      const paymentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + monthOffset + 1);
+      const paymentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + monthOffset);
       
-      // Check if this month has a dividend payment
-      const isDividendMonth = monthOffset % monthsBetweenPayments === 0;
+      // Check if this month has a dividend payment based on frequency
+      let isDividendMonth = false;
+      
+      if (input.frequency === 'M') {
+        isDividendMonth = true; // Every month
+      } else if (input.frequency === 'Q') {
+        isDividendMonth = monthOffset % 3 === 0; // Every 3 months
+      } else if (input.frequency === 'S') {
+        isDividendMonth = monthOffset % 6 === 0; // Every 6 months  
+      } else if (input.frequency === 'A') {
+        isDividendMonth = monthOffset % 12 === 0; // Every 12 months
+      }
       
       if (isDividendMonth) {
         // Calculate dividend growth

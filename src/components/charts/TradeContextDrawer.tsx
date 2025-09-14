@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { X, DollarSign } from 'lucide-react';
 import { usePortfolioStore } from '@/stores/portfolioStore';
+import { useAuthStore } from '@/stores/authStore';
+import { useSecurityAudit } from '@/hooks/useSecurityAudit';
 
 interface TradeContextDrawerProps {
   symbol: string | null;
@@ -14,6 +16,8 @@ interface TradeContextDrawerProps {
 
 export const TradeContextDrawer: React.FC<TradeContextDrawerProps> = ({ symbol, onClose }) => {
   const { portfolio } = usePortfolioStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const securityAudit = useSecurityAudit();
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
   const [quantity, setQuantity] = useState('');
   const [orderType, setOrderType] = useState('market');
@@ -119,15 +123,25 @@ export const TradeContextDrawer: React.FC<TradeContextDrawerProps> = ({ symbol, 
             )}
 
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" disabled={!isAuthenticated || !securityAudit.isSecure}>
                 Check Risk
               </Button>
-              <Button size="sm" disabled={!quantity}>
+              <Button size="sm" disabled={!quantity || !isAuthenticated || !securityAudit.isSecure}>
                 Submit Order
               </Button>
             </div>
           </div>
         </Card>
+
+        {/* Security Status */}
+        {securityAudit.criticalCount > 0 && (
+          <Card className="p-4 border-destructive/50 bg-destructive/5">
+            <h4 className="font-medium mb-2 text-destructive">Security Alert</h4>
+            <div className="text-sm text-destructive">
+              {securityAudit.checks.filter(c => c.level === 'critical')[0]?.message}
+            </div>
+          </Card>
+        )}
 
         {/* Risk Readout */}
         <Card className="p-4">
@@ -140,6 +154,16 @@ export const TradeContextDrawer: React.FC<TradeContextDrawerProps> = ({ symbol, 
             <div className="flex justify-between">
               <span>Exposure:</span>
               <Badge variant="outline">15.2%</Badge>
+            </div>
+            <div className="flex justify-between">
+              <span>User:</span>
+              <span className="font-medium">{user?.name || 'Not logged in'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Security Status:</span>
+              <Badge variant={securityAudit.isSecure ? "default" : "destructive"}>
+                {securityAudit.isSecure ? 'Secure' : 'Issues'}
+              </Badge>
             </div>
             <div className="flex justify-between">
               <span>Buying Power:</span>

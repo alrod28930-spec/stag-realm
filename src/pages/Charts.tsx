@@ -5,8 +5,11 @@ import { ChartCanvasGrid } from '@/components/charts/ChartCanvasGrid';
 import { IndicatorMenu } from '@/components/charts/IndicatorMenu';
 import { TradeContextDrawer } from '@/components/charts/TradeContextDrawer';
 import { ConnectionStatusBar } from '@/components/charts/ConnectionStatusBar';
+import { ChartErrorBoundary } from '@/components/charts/ErrorBoundary';
 import { useChartState } from '@/hooks/useChartState';
+import { useKeyboardShortcuts, createChartShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { usePortfolioStore } from '@/stores/portfolioStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,15 +42,45 @@ const Charts = () => {
   } = useChartState();
 
   const { portfolio, isConnected } = usePortfolioStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { toast } = useToast();
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
 
-  // Initialize with first position if available
+  // Keyboard shortcuts
+  const timeframes = ['1m', '5m', '15m', '1h', '4h', '1D'];
+  const currentTimeframeIndex = timeframes.indexOf(timeframe);
+  
+  const handleNextTimeframe = () => {
+    const nextIndex = (currentTimeframeIndex + 1) % timeframes.length;
+    setTimeframe(timeframes[nextIndex]);
+  };
+  
+  const handlePrevTimeframe = () => {
+    const prevIndex = currentTimeframeIndex === 0 ? timeframes.length - 1 : currentTimeframeIndex - 1;
+    setTimeframe(timeframes[prevIndex]);
+  };
+
+  const shortcuts = createChartShortcuts({
+    onSearch: () => {
+      const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+      searchInput?.focus();
+    },
+    onToggleTrade: () => setIsDrawerOpen(!isDrawerOpen),
+    onLayout1: () => setLayout('1'),
+    onLayout2: () => setLayout('2'),
+    onLayout4: () => setLayout('4'),
+    onNextTimeframe: handleNextTimeframe,
+    onPrevTimeframe: handlePrevTimeframe
+  });
+  
+  useKeyboardShortcuts(shortcuts, { enabled: isAuthenticated });
+
+  // Initialize with first position if available and user is authenticated
   useEffect(() => {
-    if (!selectedSymbol && portfolio?.positions?.length > 0) {
+    if (isAuthenticated && !selectedSymbol && portfolio?.positions?.length > 0) {
       setSelectedSymbol(portfolio.positions[0].symbol);
     }
-  }, [portfolio, selectedSymbol, setSelectedSymbol]);
+  }, [portfolio, selectedSymbol, setSelectedSymbol, isAuthenticated]);
 
   if (!isConnected) {
     return (
@@ -189,14 +222,16 @@ const Charts = () => {
         <div className="flex-1 flex">
           {/* Chart Canvas */}
           <div className="flex-1 min-w-0">
-            <ChartCanvasGrid 
-              symbol={selectedSymbol}
-              timeframe={timeframe}
-              chartType={chartType}
-              layout={layout}
-              indicators={indicators}
-              oracleOverlayEnabled={oracleOverlayEnabled}
-            />
+            <ChartErrorBoundary>
+              <ChartCanvasGrid 
+                symbol={selectedSymbol}
+                timeframe={timeframe}
+                chartType={chartType}
+                layout={layout}
+                indicators={indicators}
+                oracleOverlayEnabled={oracleOverlayEnabled}
+              />
+            </ChartErrorBoundary>
           </div>
 
           {/* Trade Context Drawer */}
@@ -208,10 +243,12 @@ const Charts = () => {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="border-l border-border bg-card/50"
             >
-              <TradeContextDrawer 
-                symbol={selectedSymbol}
-                onClose={() => setIsDrawerOpen(false)}
-              />
+              <ChartErrorBoundary>
+                <TradeContextDrawer 
+                  symbol={selectedSymbol}
+                  onClose={() => setIsDrawerOpen(false)}
+                />
+              </ChartErrorBoundary>
             </motion.div>
           )}
         </div>

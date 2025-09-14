@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthStore } from '@/stores/authStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   Calculator, 
@@ -76,6 +77,11 @@ export const DividendCalculator: React.FC<DividendCalculatorProps> = ({
   const [isSaving, setIsSaving] = useState(false);
 
   const { toast } = useToast();
+  const { user } = useAuthStore();
+  
+  // Get workspace ID from user context  
+  const workspaceId = user?.organizationId || '00000000-0000-0000-0000-000000000001';
+  const userId = user?.id || '00000000-0000-0000-0000-000000000000';
 
   // Fetch dividend data when symbol changes
   useEffect(() => {
@@ -84,20 +90,25 @@ export const DividendCalculator: React.FC<DividendCalculatorProps> = ({
     }
   }, [symbol]);
 
-  // Calculate projection when inputs change
+  // Calculate projection when key inputs change (debounced)
   useEffect(() => {
-    if (symbol && shares > 0 && currentPrice > 0 && adps > 0) {
-      calculateProjection();
+    if (symbol && shares > 0 && currentPrice > 0 && adps > 0 && user?.id) {
+      const timeoutId = setTimeout(() => {
+        calculateProjection();
+      }, 500); // Debounce calculations
+      return () => clearTimeout(timeoutId);
     }
-  }, [symbol, shares, currentPrice, adps, frequency, monthsHorizon, dripEnabled, withholdingPct, growthRate, priceAssumption]);
+  }, [symbol, shares, currentPrice, adps, frequency, monthsHorizon, dripEnabled, withholdingPct, growthRate, priceAssumption, user?.id]);
 
   const fetchDividendData = async (sym: string) => {
+    if (!user?.id) return;
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('get-dividends', {
         body: { 
           symbol: sym.toUpperCase(),
-          workspace_id: 'temp' // TODO: Get from auth context
+          workspace_id: workspaceId
         }
       });
 
@@ -123,6 +134,8 @@ export const DividendCalculator: React.FC<DividendCalculatorProps> = ({
   };
 
   const calculateProjection = async () => {
+    if (!user?.id) return;
+    
     try {
       const { data, error } = await supabase.functions.invoke('calc-dividend-projection', {
         body: {
@@ -153,13 +166,22 @@ export const DividendCalculator: React.FC<DividendCalculatorProps> = ({
   };
 
   const saveCalculation = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to save calculations.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSaving(true);
     try {
       const { error } = await supabase
         .from('div_calculations')
         .insert({
-          workspace_id: 'temp', // TODO: Get from auth context
-          user_id: 'temp', // TODO: Get from auth
+          workspace_id: workspaceId,
+          user_id: userId,
           symbol,
           shares,
           current_price: currentPrice,
@@ -390,14 +412,14 @@ export const DividendCalculator: React.FC<DividendCalculatorProps> = ({
 
             <Separator />
 
-            <div className="flex gap-2">
+            <div>
               <Button
                 onClick={saveCalculation}
-                disabled={isSaving || !projectionResult}
+                disabled={isSaving || !projectionResult || !user?.id}
                 className="flex-1"
               >
                 <Save className="w-4 h-4 mr-2" />
-                Save
+                {!user?.id ? 'Login to Save' : 'Save'}
               </Button>
               <Button
                 onClick={exportToCsv}
@@ -441,7 +463,7 @@ export const DividendCalculator: React.FC<DividendCalculatorProps> = ({
                 <Card>
                   <CardContent className="pt-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="text-2xl font-bold text-chart-2">
                         ${projectionResult.netIncomeTotal.toFixed(0)}
                       </div>
                       <div className="text-sm text-muted-foreground">Net Income ({monthsHorizon}m)</div>
@@ -452,7 +474,7 @@ export const DividendCalculator: React.FC<DividendCalculatorProps> = ({
                 <Card>
                   <CardContent className="pt-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
+                      <div className="text-2xl font-bold text-chart-3">
                         {projectionResult.endShares.toFixed(2)}
                       </div>
                       <div className="text-sm text-muted-foreground">End Shares</div>

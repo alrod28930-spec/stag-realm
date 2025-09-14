@@ -136,7 +136,13 @@ export const SymbolRail: React.FC<SymbolRailProps> = ({ selectedSymbol, onSymbol
   };
 
   const positions = useMemo(() => {
-    return portfolio?.positions || [];
+    return (portfolio?.positions || []).map(position => ({
+      ...position,
+      name: position.name || `${position.symbol} Corporation`,
+      gainLoss: position.gainLoss || 0,
+      gainLossPercent: position.gainLossPercent || 0,
+      shares: position.shares || 0
+    }));
   }, [portfolio]);
 
   const recentSymbolsData = useMemo(() => {
