@@ -183,116 +183,54 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Positions Table */}
-        <Card className="lg:col-span-2 bg-gradient-card shadow-card">
-          <CardHeader>
-            <CardTitle>Active Positions</CardTitle>
-            <CardDescription>
-              Your current market positions and performance
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {displayPositions.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No positions found</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Your portfolio positions will appear here once you have investments
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {displayPositions.map((position, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <Badge 
-                        variant={position.side === 'Long' ? 'default' : 'secondary'}
-                        className="w-14 justify-center"
-                      >
-                        {position.side}
-                      </Badge>
-                      <div>
-                        <p className="font-semibold">{position.symbol}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {position.qty} shares @ {position.price}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={`font-semibold ${
-                        position.pnl.startsWith('+') ? 'text-accent' : 'text-destructive'
-                      }`}>
-                        {position.pnl}
-                      </p>
-                      <p className={`text-sm ${
-                        position.pnlPercent.startsWith('+') ? 'text-accent' : 'text-destructive'
-                      }`}>
-                        {position.pnlPercent}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <EquityCurveChart 
+            data={undefined}
+            title="30-Day Performance"
+            showBenchmark={true}
+            height={280}
+            isDemo={isDemoMode}
+          />
+          
+          <AllocationPieChart
+            title="Portfolio Allocation"
+            viewMode="symbol"
+            height={280}
+            isDemo={isDemoMode}
+          />
+        </div>
 
-        {/* Quick Stats */}
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Activity className="w-5 h-5 mr-2" />
-              System Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Market Connection</span>
-                <Badge className="bg-accent">Live</Badge>
-              </div>
-              <Progress value={100} className="h-2" />
-            </div>
-            
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Bot Performance</span>
-                <span className="text-accent">87%</span>
-              </div>
-              <Progress value={87} className="h-2" />
-            </div>
-            
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Risk Utilization</span>
-                <span className="text-warning">45%</span>
-              </div>
-              <Progress value={45} className="h-2" />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <RiskMetricsChart
+            title="Risk Dashboard"
+            height={250}
+            isDemo={isDemoMode}
+          />
 
-            <div className="pt-4 border-t">
-              <h4 className="text-sm font-semibold mb-2">Today's Summary</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Trades Executed</span>
-                  <span>23</span>
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-2 rounded border">
+                  <span className="text-sm">AAPL Signal Generated</span>
+                  <span className="text-xs text-muted-foreground">2m ago</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Win Rate</span>
-                  <span className="text-accent">78.3%</span>
+                <div className="flex items-center justify-between p-2 rounded border">
+                  <span className="text-sm">Portfolio Rebalanced</span>
+                  <span className="text-xs text-muted-foreground">1h ago</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Avg Hold Time</span>
-                  <span>2h 15m</span>
+                <div className="flex items-center justify-between p-2 rounded border">
+                  <span className="text-sm">Risk Check Passed</span>
+                  <span className="text-xs text-muted-foreground">3h ago</span>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+
+          <MiniOracleWidget />
+        </div>
 
       {/* Compliance Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

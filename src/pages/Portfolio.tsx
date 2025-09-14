@@ -290,86 +290,73 @@ export default function Portfolio() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="performance" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="bg-gradient-card shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Return</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${totalUnrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {totalUnrealizedPnL >= 0 ? '+' : ''}${totalUnrealizedPnL.toFixed(2)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {((totalUnrealizedPnL / portfolioValue) * 100).toFixed(2)}% of portfolio
-                </p>
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <EquityCurveChart 
+            data={undefined}
+            title="Portfolio Equity Curve"
+            showBenchmark={true}
+            showDrawdown={false}
+            height={350}
+            isDemo={isDemoMode}
+          />
+          
+          <RiskMetricsChart
+            title="Risk Analysis"
+            height={350}
+            isDemo={isDemoMode}
+          />
+        </div>
 
-            <Card className="bg-gradient-card shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Cash Utilization</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {(((totalMarketValue) / portfolioValue) * 100).toFixed(1)}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  ${(portfolioValue - availableCash).toFixed(2)} invested
-                </p>
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AllocationPieChart
+            title="Holdings Allocation"
+            viewMode="symbol"
+            height={400}
+            isDemo={isDemoMode}
+          />
 
-            <Card className="bg-gradient-card shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Diversification</CardTitle>
-                <PieChart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalPositions}</div>
-                <p className="text-xs text-muted-foreground">
-                  Active positions
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-card shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Best Performer</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {currentPositions.length > 0 ? 
-                    Math.max(...currentPositions.map(p => p.unr_pnl || 0)).toFixed(2) 
-                    : '0.00'
-                  }
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Unrealized P&L
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Performance Chart Placeholder */}
-          <Card className="bg-gradient-card shadow-card">
+          <Card>
             <CardHeader>
-              <CardTitle>Performance Overview</CardTitle>
-              <CardDescription>
-                Portfolio performance metrics and analysis
-              </CardDescription>
+              <CardTitle>Position Details</CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px] flex items-center justify-center">
-              <div className="text-center space-y-2">
-                <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Performance charts coming soon</p>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <div className="font-medium">AAPL</div>
+                    <div className="text-sm text-muted-foreground">100 shares</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold">$15,000</div>
+                    <div className="text-sm text-success">+$500 (3.4%)</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <div className="font-medium">MSFT</div>
+                    <div className="text-sm text-muted-foreground">75 shares</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold">$12,500</div>
+                    <div className="text-sm text-success">+$250 (2.0%)</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <div className="font-medium">GOOGL</div>
+                    <div className="text-sm text-muted-foreground">50 shares</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold">$10,000</div>
+                    <div className="text-sm text-destructive">-$150 (-1.5%)</div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
         <TabsContent value="recorder" className="space-y-6">
           <div className="h-screen overflow-hidden">
