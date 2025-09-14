@@ -10,6 +10,7 @@ import { DailyTradesCard } from '@/components/tradingdesk/DailyTradesCard';
 import { OpenPositionsTable } from '@/components/tradingdesk/OpenPositionsTable';
 import { OrderHistoryTable } from '@/components/tradingdesk/OrderHistoryTable';
 import { ComplianceFooter } from '@/components/tradingdesk/ComplianceFooter';
+import TierComplianceGuard from '@/components/compliance/TierComplianceGuard';
 import { SymbolIntegrationButton } from '@/components/tradingdesk/SymbolIntegrationButton';
 import TradeBots from '@/pages/TradeBots';
 import { PaperTradingTestPanel } from '@/components/tradingdesk/PaperTradingTestPanel';
@@ -25,32 +26,33 @@ export default function TradingDesk() {
   const { isDemoMode } = useDemoMode();
 
   return (
-    <div className="space-y-6">
-      {/* Risk Disclaimer Banner */}
-      <RiskDisclaimerBanner />
-      
-      {/* Demo Disclaimer */}
-      {isDemoMode && (
-        <DemoDisclaimer feature="Trading Desk" />
-      )}
-      
-      {/* Floating Risk Indicator */}
-      <FloatingRiskIndicator />
+    <TierComplianceGuard requiresLiveTrading={true}>
+      <div className="space-y-6">
+        {/* Risk Disclaimer Banner */}
+        <RiskDisclaimerBanner />
+        
+        {/* Demo Disclaimer */}
+        {isDemoMode && (
+          <DemoDisclaimer feature="Trading Desk" />
+        )}
+        
+        {/* Floating Risk Indicator */}
+        <FloatingRiskIndicator />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center">
-            Trading Desk
-            {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {isDemoMode 
-              ? "Explore manual trading and automated bot features with simulated data"
-              : "Execute trades manually and manage automated trading bots"
-            }
-          </p>
-        </div>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center">
+              Trading Desk
+              {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {isDemoMode 
+                ? "Explore manual trading and automated bot features with simulated data"
+                : "Execute trades manually and manage automated trading bots"
+              }
+            </p>
+          </div>
         <div className="flex items-center gap-2">
           <SymbolIntegrationButton 
             symbol="AAPL" 
@@ -129,8 +131,9 @@ export default function TradingDesk() {
         </TabsContent>
       </Tabs>
 
-      {/* Compliance Footer */}
-      <ComplianceFooter />
-    </div>
+        {/* Compliance Footer */}
+        <ComplianceFooter />
+      </div>
+    </TierComplianceGuard>
   );
 }

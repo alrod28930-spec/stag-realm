@@ -3,6 +3,9 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import DemoModeBanner from '@/components/subscription/DemoModeBanner';
+import TabLockGuard from '@/components/subscription/TabLockGuard';
+import TierComplianceGuard from '@/components/compliance/TierComplianceGuard';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -26,7 +29,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           
           <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto tab-transition">
             <div className="max-w-full overflow-x-auto">
-              {children}
+              <TabLockGuard>
+                <TierComplianceGuard requiresLiveTrading={false}>
+                  <DemoModeBanner />
+                  {children}
+                </TierComplianceGuard>
+              </TabLockGuard>
             </div>
           </main>
         </div>

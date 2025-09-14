@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, Link } from 'react-router-dom';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -27,14 +27,17 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuthStore } from '@/stores/authStore';
-import { useEntitlements } from '@/hooks/useEntitlements';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { cn } from '@/lib/utils';
+import { Lock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function AppSidebar() {
   const { state, isMobile } = useSidebar();
   const location = useLocation();
   const { user, hasPermission } = useAuthStore();
-  const { hasFeature } = useEntitlements(user?.organizationId || '00000000-0000-0000-0000-000000000001');
+  const { checkTabAccess, subscriptionStatus } = useSubscriptionAccess();
   const currentPath = location.pathname;
   const collapsed = state === 'collapsed' && !isMobile;
   
@@ -109,28 +112,87 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavClassName(item.url)}>
-                      <item.icon className="w-4 h-4 flex-shrink-0 group-hover:text-primary-glow transition-colors" />
-                      {!collapsed && (
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium truncate">{item.title}</span>
-                            {item.title === 'Workspace' && (
-                              <Crown className="w-3 h-3 text-warning" />
+              {navigationItems.map((item) => {
+                const tabAccess = checkTabAccess(item.url);
+                const active = isActive(item.url);
+                
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <SidebarMenuButton asChild>
+                            {tabAccess.isLocked ? (
+                              <Link 
+                                to="/subscription" 
+                                className={cn(
+                                  "flex items-center gap-3 px-3 py-2 rounded-md transition-smooth group",
+                                  "text-sidebar-foreground/50 hover:bg-sidebar-accent/30 opacity-60 cursor-not-allowed"
+                                )}
+                              >
+                                <div className="relative">
+                                  <item.icon className="w-4 h-4 flex-shrink-0" />
+                                  <Lock className="absolute -top-1 -right-1 h-3 w-3 text-muted-foreground" />
+                                </div>
+                                {!collapsed && (
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium truncate">{item.title}</span>
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-xs px-1 py-0 ml-auto"
+                                      >
+                                        {tabAccess.requiresTier === 'standard' ? 'STD' :
+                                         tabAccess.requiresTier === 'pro' ? 'PRO' : 'ELITE'}
+                                      </Badge>
+                                    </div>
+                                    <span className="text-xs text-sidebar-foreground/40 truncate">
+                                      {item.description}
+                                    </span>
+                                  </div>
+                                )}
+                              </Link>
+                            ) : (
+                              <NavLink to={item.url} className={getNavClassName(item.url)}>
+                                <item.icon className="w-4 h-4 flex-shrink-0 group-hover:text-primary-glow transition-colors" />
+                                {!collapsed && (
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium truncate">{item.title}</span>
+                                      {item.title === 'Workspace' && (
+                                        <Crown className="w-3 h-3 text-warning" />
+                                      )}
+                                      {subscriptionStatus.isDemo && (
+                                        <Badge variant="secondary" className="text-xs px-1 py-0 ml-auto">
+                                          DEMO
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-sidebar-foreground/60 truncate">
+                                      {item.description}
+                                    </span>
+                                  </div>
+                                )}
+                              </NavLink>
+                            )}
+                          </SidebarMenuButton>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs">
+                          <div>
+                            <p className="font-medium">{item.title}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                            {tabAccess.isLocked && (
+                              <p className="text-xs text-warning mt-1">
+                                Upgrade to {tabAccess.requiresTier} to unlock
+                              </p>
                             )}
                           </div>
-                          <span className="text-xs text-sidebar-foreground/60 truncate">
-                            {item.description}
-                          </span>
-                        </div>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

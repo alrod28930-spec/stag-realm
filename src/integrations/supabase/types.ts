@@ -2193,6 +2193,10 @@ export type Database = {
         }
         Returns: string
       }
+      get_user_subscription_tier: {
+        Args: { p_workspace_id: string }
+        Returns: string
+      }
       gtrgm_compress: {
         Args: { "": unknown }
         Returns: unknown
@@ -2231,6 +2235,10 @@ export type Database = {
       }
       has_entitlement: {
         Args: { p_feature: string; p_workspace: string }
+        Returns: boolean
+      }
+      has_tab_access: {
+        Args: { p_tab_code: string; p_workspace_id: string }
         Returns: boolean
       }
       hnsw_bit_support: {
