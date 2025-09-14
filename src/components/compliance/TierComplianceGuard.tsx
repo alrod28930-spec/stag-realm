@@ -10,11 +10,15 @@ import { useAuthStore } from '@/stores/authStore';
 
 interface TierComplianceGuardProps {
   children: React.ReactNode;
+  requiredTier?: 'standard' | 'pro' | 'elite';
+  feature?: string;
   requiresLiveTrading?: boolean;
 }
 
 const TierComplianceGuard: React.FC<TierComplianceGuardProps> = ({ 
   children, 
+  requiredTier,
+  feature,
   requiresLiveTrading = false 
 }) => {
   const { subscriptionStatus } = useSubscriptionAccess();

@@ -27,6 +27,9 @@ import { demoDataService } from '@/services/demoDataService';
 import Recorder from '@/pages/Recorder';
 import { DividendCalculator } from '@/components/dividends/DividendCalculator';
 import { DividendButton } from '@/components/tradingdesk/DividendButton';
+import { EquityCurveChart } from '@/components/charts/EquityCurveChart';
+import { RiskMetricsChart } from '@/components/charts/RiskMetricsChart';
+import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
 
 export default function Portfolio() {
   const {

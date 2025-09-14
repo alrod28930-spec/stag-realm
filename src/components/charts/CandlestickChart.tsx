@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, IChartApi, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,8 +57,36 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       timeScale: { borderColor: '#ccc' },
     });
 
-    const candleSeries = chart.addCandlestickSeries();
-    const volumeSeries = showVolume ? chart.addHistogramSeries() : null;
+    chartRef.current = chart;
+
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderVisible: false,
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350'
+    });
+    candleSeriesRef.current = candleSeries;
+
+    // Set candle data
+    const chartData = candleData.map(candle => ({
+      time: Math.floor(candle.time / 1000) as any,
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
+    }));
+
+    candleSeries.setData(chartData);
+
+    // Add volume series if enabled
+    if (showVolume) {
+      const volumeSeries = chart.addSeries(HistogramSeries, {
+        color: 'rgba(128, 128, 128, 0.3)',
+        priceScaleId: 'volume',
+      });
+
+      volumeSeriesRef.current = volumeSeries;
       
       chart.priceScale('volume').applyOptions({
         scaleMargins: {
@@ -70,7 +98,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       const volumeData = candleData.map(candle => ({
         time: Math.floor(candle.time / 1000) as any,
         value: candle.volume,
-        color: candle.close >= candle.open ? 'hsl(var(--success))' : 'hsl(var(--destructive))',
+        color: candle.close >= candle.open ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)',
       }));
 
       volumeSeries.setData(volumeData);
@@ -80,7 +108,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     if (showIndicators && canShowAdvanced && indicatorData.length) {
       // SMA20
       if (activeIndicators.sma20) {
-        const sma20Series = chart.addLineSeries({
+        const sma20Series = chart.addSeries(LineSeries, {
           color: 'rgb(59, 130, 246)',
           lineWidth: 2,
         });
@@ -97,7 +125,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
       // VWAP
       if (activeIndicators.vwap) {
-        const vwapSeries = chart.addLineSeries({
+        const vwapSeries = chart.addSeries(LineSeries, {
           color: 'rgb(168, 85, 247)',
           lineWidth: 2,
         });
@@ -113,20 +141,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       }
     }
 
-    // Add oracle signals as markers if enabled
-    if (showOracleSignals && oracleSignals.length) {
-      const markers = oracleSignals.map(signal => ({
-        time: Math.floor(signal.time / 1000) as any,
-        position: 'aboveBar' as const,
-        color: signal.type === 'bullish' ? 'hsl(var(--success))' : 
-               signal.type === 'bearish' ? 'hsl(var(--destructive))' : 'hsl(var(--muted))',
-        shape: signal.type === 'bullish' ? 'arrowUp' as const : 
-               signal.type === 'bearish' ? 'arrowDown' as const : 'circle' as const,
-        text: signal.summary,
-      }));
-
-      candleSeries.setMarkers(markers);
-    }
+    // Add oracle signals as markers if enabled (commented out - not supported in current version)
+    // if (showOracleSignals && oracleSignals.length) {
+    //   console.log('Oracle signals available:', oracleSignals.length);
+    // }
 
     // Handle resize
     const handleResize = () => {

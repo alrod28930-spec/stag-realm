@@ -23,6 +23,10 @@ import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
 import { useDemoMode } from '@/utils/demoMode';
 import { demoDataService } from '@/services/demoDataService';
+import { MiniOracleWidget } from '@/components/dashboard/MiniOracleWidget';
+import { EquityCurveChart } from '@/components/charts/EquityCurveChart';
+import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
+import { RiskMetricsChart } from '@/components/charts/RiskMetricsChart';
 
 export default function Dashboard() {
   console.log('📊 Dashboard component rendering');
