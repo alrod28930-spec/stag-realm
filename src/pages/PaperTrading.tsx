@@ -21,6 +21,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 
+interface PayloadData {
+  side?: string;
+  quantity?: number;
+  price?: number;
+  status?: string;
+  pnl?: number;
+}
+
 interface PaperTrade {
   id: string;
   symbol: string;
@@ -89,16 +97,19 @@ export default function PaperTrading() {
         .limit(50);
 
       if (tradeHistory) {
-        const paperTrades: PaperTrade[] = tradeHistory.map(event => ({
-          id: event.id,
-          symbol: event.entity_id || 'UNKNOWN',
-          side: event.payload_json?.side || 'buy',
-          quantity: event.payload_json?.quantity || 0,
-          price: event.payload_json?.price || 0,
-          timestamp: event.ts,
-          status: event.payload_json?.status || 'filled',
-          pnl: event.payload_json?.pnl
-        }));
+        const paperTrades: PaperTrade[] = tradeHistory.map(event => {
+          const payload = event.payload_json as PayloadData;
+          return {
+            id: event.id,
+            symbol: event.entity_id || 'UNKNOWN',
+            side: (payload?.side as 'buy' | 'sell') || 'buy',
+            quantity: payload?.quantity || 0,
+            price: payload?.price || 0,
+            timestamp: event.ts,
+            status: (payload?.status as 'pending' | 'filled' | 'cancelled') || 'filled',
+            pnl: payload?.pnl
+          };
+        });
         setTrades(paperTrades);
       }
     } catch (error) {
@@ -107,44 +118,30 @@ export default function PaperTrading() {
   };
 
   const togglePaperTrading = async () => {
-    if (!user?.workspace_id) return;
+    if (!user?.id) return;
 
     try {
-      const { data: existing } = await supabase
-        .from('bot_profiles')
-        .select('*')
-        .eq('workspace_id', user.workspace_id)
-        .eq('name', 'Paper Trading Sandbox')
-        .single();
+      // For now, we'll store paper trading state in local storage
+      // In production, this would use the paper trading API
+      const newActiveState = !isActive;
+      localStorage.setItem('paperTradingActive', JSON.stringify(newActiveState));
+      setIsActive(newActiveState);
 
-      if (existing) {
-        await supabase
-          .from('bot_profiles')
-          .update({ 
-            active: !isActive,
-            last_activated: !isActive ? new Date().toISOString() : null,
-            last_deactivated: isActive ? new Date().toISOString() : null
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('bot_profiles')
-          .insert({
-            workspace_id: user.workspace_id,
-            name: 'Paper Trading Sandbox',
-            mode: 'paper',
-            active: true,
-            execution_mode: 'auto',
-            capital_risk_pct: 0.02,
-            max_trades_per_day: 10,
-            last_activated: new Date().toISOString()
-          });
-      }
+      // Log the toggle event
+      await supabase
+        .from('rec_events')
+        .insert({
+          user_id: user.id,
+          event_type: 'paper_trading_toggle',
+          entity_type: 'system',
+          entity_id: 'paper_sandbox',
+          summary: `Paper trading ${newActiveState ? 'activated' : 'deactivated'}`,
+          payload_json: { active: newActiveState }
+        });
 
-      setIsActive(!isActive);
       toast({
-        title: `Paper Trading ${!isActive ? 'Activated' : 'Deactivated'}`,
-        description: `Paper trading sandbox is now ${!isActive ? 'running' : 'stopped'}.`
+        title: `Paper Trading ${newActiveState ? 'Activated' : 'Deactivated'}`,
+        description: `Paper trading sandbox is now ${newActiveState ? 'running' : 'stopped'}.`
       });
     } catch (error) {
       console.error('Error toggling paper trading:', error);
@@ -157,7 +154,7 @@ export default function PaperTrading() {
   };
 
   const placePaperOrder = async () => {
-    if (!user?.workspace_id || !orderSymbol || !orderQuantity || !orderPrice) return;
+    if (!user?.id || !orderSymbol || !orderQuantity || !orderPrice) return;
 
     try {
       const tradeData = {
@@ -173,7 +170,6 @@ export default function PaperTrading() {
       await supabase
         .from('rec_events')
         .insert({
-          workspace_id: user.workspace_id,
           user_id: user.id,
           event_type: 'paper_trade',
           entity_type: 'order',
@@ -209,13 +205,12 @@ export default function PaperTrading() {
   };
 
   const resetPaperAccount = async () => {
-    if (!user?.workspace_id) return;
+    if (!user?.id) return;
 
     try {
       await supabase
         .from('rec_events')
         .insert({
-          workspace_id: user.workspace_id,
           user_id: user.id,
           event_type: 'paper_account_reset',
           entity_type: 'account',

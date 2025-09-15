@@ -15,7 +15,8 @@ import {
   LineChart,
   Crown,
   Circle,
-  Star
+  Star,
+  Target
 } from 'lucide-react';
 import {
   Sidebar,
@@ -63,6 +64,7 @@ export function AppSidebar() {
     { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
     { title: 'Intelligence', url: '/intelligence', icon: Brain, description: 'AI analysis & Oracle signals' },
     { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
+    { title: 'Paper Trading', url: '/paper-trading', icon: Target, description: 'Risk-free trading practice' },
     { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
     { title: 'Trading Desk', url: '/trading-desk', icon: Activity, description: 'Manual & automated trading' },
     { title: 'Charts', url: '/charts', icon: LineChart, description: 'Live streaming charts & trading' },

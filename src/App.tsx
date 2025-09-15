@@ -13,7 +13,7 @@ import { GlobalVoiceInterface } from "@/components/voice/GlobalVoiceInterface";
 import { useEffect, lazy, Suspense } from "react";
 
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const Market = lazy(() => import("@/pages/Market"));
+const PaperTrading = lazy(() => import("@/pages/PaperTrading"));
 const Portfolio = lazy(() => import("@/pages/Portfolio"));
 const TradingDesk = lazy(() => import("@/pages/TradingDesk"));
 const Charts = lazy(() => import("@/pages/Charts"));
