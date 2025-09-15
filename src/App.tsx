@@ -22,6 +22,7 @@ const Charts = lazy(() => import("@/pages/Charts"));
 const BrokerageDock = lazy(() => import("@/pages/BrokerageDock"));
 const Cradle = lazy(() => import("@/pages/Cradle"));
 const About = lazy(() => import("@/pages/About"));
+const UserManual = lazy(() => import("@/pages/UserManual"));
 const Subscription = lazy(() => import("@/pages/Subscription"));
 const Workspace = lazy(() => import("@/pages/Workspace"));
 const Settings = lazy(() => import("@/pages/Settings"));
@@ -82,6 +83,7 @@ const App = () => {
                         <Route path="/brokerage-dock" element={<BrokerageDock />} />
                         <Route path="/cradle" element={<Cradle />} />
                         <Route path="/about" element={<About />} />
+                        <Route path="/user-manual" element={<UserManual />} />
                         <Route path="/subscription" element={<Subscription />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/system-monitor" element={<SystemMonitor />} />

@@ -1,5 +1,8 @@
 import { ExcelSpreadsheet } from '@/components/cradle/ExcelSpreadsheet';
-import { FileSpreadsheet } from 'lucide-react';
+import { StrategyTesting } from '@/components/cradle/StrategyTesting';
+import { MonteCarloSimulation } from '@/components/cradle/MonteCarloSimulation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileSpreadsheet, TestTube, Zap } from 'lucide-react';
 
 export default function Cradle() {
   return (
@@ -12,13 +15,40 @@ export default function Cradle() {
             Cradle Spreadsheet Lab
           </h1>
           <p className="text-muted-foreground mt-2">
-            Experiment with strategies, analyze data, and connect formulas to StagAlgo's systems
+            Experiment with strategies, analyze data, test with Monte Carlo, and connect formulas to StagAlgo's systems
           </p>
         </div>
       </div>
 
-      {/* Spreadsheet Workspace */}
-      <ExcelSpreadsheet />
+      {/* Main Content */}
+      <Tabs defaultValue="spreadsheet" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="spreadsheet" className="flex items-center gap-2">
+            <FileSpreadsheet className="w-4 h-4" />
+            Spreadsheet
+          </TabsTrigger>
+          <TabsTrigger value="strategy-testing" className="flex items-center gap-2">
+            <TestTube className="w-4 h-4" />
+            Strategy Testing
+          </TabsTrigger>
+          <TabsTrigger value="monte-carlo" className="flex items-center gap-2">
+            <Zap className="w-4 h-4" />
+            Monte Carlo
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="spreadsheet">
+          <ExcelSpreadsheet />
+        </TabsContent>
+
+        <TabsContent value="strategy-testing">
+          <StrategyTesting />
+        </TabsContent>
+
+        <TabsContent value="monte-carlo">
+          <MonteCarloSimulation />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

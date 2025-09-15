@@ -14,12 +14,16 @@ import {
   Target,
   AlertTriangle,
   CheckCircle,
-  Clock
+  Clock,
+  Shield,
+  Activity
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
+import { OrderValidation } from '@/components/trading/OrderValidation';
+import { OrderStatusTracker, TrackedOrder, OrderUpdate } from '@/components/trading/OrderStatusTracker';
 
 interface PayloadData {
   side?: string;
@@ -60,10 +64,18 @@ export default function PaperTrading() {
   });
   const [positions, setPositions] = useState<PaperPosition[]>([]);
   const [trades, setTrades] = useState<PaperTrade[]>([]);
+  const [trackedOrders, setTrackedOrders] = useState<TrackedOrder[]>([]);
   const [orderSymbol, setOrderSymbol] = useState('');
   const [orderQuantity, setOrderQuantity] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
+  
+  // Risk settings for validation
+  const [riskSettings] = useState({
+    maxPositionSize: 10, // 10% of equity
+    maxRiskPerTrade: 2, // 2% risk per trade
+    maxDailyLoss: 5 // 5% daily loss limit
+  });
   
   const { user } = useAuthStore();
   

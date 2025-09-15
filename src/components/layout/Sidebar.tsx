@@ -4,7 +4,7 @@ import {
   TrendingUp, 
   Briefcase, 
   Activity, 
-  Baby,
+  BookOpen,
   Info, 
   CreditCard, 
   Settings, 
@@ -16,7 +16,8 @@ import {
   Crown,
   Circle,
   Star,
-  Target
+  Target,
+  Baby
 } from 'lucide-react';
 import {
   Sidebar,
@@ -75,6 +76,7 @@ export function AppSidebar() {
 
   const adminItems = [
     { title: 'About', url: '/about', icon: Info, description: 'Platform overview' },
+    { title: 'User Manual', url: '/user-manual', icon: BookOpen, description: 'Complete user guide' },
     { title: 'Subscription', url: '/subscription', icon: CreditCard, description: 'Manage your plan' },
     { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
     { title: 'System Monitor', url: '/system-monitor', icon: Monitor, description: 'Core scaffold health' },
