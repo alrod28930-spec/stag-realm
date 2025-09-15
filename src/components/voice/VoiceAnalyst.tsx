@@ -119,10 +119,39 @@ export function VoiceAnalyst({ isMinimized = false, onToggleMinimize, defaultPer
   const audioContextRef = useRef<AudioContext | null>(null);
   const sessionIdRef = useRef<string>(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
+  const requestAudioPermissions = async () => {
+    try {
+      // Request microphone access
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Initialize and resume audio context (required for playback)
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+      }
+      
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+      
+      // Test audio playback capability by playing a silent audio buffer
+      const testBuffer = audioContextRef.current.createBuffer(1, 1, 22050);
+      const testSource = audioContextRef.current.createBufferSource();
+      testSource.buffer = testBuffer;
+      testSource.connect(audioContextRef.current.destination);
+      testSource.start(0);
+      
+      toast({
+        title: "Audio Permissions Granted",
+        description: "Microphone and speakers are ready for use"
+      });
+      
+    } catch (error) {
+      console.error('Audio permission error:', error);
+      throw new Error('Audio permissions required for voice features. Please allow microphone and speaker access.');
+    }
+  };
+
   useEffect(() => {
-    // Initialize audio context
-    audioContextRef.current = new AudioContext();
-    
     return () => {
       disconnect();
       if (audioContextRef.current) {
@@ -135,8 +164,8 @@ export function VoiceAnalyst({ isMinimized = false, onToggleMinimize, defaultPer
     try {
       setConnectionStatus('connecting');
       
-      // Request microphone access
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request audio permissions (both input and output)
+      await requestAudioPermissions();
       
       // Connect to realtime analyst edge function via POST
       const sessionConfig = {

@@ -26,10 +26,36 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
   
   const RECORDING_TIME_LIMIT = 15; // 15 seconds max
 
+  const requestAudioPermissions = async () => {
+    try {
+      // Request microphone access
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Initialize and resume audio context (required for playback)
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+      }
+      
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+      
+      // Test audio playback capability
+      const testBuffer = audioContextRef.current.createBuffer(1, 1, 22050);
+      const testSource = audioContextRef.current.createBufferSource();
+      testSource.buffer = testBuffer;
+      testSource.connect(audioContextRef.current.destination);
+      testSource.start(0);
+      
+      console.log('Audio permissions granted successfully');
+      
+    } catch (error) {
+      console.error('Audio permission error:', error);
+      throw new Error('Audio permissions required. Please allow microphone and speaker access.');
+    }
+  };
+
   useEffect(() => {
-    // Initialize audio context
-    audioContextRef.current = new AudioContext();
-    
     return () => {
       if (audioContextRef.current) {
         audioContextRef.current.close();
@@ -42,8 +68,8 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
 
   const startRecording = async () => {
     try {
-      // Request microphone access
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request audio permissions (both input and output)
+      await requestAudioPermissions();
       
       setIsRecording(true);
       setRecordingTime(0);
