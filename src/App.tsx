@@ -11,8 +11,7 @@ import { PWAInstall } from "@/components/PWAInstall";
 import { useAuthStore } from "@/stores/authStore";
 import { GlobalVoiceInterface } from "@/components/voice/GlobalVoiceInterface";
 import { useEffect, lazy, Suspense } from "react";
-import { toggleService } from '@/services/toggleService';
-import { riskEnforcement } from '@/services/riskEnforcement';
+
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Market = lazy(() => import("@/pages/Market"));
 const Portfolio = lazy(() => import("@/pages/Portfolio"));
@@ -35,17 +34,18 @@ const queryClient = new QueryClient();
 
 const App = () => {
   console.log('🚀 App component rendering');
+  
   useEffect(() => {
     const initApp = async () => {
-      // Initialize auth first - critical for all other services
-      await useAuthStore.getState().initializeAuth();
-      
-      // Initialize risk enforcement system
-      console.log('🛡️ Risk enforcement system initialized');
-      
-      // Log current risk status for monitoring
-      const riskStatus = toggleService.getRiskStatus();
-      console.log('🛡️ Initial risk status:', riskStatus);
+      try {
+        // Initialize auth - simplified to avoid complex dependencies
+        console.log('🔐 Initializing authentication...');
+        await useAuthStore.getState().initializeAuth();
+        console.log('✅ Authentication initialized');
+      } catch (error) {
+        console.error('❌ Auth initialization failed:', error);
+        // Don't crash the app, just log the error
+      }
     };
     initApp();
   }, []);

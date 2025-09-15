@@ -29,17 +29,3 @@ try {
     </div>
   `;
 }
-
-// Initialize system services after React renders
-setTimeout(() => {
-  console.log('🚀 Initializing system services...');
-  import('@/services/systemInitializer').then(({ systemInitializer }) => {
-    systemInitializer.initialize().then(() => {
-      console.log('🚀 StagAlgo system fully initialized and ready!');
-    }).catch((error) => {
-      console.error('❌ System initialization failed:', error);
-    });
-  }).catch((error) => {
-    console.error('❌ Failed to import system initializer:', error);
-  });
-}, 100);
