@@ -81,7 +81,7 @@ export default function PaperTrading() {
     try {
       const { data: profileData } = await supabase
         .from('bot_profiles')
-        .select('*')
+        .select('active')
         .eq('workspace_id', workspaceId)
         .eq('name', 'Paper Trading Sandbox')
         .maybeSingle();

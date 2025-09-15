@@ -11,10 +11,11 @@ import { PWAInstall } from "@/components/PWAInstall";
 import { useAuthStore } from "@/stores/authStore";
 import { GlobalVoiceInterface } from "@/components/voice/GlobalVoiceInterface";
 import { useEffect, lazy, Suspense } from "react";
+import Market from "@/pages/Market";
 
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const PaperTrading = lazy(() => import("@/pages/PaperTrading"));
-const Market = lazy(() => import("@/pages/Market"));
+
 const Portfolio = lazy(() => import("@/pages/Portfolio"));
 const TradingDesk = lazy(() => import("@/pages/TradingDesk"));
 const Charts = lazy(() => import("@/pages/Charts"));
@@ -74,10 +75,10 @@ const App = () => {
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/intelligence" element={<Intelligence />} />
                         <Route path="/market" element={<Market />} />
+                        <Route path="/paper-trading" element={<PaperTrading />} />
                         <Route path="/portfolio" element={<Portfolio />} />
                         <Route path="/trading-desk" element={<TradingDesk />} />
                         <Route path="/charts" element={<Charts />} />
-                        <Route path="/workspace" element={<Workspace />} />
                         <Route path="/brokerage-dock" element={<BrokerageDock />} />
                         <Route path="/cradle" element={<Cradle />} />
                         <Route path="/about" element={<About />} />
