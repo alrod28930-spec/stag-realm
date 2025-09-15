@@ -30,6 +30,8 @@ import { ResearchRail } from '@/components/research/ResearchRail';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
 import { LegalFooter } from '@/components/compliance/LegalFooter';
 import { useScreenSize } from '@/hooks/use-mobile';
+import { userBID } from '@/services/userBID';
+import { useAuthStore } from '@/stores/authStore';
 import type { ProcessedSignal } from '@/types/oracle';
 
 interface AnalystProps {
@@ -59,6 +61,20 @@ export default function Analyst(props: AnalystProps = {}) {
     // Start analyst session and load initial data
     analystService.startSession();
     loadContextData();
+    
+    // Initialize user BID profile
+    const initUserBID = async () => {
+      try {
+        const authStore = useAuthStore.getState();
+        if (authStore.user) {
+          await userBID.initializeUserProfile(authStore.user.id);
+        }
+      } catch (error) {
+        console.error('Failed to initialize user BID:', error);
+      }
+    };
+    
+    initUserBID();
     
     // Trigger session start disclaimer when Analyst is accessed
     showDisclaimer('analyst', 'view');
@@ -117,7 +133,7 @@ export default function Analyst(props: AnalystProps = {}) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = async () => {
+  async handleSendMessage() {
     if (!inputMessage.trim() || isLoading) return;
 
     const userInput = inputMessage.trim();
@@ -125,8 +141,35 @@ export default function Analyst(props: AnalystProps = {}) {
     setIsLoading(true);
 
     try {
-      const response = await analystService.processUserMessage(userInput);
-      setMessages(analystService.getMessages());
+      // Use enhanced analyst service with BID integration
+      const response = await supabase.functions.invoke('analyst-chat-enhanced', {
+        body: {
+          message: userInput,
+          persona: selectedPersona,
+          workspace_id: 'demo-workspace'
+        }
+      });
+
+      if (response.error) throw response.error;
+
+      // Add user message
+      const userMessage: AnalystMessage = {
+        id: `msg_${Date.now()}_user`,
+        timestamp: new Date(),
+        type: 'user',
+        content: userInput
+      };
+
+      // Add analyst response
+      const analystMessage: AnalystMessage = {
+        id: `msg_${Date.now()}_analyst`,
+        timestamp: new Date(),
+        type: 'analyst',
+        content: response.data.response,
+        persona: selectedPersona
+      };
+
+      setMessages(prev => [...prev, userMessage, analystMessage]);
       
       // Focus back to input
       setTimeout(() => inputRef.current?.focus(), 100);

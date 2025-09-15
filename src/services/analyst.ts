@@ -4,6 +4,7 @@ import { bid } from './bid';
 import { recorder } from './recorder';
 import { llmService, LLMResponse, ANALYST_PERSONAS } from './llm';
 import { knowledgeBaseService, RetrievalResult } from './knowledgeBase';
+import { userBID } from './userBID';
 
 export interface AnalystMessage {
   id: string;
@@ -290,22 +291,36 @@ class AnalystService {
   }
 
   private async gatherContext(userInput: string) {
-    const portfolioData = bid.getPortfolio();
-    const riskMetrics = bid.getRiskMetrics();
+    // Get comprehensive user data from the user-specific BID
+    const userContext = userBID.getAnalystContext();
+    
+    // Fallback to legacy BID if user BID is not available
+    const portfolioData = userContext?.portfolioSummary || bid.getPortfolio();
+    const riskMetrics = userContext?.riskProfile?.riskMetrics || bid.getRiskMetrics();
     const recentSignals = bid.getStrategySignals().slice(0, 5);
     const recentAlerts = bid.getAlerts().slice(0, 10);
     const recentEvents: any[] = []; // Mock for now
 
     return {
+      // Enhanced context with user-specific data
+      userProfile: userContext?.userProfile || null,
       portfolioData,
       riskMetrics,
       recentSignals,
       recentAlerts,
       recentEvents,
+      tradingStyle: userContext?.tradingStyle || null,
+      marketIntelligence: userContext?.marketIntelligence || null,
+      botConfiguration: userContext?.botConfiguration || [],
+      learningProgress: userContext?.learningProgress || null,
+      usagePatterns: userContext?.usagePatterns || null,
+      isDemoMode: userContext?.isDemoMode || false,
+      demoScenario: userContext?.demoScenario || null,
       bidData: {
         portfolio: portfolioData,
         risk: riskMetrics,
-        signals: recentSignals
+        signals: recentSignals,
+        userSpecific: userContext
       },
       recorderData: recentEvents
     };
