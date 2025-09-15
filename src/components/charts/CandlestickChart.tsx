@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi } from 'lightweight-charts';
+import { createChart, IChartApi, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,7 +72,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
     chartRef.current = chart;
 
-    const candleSeries = (chart as any).addCandlestickSeries({
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#26a69a',
       downColor: '#ef5350',
       borderVisible: false,
@@ -94,7 +94,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
     // Add volume series if enabled
     if (showVolume) {
-      const volumeSeries = (chart as any).addHistogramSeries({
+      const volumeSeries = chart.addSeries(HistogramSeries, {
         color: 'rgba(128, 128, 128, 0.3)',
         priceScaleId: 'volume',
       });
@@ -121,7 +121,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     if (showIndicators && canShowAdvanced && indicatorData.length) {
       // SMA20
       if (activeIndicators.sma20) {
-        const sma20Series = (chart as any).addLineSeries({
+        const sma20Series = chart.addSeries(LineSeries, {
           color: 'rgb(59, 130, 246)',
           lineWidth: 2,
         });
@@ -138,7 +138,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
       // VWAP
       if (activeIndicators.vwap) {
-        const vwapSeries = (chart as any).addLineSeries({
+        const vwapSeries = chart.addSeries(LineSeries, {
           color: 'rgb(168, 85, 247)',
           lineWidth: 2,
         });
