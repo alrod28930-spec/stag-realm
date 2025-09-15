@@ -71,16 +71,21 @@ serve(async (req) => {
       })
     }
 
-    // Generate TTS using OpenAI
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured')
+    // Generate TTS using OpenAI (sanitize key if pasted with header)
+    const rawKey = (Deno.env.get('OPENAI_API_KEY') || '').trim();
+    if (!rawKey) {
+      throw new Error('OpenAI API key not configured');
     }
+    const openaiKey = rawKey
+      .replace(/^Authorization:\s*Bearer\s*/i, '')
+      .replace(/^Bearer\s*/i, '')
+      .replace(/^['\"]/g, '')
+      .replace(/['\"]/g, '');
 
     const ttsResponse = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

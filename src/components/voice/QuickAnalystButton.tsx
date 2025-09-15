@@ -205,24 +205,28 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
         onAnalystOpen();
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing recording:', error);
-      
-      let errorTitle = "Processing Error";
-      let errorDescription = "Failed to process your question. Please try again.";
-      
-      if (error.message?.includes('No speech detected')) {
-        errorTitle = "No Speech Detected";
-        errorDescription = "Please speak clearly and try again.";
-      } else if (error.message?.includes('transcribe')) {
-        errorTitle = "Speech Recognition Error";
-        errorDescription = "I had trouble understanding your audio. Please try speaking again.";
+      const errMsg = typeof error?.message === 'string' ? error.message : '';
+
+      let errorTitle = 'Processing Error';
+      let errorDescription = 'Failed to process your question. Please try again.';
+
+      if (errMsg.includes('invalid_api_key') || errMsg.toLowerCase().includes('openai api error')) {
+        errorTitle = 'OpenAI API Key Error';
+        errorDescription = 'Your OpenAI API key seems invalid. Please re-enter it and try again.';
+      } else if (errMsg.includes('No speech detected')) {
+        errorTitle = 'No Speech Detected';
+        errorDescription = 'Please speak clearly and try again.';
+      } else if (errMsg.toLowerCase().includes('transcribe')) {
+        errorTitle = 'Speech Recognition Error';
+        errorDescription = 'I had trouble understanding your audio. Please try speaking again.';
       }
-      
+
       toast({
         title: errorTitle,
         description: errorDescription,
-        variant: "destructive"
+        variant: 'destructive'
       });
     } finally {
       setIsProcessing(false);

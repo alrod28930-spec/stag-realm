@@ -59,11 +59,20 @@ serve(async (req) => {
     formData.append('file', blob, 'audio.webm')
     formData.append('model', 'whisper-1')
 
+    // Prepare OpenAI API key (sanitize common paste formats)
+    const rawKey = (Deno.env.get('OPENAI_API_KEY') || '').trim();
+    if (!rawKey) throw new Error('OPENAI_API_KEY is not set');
+    const openaiKey = rawKey
+      .replace(/^Authorization:\s*Bearer\s*/i, '')
+      .replace(/^Bearer\s*/i, '')
+      .replace(/^['\"]/g, '')
+      .replace(/['\"]/g, '');
+
     // Send to OpenAI
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${openaiKey}`,
       },
       body: formData,
     })
