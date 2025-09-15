@@ -9,6 +9,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ComplianceProvider } from "@/components/compliance/ComplianceProvider";
 import { PWAInstall } from "@/components/PWAInstall";
 import { useAuthStore } from "@/stores/authStore";
+import { GlobalVoiceInterface } from "@/components/voice/GlobalVoiceInterface";
 import { useEffect, lazy, Suspense } from "react";
 import { toggleService } from '@/services/toggleService';
 import { riskEnforcement } from '@/services/riskEnforcement';
@@ -86,6 +87,7 @@ const App = () => {
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </DashboardLayout>
+                    <GlobalVoiceInterface />
                   </AuthGuard>
                 } />
               </Routes>
