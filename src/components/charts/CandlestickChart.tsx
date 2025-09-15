@@ -52,9 +52,22 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: height,
-      layout: { background: { color: 'transparent' } },
-      rightPriceScale: { borderColor: '#ccc' },
-      timeScale: { borderColor: '#ccc' },
+      layout: { 
+        background: { color: 'transparent' },
+        textColor: '#333'
+      },
+      rightPriceScale: { 
+        borderColor: '#ccc' 
+      },
+      timeScale: { 
+        borderColor: '#ccc',
+        timeVisible: true,
+        secondsVisible: false
+      },
+      grid: {
+        vertLines: { color: 'rgba(197, 203, 206, 0.5)' },
+        horzLines: { color: 'rgba(197, 203, 206, 0.5)' }
+      }
     });
 
     chartRef.current = chart;
