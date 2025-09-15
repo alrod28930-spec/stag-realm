@@ -18,6 +18,43 @@ const PERSONALITY_VOICES = {
   'advisor_male': { voice: 'ash', name: 'Robert' },
 } as const;
 
+
+// Wrap raw PCM16 (little-endian) into a valid WAV container
+function createWavFromPCM16(pcmBytes: Uint8Array, sampleRate = 24000, numChannels = 1) {
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+
+  // WAV header is 44 bytes
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + pcmBytes.byteLength, true); // file size - 8
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true); // PCM subchunk size
+  view.setUint16(20, 1, true);  // Audio format = PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, pcmBytes.byteLength, true);
+
+  const wavBytes = new Uint8Array(44 + pcmBytes.byteLength);
+  wavBytes.set(new Uint8Array(header), 0);
+  wavBytes.set(pcmBytes, 44);
+  return wavBytes;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -48,8 +85,10 @@ serve(async (req) => {
     const binaryAudio = Uint8Array.from(atob(audio), c => c.charCodeAt(0));
     
     const transcriptFormData = new FormData();
-    const audioBlob = new Blob([binaryAudio], { type: 'audio/webm' });
-    transcriptFormData.append('file', audioBlob, 'audio.webm');
+    // Wrap PCM16 bytes into a valid WAV container for Whisper
+    const wavBytes = createWavFromPCM16(binaryAudio, 24000, 1);
+    const audioBlob = new Blob([wavBytes], { type: 'audio/wav' });
+    transcriptFormData.append('file', audioBlob, 'audio.wav');
     transcriptFormData.append('model', 'whisper-1');
     
     const transcriptResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -65,7 +104,7 @@ serve(async (req) => {
     }
     
     const transcriptResult = await transcriptResponse.json();
-    const userQuestion = transcriptResult.text;
+    const userQuestion = (transcriptResult.text || '').trim() || 'Give a concise real-time market overview for my portfolio and key risks to watch in the next hour.';
     
     console.log('Transcribed question:', userQuestion);
     
