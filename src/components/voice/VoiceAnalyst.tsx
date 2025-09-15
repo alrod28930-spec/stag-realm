@@ -14,49 +14,90 @@ interface VoiceAnalystProps {
   onToggleMinimize?: () => void;
 }
 
-// Personality configuration
+// Personality configuration with gender options
 const ANALYST_PERSONALITIES = {
-  mentor: {
-    name: 'Mentor',
-    description: 'Wise guide with calm authority',
-    voice: 'sage',
-    color: 'bg-blue-500',
-    icon: '🧙‍♂️'
-  },
-  coach: {
-    name: 'Coach', 
-    description: 'Encouraging performance coach',
-    voice: 'alloy',
-    color: 'bg-green-500',
-    icon: '💪'
-  },
-  analyst: {
-    name: 'Analyst',
-    description: 'Sharp analytical thinker',
-    voice: 'nova',
-    color: 'bg-purple-500',
-    icon: '🔍'
-  },
-  advisor: {
-    name: 'Advisor',
-    description: 'Professional financial advisor',
-    voice: 'shimmer',
-    color: 'bg-yellow-500',
-    icon: '💼'
-  },
-  teacher: {
-    name: 'Teacher',
-    description: 'Patient educational guide',
-    voice: 'echo',
-    color: 'bg-indigo-500',
-    icon: '📚'
-  },
-  strategist: {
-    name: 'Strategist',
-    description: 'Strategic military-style advisor',
+  // Male Personalities
+  mentor_male: {
+    name: 'Marcus (Mentor)',
+    description: 'Wise male guide with calm authority',
     voice: 'onyx',
-    color: 'bg-red-500',
-    icon: '⚔️'
+    color: 'bg-blue-500',
+    icon: '🧙‍♂️',
+    gender: 'male'
+  },
+  coach_male: {
+    name: 'Jake (Coach)', 
+    description: 'Encouraging male performance coach',
+    voice: 'echo',
+    color: 'bg-green-500',
+    icon: '💪',
+    gender: 'male'
+  },
+  analyst_male: {
+    name: 'David (Analyst)',
+    description: 'Sharp male analytical thinker',
+    voice: 'alloy',
+    color: 'bg-purple-500',
+    icon: '🔍',
+    gender: 'male'
+  },
+  advisor_male: {
+    name: 'Robert (Advisor)',
+    description: 'Professional male financial advisor',
+    voice: 'ash',
+    color: 'bg-yellow-500',
+    icon: '💼',
+    gender: 'male'
+  },
+  
+  // Female Personalities
+  mentor_female: {
+    name: 'Sofia (Mentor)',
+    description: 'Wise female guide with nurturing authority',
+    voice: 'sage',
+    color: 'bg-blue-400',
+    icon: '🧙‍♀️',
+    gender: 'female'
+  },
+  coach_female: {
+    name: 'Emma (Coach)',
+    description: 'Motivational female performance coach',
+    voice: 'ballad',
+    color: 'bg-green-400',
+    icon: '💃',
+    gender: 'female'
+  },
+  analyst_female: {
+    name: 'Victoria (Analyst)',
+    description: 'Brilliant female analytical strategist',
+    voice: 'coral',
+    color: 'bg-purple-400',
+    icon: '🔬',
+    gender: 'female'
+  },
+  advisor_female: {
+    name: 'Diana (Advisor)',
+    description: 'Expert female financial consultant',
+    voice: 'shimmer',
+    color: 'bg-yellow-400',
+    icon: '👩‍💼',
+    gender: 'female'
+  },
+  teacher_female: {
+    name: 'Grace (Teacher)',
+    description: 'Patient female educational mentor',
+    voice: 'verse',
+    color: 'bg-indigo-400',
+    icon: '👩‍🏫',
+    gender: 'female'
+  },
+  strategist_female: {
+    name: 'Aria (Strategist)',
+    description: 'Tactical female strategic advisor',
+    voice: 'nova',
+    color: 'bg-red-400',
+    icon: '🏹',
+    gender: 'female'
   }
 } as const;
 
@@ -68,7 +109,7 @@ export function VoiceAnalyst({ isMinimized = false, onToggleMinimize }: VoiceAna
   const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isAITalking, setIsAITalking] = useState(false);
-  const [currentPersonality, setCurrentPersonality] = useState<PersonalityKey>('mentor');
+  const [currentPersonality, setCurrentPersonality] = useState<PersonalityKey>('mentor_male');
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [transcript, setTranscript] = useState<string[]>([]);
   
@@ -367,18 +408,36 @@ export function VoiceAnalyst({ isMinimized = false, onToggleMinimize }: VoiceAna
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            {Object.entries(ANALYST_PERSONALITIES).map(([key, config]) => (
-              <SelectItem key={key} value={key}>
-                <div className="flex items-center gap-2">
-                  <span>{config.icon}</span>
-                  <div>
-                    <div className="font-medium">{config.name}</div>
-                    <div className="text-xs text-muted-foreground">{config.description}</div>
+          <SelectContent className="max-h-80 overflow-y-auto">
+            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-b">Male Voices</div>
+            {Object.entries(ANALYST_PERSONALITIES)
+              .filter(([_, config]) => config.gender === 'male')
+              .map(([key, config]) => (
+                <SelectItem key={key} value={key}>
+                  <div className="flex items-center gap-2">
+                    <span>{config.icon}</span>
+                    <div>
+                      <div className="font-medium">{config.name}</div>
+                      <div className="text-xs text-muted-foreground">{config.description}</div>
+                    </div>
                   </div>
-                </div>
-              </SelectItem>
-            ))}
+                </SelectItem>
+              ))}
+            
+            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-b mt-2">Female Voices</div>
+            {Object.entries(ANALYST_PERSONALITIES)
+              .filter(([_, config]) => config.gender === 'female')
+              .map(([key, config]) => (
+                <SelectItem key={key} value={key}>
+                  <div className="flex items-center gap-2">
+                    <span>{config.icon}</span>
+                    <div>
+                      <div className="font-medium">{config.name}</div>
+                      <div className="text-xs text-muted-foreground">{config.description}</div>
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </div>

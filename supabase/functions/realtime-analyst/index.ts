@@ -6,14 +6,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Personality-based voice mapping
+// Personality-based voice mapping with gender options
 const PERSONALITY_VOICES = {
-  'mentor': { voice: 'sage', description: 'Wise mentor with calm authority' },
-  'coach': { voice: 'alloy', description: 'Encouraging performance coach' },
-  'analyst': { voice: 'nova', description: 'Sharp analytical thinker' },
-  'advisor': { voice: 'shimmer', description: 'Professional financial advisor' },
-  'teacher': { voice: 'echo', description: 'Patient educational guide' },
-  'strategist': { voice: 'onyx', description: 'Strategic military-style advisor' },
+  // Male Personalities
+  'mentor_male': { voice: 'onyx', description: 'Wise male guide with calm authority', gender: 'male' },
+  'coach_male': { voice: 'echo', description: 'Encouraging male performance coach', gender: 'male' },
+  'analyst_male': { voice: 'alloy', description: 'Sharp male analytical thinker', gender: 'male' },
+  'advisor_male': { voice: 'ash', description: 'Professional male financial advisor', gender: 'male' },
+  
+  // Female Personalities  
+  'mentor_female': { voice: 'sage', description: 'Wise female guide with nurturing authority', gender: 'female' },
+  'coach_female': { voice: 'ballad', description: 'Motivational female performance coach', gender: 'female' },
+  'analyst_female': { voice: 'coral', description: 'Brilliant female analytical strategist', gender: 'female' },
+  'advisor_female': { voice: 'shimmer', description: 'Expert female financial consultant', gender: 'female' },
+  'teacher_female': { voice: 'verse', description: 'Patient female educational mentor', gender: 'female' },
+  'strategist_female': { voice: 'nova', description: 'Tactical female strategic advisor', gender: 'female' },
+  
+  // Legacy fallbacks
+  'mentor': { voice: 'onyx', description: 'Wise guide with calm authority', gender: 'male' },
+  'coach': { voice: 'echo', description: 'Encouraging performance coach', gender: 'male' },
+  'analyst': { voice: 'alloy', description: 'Sharp analytical thinker', gender: 'male' },
+  'advisor': { voice: 'shimmer', description: 'Professional financial advisor', gender: 'female' },
+  'teacher': { voice: 'verse', description: 'Patient educational guide', gender: 'female' },
+  'strategist': { voice: 'nova', description: 'Strategic military-style advisor', gender: 'female' },
 } as const;
 
 serve(async (req) => {
@@ -36,7 +51,7 @@ serve(async (req) => {
     
     console.log(`Realtime analyst request - Type: ${type}, Personality: ${personality}, Session: ${sessionId}`);
     
-    const personalityConfig = PERSONALITY_VOICES[personality as keyof typeof PERSONALITY_VOICES] || PERSONALITY_VOICES.mentor;
+    const personalityConfig = PERSONALITY_VOICES[personality as keyof typeof PERSONALITY_VOICES] || PERSONALITY_VOICES.mentor_male;
     
     if (type === 'input_audio_buffer.append') {
       // Handle audio input - for now, return acknowledgment
@@ -52,9 +67,10 @@ serve(async (req) => {
     // Initial connection setup
     const basePrompt = systemPrompt || `You are a sophisticated financial analyst and trading expert with the personality of a ${personalityConfig.description}.
 
-PERSONALITY: ${personality.toUpperCase()}
-- Voice characteristics: ${personalityConfig.description}
-- Communication style: Professional yet approachable, data-driven insights
+PERSONALITY: ${personality.toUpperCase()} (${personalityConfig.gender?.toUpperCase()} VOICE)
+- Voice characteristics: ${personalityConfig.description}  
+- Gender: ${personalityConfig.gender}
+- Communication style: Professional yet approachable, data-driven insights with ${personalityConfig.gender === 'female' ? 'empathetic and collaborative' : 'authoritative and direct'} delivery
 - Expertise: Real-time market analysis, portfolio optimization, risk management, trading strategies
 
 CAPABILITIES:
