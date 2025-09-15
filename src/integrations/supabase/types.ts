@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      analyst_context: {
+        Row: {
+          context_data: Json
+          created_at: string
+          expires_at: string
+          id: string
+          session_id: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          context_data?: Json
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_id: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          context_data?: Json
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_id?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       analyst_outputs: {
         Row: {
           id: string
@@ -1849,6 +1879,36 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           workspace_id?: string
+        }
+        Relationships: []
+      }
+      user_bid_profiles: {
+        Row: {
+          created_at: string
+          demo_mode: boolean
+          id: string
+          last_updated: string
+          profile_data: Json
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          demo_mode?: boolean
+          id?: string
+          last_updated?: string
+          profile_data?: Json
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          demo_mode?: boolean
+          id?: string
+          last_updated?: string
+          profile_data?: Json
+          user_id?: string
+          workspace_id?: string | null
         }
         Relationships: []
       }
