@@ -66,6 +66,9 @@ export default function PaperTrading() {
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
   
   const { user } = useAuthStore();
+  
+  // Get workspace ID from user context  
+  const workspaceId = user?.organizationId || '00000000-0000-0000-0000-000000000001';
   const { toast } = useToast();
 
   useEffect(() => {
@@ -79,18 +82,18 @@ export default function PaperTrading() {
       const { data: profileData } = await supabase
         .from('bot_profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('workspace_id', workspaceId)
         .eq('name', 'Paper Trading Sandbox')
-        .single();
+        .maybeSingle();
 
       if (profileData) {
         setIsActive(profileData.active);
       }
 
-      // Load paper trading history from rec_events
       const { data: tradeHistory } = await supabase
         .from('rec_events')
         .select('*')
+        .eq('workspace_id', workspaceId)
         .eq('user_id', user.id)
         .eq('event_type', 'paper_trade')
         .order('ts', { ascending: false })
@@ -131,6 +134,7 @@ export default function PaperTrading() {
       await supabase
         .from('rec_events')
         .insert({
+          workspace_id: workspaceId,
           user_id: user.id,
           event_type: 'paper_trading_toggle',
           entity_type: 'system',
@@ -170,6 +174,7 @@ export default function PaperTrading() {
       await supabase
         .from('rec_events')
         .insert({
+          workspace_id: workspaceId,
           user_id: user.id,
           event_type: 'paper_trade',
           entity_type: 'order',
@@ -211,6 +216,7 @@ export default function PaperTrading() {
       await supabase
         .from('rec_events')
         .insert({
+          workspace_id: workspaceId,
           user_id: user.id,
           event_type: 'paper_account_reset',
           entity_type: 'account',
