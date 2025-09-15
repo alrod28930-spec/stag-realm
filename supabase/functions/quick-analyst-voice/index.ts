@@ -8,16 +8,165 @@ const corsHeaders = {
 
 // Personality voice mapping
 const PERSONALITY_VOICES = {
-  'mentor_female': { voice: 'sage', name: 'Sofia' },
-  'mentor_male': { voice: 'onyx', name: 'Marcus' },
-  'analyst_female': { voice: 'coral', name: 'Victoria' },
-  'analyst_male': { voice: 'alloy', name: 'David' },
-  'coach_female': { voice: 'ballad', name: 'Emma' },
-  'coach_male': { voice: 'echo', name: 'Jake' },
-  'advisor_female': { voice: 'shimmer', name: 'Diana' },
-  'advisor_male': { voice: 'ash', name: 'Robert' },
+  'mentor_female': { voice: 'sage', name: 'Sofia', description: 'wise and nurturing guide', gender: 'female' },
+  'mentor_male': { voice: 'onyx', name: 'Marcus', description: 'experienced market mentor', gender: 'male' },
+  'analyst_female': { voice: 'coral', name: 'Victoria', description: 'sharp analytical mind', gender: 'female' },
+  'analyst_male': { voice: 'alloy', name: 'David', description: 'data-driven analyst', gender: 'male' },
+  'coach_female': { voice: 'ballad', name: 'Emma', description: 'motivational performance coach', gender: 'female' },
+  'coach_male': { voice: 'echo', name: 'Jake', description: 'energetic trading coach', gender: 'male' },
+  'advisor_female': { voice: 'shimmer', name: 'Diana', description: 'professional consultant', gender: 'female' },
+  'advisor_male': { voice: 'ash', name: 'Robert', description: 'institutional advisor', gender: 'male' },
 } as const;
 
+
+// Audio verification function
+async function verifyAudioInput(audioData: Uint8Array): Promise<boolean> {
+  try {
+    // Basic audio verification checks
+    if (!audioData || audioData.length === 0) {
+      console.log('Audio verification failed: empty audio data');
+      return false;
+    }
+    
+    // Check minimum audio length (at least 100ms at 24kHz, 16-bit)
+    const minLength = (24000 * 2) * 0.1; // 100ms worth of PCM16 data
+    if (audioData.length < minLength) {
+      console.log('Audio verification failed: audio too short');
+      return false;
+    }
+    
+    // Check maximum audio length (15 seconds max)
+    const maxLength = (24000 * 2) * 15; // 15 seconds worth of PCM16 data
+    if (audioData.length > maxLength) {
+      console.log('Audio verification failed: audio too long');
+      return false;
+    }
+    
+    // Check for non-zero audio data (not silent)
+    let hasNonZero = false;
+    for (let i = 0; i < Math.min(audioData.length, 1000); i++) {
+      if (audioData[i] !== 0) {
+        hasNonZero = true;
+        break;
+      }
+    }
+    
+    if (!hasNonZero) {
+      console.log('Audio verification failed: audio appears to be silent');
+      return false;
+    }
+    
+    console.log('Audio verification passed');
+    return true;
+  } catch (error) {
+    console.error('Audio verification error:', error);
+    return false;
+  }
+}
+
+// Mock BID data functions that would normally connect to Supabase database
+async function getPortfolioData(detailLevel: string = 'summary') {
+  console.log('Fetching portfolio data with detail level:', detailLevel);
+  
+  // Mock portfolio data that represents what BID would provide
+  const portfolioSummary = {
+    totalEquity: 247500,
+    availableCash: 12500,
+    totalPositionValue: 235000,
+    totalUnrealizedPnL: 8750,
+    totalUnrealizedPnLPercent: 3.66,
+    dayChange: 2850,
+    dayChangePercent: 1.17,
+    positionCount: 6,
+    dataQuality: 'excellent',
+    lastUpdated: new Date().toISOString()
+  };
+  
+  const positions = [
+    { symbol: 'AAPL', name: 'Apple Inc.', allocation: 18.5, unrealizedPnLPercent: 12.3, sector: 'Technology' },
+    { symbol: 'MSFT', name: 'Microsoft Corp.', allocation: 16.2, unrealizedPnLPercent: 8.7, sector: 'Technology' },
+    { symbol: 'NVDA', name: 'NVIDIA Corp.', allocation: 14.8, unrealizedPnLPercent: 24.1, sector: 'Technology' },
+    { symbol: 'JNJ', name: 'Johnson & Johnson', allocation: 12.4, unrealizedPnLPercent: 5.2, sector: 'Healthcare' },
+    { symbol: 'JPM', name: 'JPMorgan Chase', allocation: 11.1, unrealizedPnLPercent: -2.1, sector: 'Finance' },
+    { symbol: 'AMZN', name: 'Amazon Inc.', allocation: 9.3, unrealizedPnLPercent: 6.8, sector: 'Consumer' }
+  ];
+  
+  if (detailLevel === 'detailed') {
+    return { summary: portfolioSummary, positions, sectorBreakdown: {
+      'Technology': 49.5, 'Healthcare': 12.4, 'Finance': 11.1, 'Consumer': 9.3, 'Cash': 17.7
+    }};
+  }
+  
+  return { summary: portfolioSummary, topPositions: positions.slice(0, 3) };
+}
+
+async function getMarketAnalysis(symbols: string[] = []) {
+  console.log('Fetching market analysis for symbols:', symbols);
+  
+  // Mock market data that represents current conditions
+  const marketOverview = {
+    spyPrice: 482.35,
+    spyDayChange: 0.85,
+    vixLevel: 16.2,
+    sentiment: 'cautiously optimistic',
+    majorIndices: {
+      'SPY': { price: 482.35, change: 0.85, changePercent: 0.18 },
+      'QQQ': { price: 421.50, change: 1.15, changePercent: 0.27 },
+      'IWM': { price: 224.80, change: -0.45, changePercent: -0.20 }
+    },
+    sectorPerformance: {
+      'Technology': 1.2,
+      'Healthcare': 0.8,
+      'Finance': -0.3,
+      'Energy': 2.1,
+      'Consumer': 0.4
+    },
+    marketAlert: 'Fed meeting tomorrow - expect volatility'
+  };
+  
+  const symbolAnalysis = symbols.length > 0 ? symbols.map(symbol => ({
+    symbol,
+    currentPrice: 150 + Math.random() * 100,
+    dayChange: (Math.random() - 0.5) * 10,
+    technicalSignal: ['bullish', 'bearish', 'neutral'][Math.floor(Math.random() * 3)],
+    rsiLevel: 30 + Math.random() * 40
+  })) : [];
+  
+  return { marketOverview, symbolAnalysis, timestamp: new Date().toISOString() };
+}
+
+async function assessRisk(positionSymbol?: string) {
+  console.log('Assessing risk for position:', positionSymbol || 'entire portfolio');
+  
+  // Mock risk assessment data
+  const portfolioRisk = {
+    overallRiskLevel: 'moderate',
+    riskScore: 6.2, // out of 10
+    volatility: 18.5,
+    maxDrawdown: -8.3,
+    concentrationRisk: 'medium',
+    betaToMarket: 1.15,
+    sharpeRatio: 1.24,
+    alerts: [
+      { severity: 'medium', message: 'Technology concentration at 49.5% - consider diversification' },
+      { severity: 'low', message: 'VIX below 20 indicates low market stress' }
+    ]
+  };
+  
+  if (positionSymbol) {
+    const positionRisk = {
+      symbol: positionSymbol,
+      beta: 1.2 + Math.random() * 0.4,
+      volatility: 20 + Math.random() * 15,
+      correlationToSpy: 0.6 + Math.random() * 0.3,
+      riskContribution: Math.random() * 20,
+      recommendation: Math.random() > 0.5 ? 'hold' : 'reduce'
+    };
+    return { portfolioRisk, positionRisk };
+  }
+  
+  return { portfolioRisk };
+}
 
 // Wrap raw PCM16 (little-endian) into a valid WAV container
 function createWavFromPCM16(pcmBytes: Uint8Array, sampleRate = 24000, numChannels = 1) {
@@ -81,14 +230,14 @@ serve(async (req) => {
     
     const personalityConfig = PERSONALITY_VOICES[personality as keyof typeof PERSONALITY_VOICES] || PERSONALITY_VOICES.mentor_female;
     
-    // Step 1: Verify audio authenticity and quality
+    // Step 1: Convert audio to text using Whisper
+    const binaryAudio = Uint8Array.from(atob(audio), c => c.charCodeAt(0));
+    
+    // Step 2: Verify audio authenticity and quality
     console.log('Verifying audio input...');
     if (!await verifyAudioInput(binaryAudio)) {
       throw new Error('Audio verification failed - invalid or suspicious audio input');
     }
-
-    // Step 2: Convert audio to text using Whisper
-    const binaryAudio = Uint8Array.from(atob(audio), c => c.charCodeAt(0));
     
     const transcriptFormData = new FormData();
     // Wrap PCM16 bytes into a valid WAV container for Whisper
