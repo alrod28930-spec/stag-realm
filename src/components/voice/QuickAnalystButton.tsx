@@ -4,8 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Brain, Mic, MicOff, Volume2, Clock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { AudioRecorder, encodeAudioForAPI, playAudioData } from '@/utils/RealtimeAudio';
-import { supabase } from '@/integrations/supabase/client';
-import { analystService } from '@/services/analyst';
+import { analystVoiceService } from '@/services/analystVoiceService';
 
 interface QuickAnalystButtonProps {
   onAnalystOpen?: () => void;
@@ -144,63 +143,45 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
         offset += chunk.length;
       }
       
-      // Encode audio for transcription
+      // Encode audio for processing
       const encodedAudio = encodeAudioForAPI(combinedAudio);
       
-      // First, transcribe the audio to text
-      const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: encodedAudio }
-      });
+      console.log('Processing voice input with unified service...');
       
-      if (transcriptionError) throw transcriptionError;
+      // Use unified voice service
+      const result = await analystVoiceService.processVoiceInput(
+        encodedAudio,
+        defaultPersonality,
+        undefined // workspace_id - would get from auth context
+      );
       
-      const transcribedText = transcriptionData.text;
-      if (!transcribedText?.trim()) {
-        throw new Error('No speech detected. Please try speaking again.');
+      if (!result.success) {
+        throw new Error(result.error || 'Voice processing failed');
       }
       
-      // Process the transcribed text through the analyst service (like typing in Intelligence tab)
-      await analystService.processUserMessage(transcribedText);
-      
-      // Get the response and convert to voice
-      const messages = analystService.getMessages();
-      const lastAnalystMessage = messages.filter(m => m.type === 'analyst').pop();
-      
-      if (lastAnalystMessage) {
-        // Convert response to voice using TTS
-        const { data: ttsData, error: ttsError } = await supabase.functions.invoke('analyst-tts', {
-          body: { 
-            text: lastAnalystMessage.content,
-            voice_opts: { voice: 'alloy', speed: 1.0 }
-          }
+      // Play the audio response
+      if (result.audio_url && audioContextRef.current) {
+        setIsPlaying(true);
+        
+        // Extract base64 audio data from data URL
+        const audioData = result.audio_url.split(',')[1];
+        const binaryString = atob(audioData);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        await playAudioData(audioContextRef.current, bytes);
+        
+        toast({
+          title: "🎯 Analyst Response",
+          description: `"${result.transcription}" - Response ready`
         });
         
-        if (ttsError) throw ttsError;
-        
-        // Play the audio response
-        if (ttsData.audio_url && audioContextRef.current) {
-          setIsPlaying(true);
-          
-          // Extract base64 audio data from data URL
-          const audioData = ttsData.audio_url.split(',')[1];
-          const binaryString = atob(audioData);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          
-          await playAudioData(audioContextRef.current, bytes);
-          
-          toast({
-            title: "🎯 Analyst Response",
-            description: `"${transcribedText}" - ${lastAnalystMessage.content.substring(0, 100)}...`
-          });
-          
-          setTimeout(() => setIsPlaying(false), 3000);
-        }
+        setTimeout(() => setIsPlaying(false), 3000);
       }
       
-      // Trigger onAnalystOpen callback to show Intelligence tab
+      // Trigger callback to show Intelligence tab if needed
       if (onAnalystOpen) {
         onAnalystOpen();
       }
@@ -213,8 +194,8 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
       let errorDescription = 'Failed to process your question. Please try again.';
 
       if (errMsg.includes('invalid_api_key') || errMsg.toLowerCase().includes('openai api error')) {
-        errorTitle = 'OpenAI API Key Error';
-        errorDescription = 'Your OpenAI API key seems invalid. Please re-enter it and try again.';
+        errorTitle = 'Service Configuration Error';
+        errorDescription = 'Voice service needs configuration. Please contact support.';
       } else if (errMsg.includes('No speech detected')) {
         errorTitle = 'No Speech Detected';
         errorDescription = 'Please speak clearly and try again.';
