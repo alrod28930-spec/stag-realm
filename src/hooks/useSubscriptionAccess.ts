@@ -26,7 +26,7 @@ const TAB_FEATURES = {
   '/market': { code: 'TAB_MARKET', tier: 'standard' as SubscriptionTier },
   '/portfolio': { code: 'TAB_PORTFOLIO', tier: 'pro' as SubscriptionTier },
   '/trading-desk': { code: 'TAB_TRADING_DESK', tier: 'pro' as SubscriptionTier },
-  '/charts': { code: 'TAB_CHARTS', tier: 'standard' as SubscriptionTier },
+  '/charts': { code: 'TAB_CHARTS', tier: 'pro' as SubscriptionTier },
   '/workspace': { code: 'TAB_WORKSPACE', tier: 'elite' as SubscriptionTier },
   '/brokerage-dock': { code: 'TAB_BROKERAGE_DOCK', tier: 'elite' as SubscriptionTier },
   '/cradle': { code: 'TAB_CRADLE', tier: 'elite' as SubscriptionTier },
