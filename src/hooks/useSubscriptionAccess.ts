@@ -40,7 +40,7 @@ const TIER_HIERARCHY: Record<SubscriptionTier, number> = {
 };
 
 export function useSubscriptionAccess() {
-  console.log('🔄 useSubscriptionAccess: Hook called');
+  
   const { user } = useAuthStore();
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
     tier: 'lite',
@@ -49,7 +49,7 @@ export function useSubscriptionAccess() {
     loading: true,
     error: null,
   });
-  console.log('🔄 useSubscriptionAccess: Current user:', user?.id, 'Status:', subscriptionStatus);
+  
 
   useEffect(() => {
     const fetchSubscriptionStatus = async () => {
@@ -61,13 +61,17 @@ export function useSubscriptionAccess() {
       try {
         setSubscriptionStatus(prev => ({ ...prev, loading: true, error: null }));
 
-        // Check if user is in demo mode
+        // Check if user is in demo mode or is the demo owner
         const isDemo = isDemoMode();
-        if (isDemo) {
+        
+        // Also check if this is the demo owner account for development
+        const isDemoOwner = user?.email === 'alrod28930@gmail.com';
+        
+        if (isDemo || isDemoOwner) {
           setSubscriptionStatus({
-            tier: 'elite',  // Demo users can see all tabs but with demo data
+            tier: 'elite',  // Demo users and owner can see all tabs with full access
             isActive: true,
-            isDemo: true,
+            isDemo: isDemo && !isDemoOwner, // Only mark as demo if it's demo mode, not the owner
             loading: false,
             error: null,
           });
@@ -118,8 +122,8 @@ export function useSubscriptionAccess() {
     const { tier: currentTier, isDemo } = subscriptionStatus;
     const requiredTier = tabFeature.tier;
 
-    // Demo users can see all tabs but with restrictions
-    if (isDemo) {
+    // Demo users and elite tier users have access to all tabs
+    if (isDemo || currentTier === 'elite') {
       return { hasAccess: true, requiresTier: requiredTier, isLocked: false };
     }
 

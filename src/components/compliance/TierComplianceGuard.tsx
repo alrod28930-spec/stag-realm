@@ -82,8 +82,8 @@ const TierComplianceGuard: React.FC<TierComplianceGuardProps> = ({
     }
   };
 
-  // Show demo disclaimer for demo users
-  if (subscriptionStatus.isDemo && requiresLiveTrading) {
+  // Show demo disclaimer for demo users (but not for elite tier users)
+  if (subscriptionStatus.isDemo && requiresLiveTrading && subscriptionStatus.tier !== 'elite') {
     return (
       <div className="space-y-4">
         <Alert className="border-warning bg-warning/10">
@@ -95,6 +95,11 @@ const TierComplianceGuard: React.FC<TierComplianceGuardProps> = ({
         {children}
       </div>
     );
+  }
+
+  // Elite tier users (including demo owner) get full access without restrictions
+  if (subscriptionStatus.tier === 'elite') {
+    return <>{children}</>;
   }
 
   // Show educational disclaimer for Standard tier
