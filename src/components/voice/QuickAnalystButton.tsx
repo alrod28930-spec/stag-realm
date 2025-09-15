@@ -144,9 +144,14 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
         
         await playAudioData(audioContextRef.current, bytes);
         
+        // Enhanced toast with tool usage info
+        const toolInfo = data.tool_calls && data.tool_calls.length > 0 
+          ? ` (Used ${data.tool_calls.map(tc => tc.function).join(', ')})`
+          : '';
+        
         toast({
-          title: `🧙‍♀️ ${data.personality_name || 'Analyst'}`,
-          description: data.text_response || "Response received"
+          title: `🎯 ${data.personality_name || 'Analyst'} Response`,
+          description: `${data.text_response?.substring(0, 100) || "Response received"}${toolInfo}`
         });
         
         setTimeout(() => setIsPlaying(false), 3000);
@@ -154,9 +159,22 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
       
     } catch (error) {
       console.error('Error processing recording:', error);
+      
+      // Enhanced error handling based on server response
+      let errorTitle = "Processing Error";
+      let errorDescription = "Failed to process your question. Please try again.";
+      
+      if (error.message?.includes('verification failed')) {
+        errorTitle = "Audio Verification Failed";
+        errorDescription = "Please speak clearly and try again.";
+      } else if (error.message?.includes('transcribe')) {
+        errorTitle = "Speech Recognition Error";
+        errorDescription = "I had trouble understanding your audio. Please try speaking again.";
+      }
+      
       toast({
-        title: "Processing Error",
-        description: "Failed to process your question. Please try again.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive"
       });
     } finally {
@@ -186,7 +204,7 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
     if (isProcessing) {
       return {
         variant: 'secondary' as const,
-        className: 'animate-spin',
+        className: 'animate-pulse bg-blue-500 hover:bg-blue-600',
         icon: <Brain className="h-4 w-4" />,
         text: 'Processing...'
       };
@@ -195,7 +213,7 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
     if (isPlaying) {
       return {
         variant: 'default' as const,
-        className: 'animate-bounce bg-blue-500 hover:bg-blue-600',
+        className: 'animate-bounce bg-green-500 hover:bg-green-600',
         icon: <Volume2 className="h-4 w-4" />,
         text: 'Playing...'
       };

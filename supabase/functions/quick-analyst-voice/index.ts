@@ -81,7 +81,13 @@ serve(async (req) => {
     
     const personalityConfig = PERSONALITY_VOICES[personality as keyof typeof PERSONALITY_VOICES] || PERSONALITY_VOICES.mentor_female;
     
-    // Step 1: Convert audio to text using Whisper
+    // Step 1: Verify audio authenticity and quality
+    console.log('Verifying audio input...');
+    if (!await verifyAudioInput(binaryAudio)) {
+      throw new Error('Audio verification failed - invalid or suspicious audio input');
+    }
+
+    // Step 2: Convert audio to text using Whisper
     const binaryAudio = Uint8Array.from(atob(audio), c => c.charCodeAt(0));
     
     const transcriptFormData = new FormData();
@@ -104,28 +110,36 @@ serve(async (req) => {
     }
     
     const transcriptResult = await transcriptResponse.json();
-    const userQuestion = (transcriptResult.text || '').trim() || 'Give a concise real-time market overview for my portfolio and key risks to watch in the next hour.';
+    const userQuestion = (transcriptResult.text || '').trim() || 'Give me a concise real-time market overview and any important risks I should watch.';
     
     console.log('Transcribed question:', userQuestion);
     
-    // Step 2: Generate text response based on personality
-    const systemPrompt = `You are ${personalityConfig.name}, a sophisticated financial analyst with expertise in trading and portfolio management. 
+    // Step 3: Generate intelligent response using GPT-4o with function calling
+    const systemPrompt = `You are ${personalityConfig.name}, a sophisticated financial analyst with the personality of a ${personalityConfig.description} serving on the StagAlgo trading platform.
 
-PERSONALITY TRAITS:
-- ${personality.includes('mentor') ? 'Wise and nurturing, providing guidance with authority' : ''}
-- ${personality.includes('analyst') ? 'Sharp and analytical, focusing on data-driven insights' : ''}
-- ${personality.includes('coach') ? 'Motivational and goal-oriented, encouraging performance' : ''}
-- ${personality.includes('advisor') ? 'Professional and consultative, offering expert advice' : ''}
+PERSONALITY & VOICE:
+${personality.includes('mentor') ? '- Wise and nurturing guide who provides confident direction with compassionate authority' : ''}
+${personality.includes('analyst') ? '- Sharp analytical mind who cuts through noise to deliver data-driven insights with precision' : ''}
+${personality.includes('coach') ? '- Motivational performance coach who energizes and pushes for optimal trading results' : ''}
+${personality.includes('advisor') ? '- Professional consultant who delivers expert financial advice with institutional credibility' : ''}
+${personalityConfig.gender === 'female' ? '- Communicate with empathetic collaboration while maintaining professional expertise' : '- Deliver insights with authoritative directness while remaining approachable'}
 
-RESPONSE GUIDELINES:
-- Keep responses conversational and under 30 seconds when spoken
-- Provide actionable financial insights when possible
-- Always mention relevant risks or considerations
-- Use natural, spoken language (contractions, etc.)
-- Be encouraging but realistic about market conditions
-- Reference current market context when relevant
+CAPABILITIES & TOOLS:
+You have access to real-time trading tools and data:
+- Portfolio analysis (positions, P&L, allocation)
+- Market sentiment and technical indicators  
+- Risk assessment and compliance monitoring
+- Live market data and sector performance
 
-USER CONTEXT: The user is actively using the StagAlgo trading platform and has asked a quick voice question during their trading session.`;
+RESPONSE STYLE:
+- Keep responses conversational and under 45 seconds when spoken
+- Use natural, confident language with contractions
+- Always provide actionable insights when possible
+- Mention specific risks or opportunities with concrete data
+- Reference actual portfolio positions and market levels when relevant
+- Be encouraging yet realistic about market conditions
+
+CONTEXT: User is actively trading on StagAlgo and needs immediate insights for decision-making.`;
 
     const chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -134,26 +148,154 @@ USER CONTEXT: The user is actively using the StagAlgo trading platform and has a
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userQuestion }
         ],
-        max_tokens: 150,
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'get_portfolio_data',
+              description: 'Get current portfolio performance, positions, and P&L data',
+              parameters: {
+                type: 'object',
+                properties: {
+                  detail_level: { 
+                    type: 'string', 
+                    enum: ['summary', 'detailed'],
+                    description: 'Level of portfolio detail to return'
+                  }
+                },
+                required: []
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'get_market_analysis',
+              description: 'Get current market conditions, sentiment, and sector performance',
+              parameters: {
+                type: 'object',
+                properties: {
+                  symbols: { 
+                    type: 'array', 
+                    items: { type: 'string' },
+                    description: 'Specific stock symbols to analyze (optional)'
+                  }
+                },
+                required: []
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'assess_risk',
+              description: 'Evaluate portfolio risk levels and compliance status',
+              parameters: {
+                type: 'object',
+                properties: {
+                  position_symbol: { 
+                    type: 'string',
+                    description: 'Specific symbol to assess risk for (optional)'
+                  }
+                },
+                required: []
+              }
+            }
+          }
+        ],
+        tool_choice: 'auto',
+        max_tokens: 300,
         temperature: 0.7,
       }),
     });
     
     if (!chatResponse.ok) {
-      throw new Error('Failed to generate response');
+      const errorText = await chatResponse.text();
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`Failed to generate response: ${chatResponse.status}`);
     }
     
     const chatResult = await chatResponse.json();
-    const textResponse = chatResult.choices[0].message.content;
+    console.log('GPT-4o response:', JSON.stringify(chatResult, null, 2));
     
-    console.log('Generated text response:', textResponse);
+    // Handle function calls if present
+    let textResponse = '';
+    const toolResults: any[] = [];
     
-    // Step 3: Convert text to speech using the personality's voice
+    if (chatResult.choices[0].message.tool_calls) {
+      console.log('Processing function calls...');
+      
+      // Execute function calls
+      for (const toolCall of chatResult.choices[0].message.tool_calls) {
+        const functionName = toolCall.function.name;
+        const args = JSON.parse(toolCall.function.arguments || '{}');
+        
+        console.log(`Executing function: ${functionName} with args:`, args);
+        
+        let result;
+        switch (functionName) {
+          case 'get_portfolio_data':
+            result = await getPortfolioData(args.detail_level);
+            break;
+          case 'get_market_analysis':
+            result = await getMarketAnalysis(args.symbols);
+            break;
+          case 'assess_risk':
+            result = await assessRisk(args.position_symbol);
+            break;
+          default:
+            result = { error: `Unknown function: ${functionName}` };
+        }
+        
+        toolResults.push({ function: functionName, result });
+      }
+      
+      // Get final response with function results
+      const followUpResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userQuestion },
+            { 
+              role: 'assistant', 
+              content: null,
+              tool_calls: chatResult.choices[0].message.tool_calls
+            },
+            ...chatResult.choices[0].message.tool_calls.map((toolCall: any, index: number) => ({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(toolResults[index].result)
+            }))
+          ],
+          max_tokens: 300,
+          temperature: 0.7,
+        }),
+      });
+      
+      if (followUpResponse.ok) {
+        const followUpResult = await followUpResponse.json();
+        textResponse = followUpResult.choices[0].message.content;
+      } else {
+        textResponse = "I have the data but encountered an issue formatting the response. Let me give you a quick summary of your portfolio status.";
+      }
+    } else {
+      textResponse = chatResult.choices[0].message.content;
+    }
+    
+    console.log('Generated intelligent response with tools:', textResponse);
+    
+    // Step 4: Convert text to speech using the personality's voice
     const ttsResponse = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
@@ -186,6 +328,8 @@ USER CONTEXT: The user is actively using the StagAlgo trading platform and has a
       user_question: userQuestion,
       text_response: textResponse,
       audio_response: audioBase64,
+      tool_calls: toolResults.length > 0 ? toolResults : undefined,
+      verification_status: 'verified',
       format: 'mp3'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -193,11 +337,28 @@ USER CONTEXT: The user is actively using the StagAlgo trading platform and has a
 
   } catch (error) {
     console.error('Error in quick-analyst-voice function:', error);
+    
+    // Enhanced error handling with specific error types
+    let errorMessage = 'I apologize, but I encountered an issue processing your request.';
+    let statusCode = 500;
+    
+    if (error.message.includes('Audio verification failed')) {
+      errorMessage = 'Audio input verification failed. Please try speaking again.';
+      statusCode = 400;
+    } else if (error.message.includes('Failed to transcribe')) {
+      errorMessage = 'I had trouble understanding your audio. Could you please try again?';
+      statusCode = 422;
+    } else if (error.message.includes('Failed to generate response')) {
+      errorMessage = 'I\'m having difficulty processing your question right now. Please try again.';
+      statusCode = 503;
+    }
+    
     return new Response(JSON.stringify({ 
-      error: error.message,
-      success: false 
+      error: errorMessage,
+      success: false,
+      verification_status: 'failed'
     }), {
-      status: 500,
+      status: statusCode,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
