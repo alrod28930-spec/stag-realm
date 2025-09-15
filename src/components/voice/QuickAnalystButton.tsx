@@ -5,6 +5,7 @@ import { Brain, Mic, MicOff, Volume2, Clock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { AudioRecorder, encodeAudioForAPI, playAudioData } from '@/utils/RealtimeAudio';
 import { supabase } from '@/integrations/supabase/client';
+import { analystService } from '@/services/analyst';
 
 interface QuickAnalystButtonProps {
   onAnalystOpen?: () => void;
@@ -117,55 +118,75 @@ export function QuickAnalystButton({ onAnalystOpen }: QuickAnalystButtonProps) {
         offset += chunk.length;
       }
       
-      // Encode audio for API
+      // Encode audio for transcription
       const encodedAudio = encodeAudioForAPI(combinedAudio);
       
-      // Send to analyst for processing
-      const { data, error } = await supabase.functions.invoke('quick-analyst-voice', {
-        body: {
-          audio: encodedAudio,
-          personality: defaultPersonality,
-          format: 'voice_response'
-        }
+      // First, transcribe the audio to text
+      const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke('voice-to-text', {
+        body: { audio: encodedAudio }
       });
       
-      if (error) throw error;
+      if (transcriptionError) throw transcriptionError;
       
-      // Play the response
-      if (data.audio_response && audioContextRef.current) {
-        setIsPlaying(true);
-        
-        // Convert base64 to audio and play
-        const binaryString = atob(data.audio_response);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        await playAudioData(audioContextRef.current, bytes);
-        
-        // Enhanced toast with tool usage info
-        const toolInfo = data.tool_calls && data.tool_calls.length > 0 
-          ? ` (Used ${data.tool_calls.map(tc => tc.function).join(', ')})`
-          : '';
-        
-        toast({
-          title: `🎯 ${data.personality_name || 'Analyst'} Response`,
-          description: `${data.text_response?.substring(0, 100) || "Response received"}${toolInfo}`
+      const transcribedText = transcriptionData.text;
+      if (!transcribedText?.trim()) {
+        throw new Error('No speech detected. Please try speaking again.');
+      }
+      
+      // Process the transcribed text through the analyst service (like typing in Intelligence tab)
+      await analystService.processUserMessage(transcribedText);
+      
+      // Get the response and convert to voice
+      const messages = analystService.getMessages();
+      const lastAnalystMessage = messages.filter(m => m.type === 'analyst').pop();
+      
+      if (lastAnalystMessage) {
+        // Convert response to voice using TTS
+        const { data: ttsData, error: ttsError } = await supabase.functions.invoke('analyst-tts', {
+          body: { 
+            text: lastAnalystMessage.content,
+            voice_opts: { voice: 'alloy', speed: 1.0 }
+          }
         });
         
-        setTimeout(() => setIsPlaying(false), 3000);
+        if (ttsError) throw ttsError;
+        
+        // Play the audio response
+        if (ttsData.audio_url && audioContextRef.current) {
+          setIsPlaying(true);
+          
+          // Extract base64 audio data from data URL
+          const audioData = ttsData.audio_url.split(',')[1];
+          const binaryString = atob(audioData);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          await playAudioData(audioContextRef.current, bytes);
+          
+          toast({
+            title: "🎯 Analyst Response",
+            description: `"${transcribedText}" - ${lastAnalystMessage.content.substring(0, 100)}...`
+          });
+          
+          setTimeout(() => setIsPlaying(false), 3000);
+        }
+      }
+      
+      // Trigger onAnalystOpen callback to show Intelligence tab
+      if (onAnalystOpen) {
+        onAnalystOpen();
       }
       
     } catch (error) {
       console.error('Error processing recording:', error);
       
-      // Enhanced error handling based on server response
       let errorTitle = "Processing Error";
       let errorDescription = "Failed to process your question. Please try again.";
       
-      if (error.message?.includes('verification failed')) {
-        errorTitle = "Audio Verification Failed";
+      if (error.message?.includes('No speech detected')) {
+        errorTitle = "No Speech Detected";
         errorDescription = "Please speak clearly and try again.";
       } else if (error.message?.includes('transcribe')) {
         errorTitle = "Speech Recognition Error";
