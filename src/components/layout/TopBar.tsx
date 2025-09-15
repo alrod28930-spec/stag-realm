@@ -8,6 +8,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { QuickAnalystButton } from '@/components/voice/QuickAnalystButton';
 import { useAuthStore } from '@/stores/authStore';
 
 export function TopBar() {
@@ -80,6 +81,8 @@ export function TopBar() {
 
       {/* Right: User Actions */}
       <div className="flex items-center space-x-2">
+        <QuickAnalystButton />
+        
         <Button variant="ghost" size="sm">
           <Bell className="w-4 h-4" />
         </Button>

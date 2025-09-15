@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface VoiceAnalystProps {
   isMinimized?: boolean;
   onToggleMinimize?: () => void;
+  defaultPersonality?: PersonalityKey;
 }
 
 // Personality configuration with gender options
@@ -103,13 +104,13 @@ const ANALYST_PERSONALITIES = {
 
 type PersonalityKey = keyof typeof ANALYST_PERSONALITIES;
 
-export function VoiceAnalyst({ isMinimized = false, onToggleMinimize }: VoiceAnalystProps) {
+export function VoiceAnalyst({ isMinimized = false, onToggleMinimize, defaultPersonality }: VoiceAnalystProps) {
   const { toast } = useToast();
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isAITalking, setIsAITalking] = useState(false);
-  const [currentPersonality, setCurrentPersonality] = useState<PersonalityKey>('mentor_male');
+  const [currentPersonality, setCurrentPersonality] = useState<PersonalityKey>(defaultPersonality || 'mentor_male');
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [transcript, setTranscript] = useState<string[]>([]);
   
