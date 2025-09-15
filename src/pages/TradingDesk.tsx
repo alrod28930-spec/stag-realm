@@ -20,6 +20,9 @@ import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
 import { RiskAwareTradePanel } from '@/components/tradingdesk/RiskAwareTradePanel';
+import { MultiChartPanel } from '@/components/charts/MultiChartPanel';
+import { OrderTicket } from '@/components/tradingdesk/OrderTicket';
+import { IntradayEquityCurve } from '@/components/charts/IntradayEquityCurve';
 import { useDemoMode } from '@/utils/demoMode';
 
 export default function TradingDesk() {
@@ -82,28 +85,41 @@ export default function TradingDesk() {
         </ScrollArea>
 
         <TabsContent value="manual" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Left Panel - Risk-Aware Manual Trading */}
+          {/* Real-Time Trading Charts */}
+          <MultiChartPanel 
+            defaultSymbols={['AAPL', 'TSLA', 'SPY', 'QQQ']}
+            maxCharts={4}
+            allowDOMView={true}
+          />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Order Ticket */}
             <div className="lg:col-span-1">
-              <RiskAwareTradePanel />
+              <OrderTicket 
+                symbol="AAPL"
+                currentPrice={150.25}
+                maxRiskPercent={2}
+                accountEquity={100000}
+                isDemo={isDemoMode}
+              />
             </div>
 
-            {/* Center Panel - Bot Execution */}
+            {/* Intraday P&L Curve */}
             <div className="lg:col-span-2">
-              <BotExecutionPanel />
+              <IntradayEquityCurve 
+                height={400}
+                startingEquity={100000}
+                maxDailyLoss={-1000}
+                targetPnL={500}
+                isDemo={isDemoMode}
+              />
             </div>
 
-            {/* Right Panel - Performance Dashboard */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* KPI Header */}
+            {/* KPIs and Performance */}
+            <div className="lg:col-span-1 space-y-4">
               <KpiRow />
-
-              {/* Secondary Metrics */}
-              <div className="grid grid-cols-1 gap-4">
-                <AllocationsCard />
-                <HitRateCard />
-                <DailyTradesCard />
-              </div>
+              <AllocationsCard />
+              <HitRateCard />
             </div>
           </div>
         </TabsContent>
