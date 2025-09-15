@@ -30,6 +30,7 @@ import { DividendButton } from '@/components/tradingdesk/DividendButton';
 import { EquityCurveChart } from '@/components/charts/EquityCurveChart';
 import { RiskMetricsChart } from '@/components/charts/RiskMetricsChart';
 import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
+import { PortfolioGrid } from '@/components/portfolio/PortfolioGrid';
 
 export default function Portfolio() {
   const {
