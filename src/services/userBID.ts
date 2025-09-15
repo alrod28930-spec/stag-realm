@@ -197,7 +197,7 @@ class UserBIDService {
 
       if (existingProfile?.profile_data) {
         // Load existing profile
-        this.currentProfile = existingProfile.profile_data as UserBIDProfile;
+        this.currentProfile = existingProfile.profile_data as unknown as UserBIDProfile;
       } else {
         // Create new profile
         this.currentProfile = await this.createNewUserProfile(userId, workspaceId);

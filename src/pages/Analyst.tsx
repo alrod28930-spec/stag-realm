@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   MessageSquare, 
   Send, 
@@ -133,7 +134,7 @@ export default function Analyst(props: AnalystProps = {}) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  async handleSendMessage() {
+  const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
     const userInput = inputMessage.trim();
