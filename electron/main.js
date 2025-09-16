@@ -1,6 +1,31 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, systemPreferences } = require('electron');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
+
+// Enable live reload for development
+if (isDev) {
+  require('electron-reload')(__dirname, {
+    electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
+    hardResetMethod: 'exit'
+  });
+}
+
+async function requestPermissions() {
+  try {
+    // Request microphone permission
+    const microphoneAccess = await systemPreferences.askForMediaAccess('microphone');
+    console.log('Microphone access:', microphoneAccess);
+    
+    // Request camera permission (optional for future features)
+    const cameraAccess = await systemPreferences.askForMediaAccess('camera');
+    console.log('Camera access:', cameraAccess);
+    
+    return { microphone: microphoneAccess, camera: cameraAccess };
+  } catch (error) {
+    console.log('Permission request error:', error);
+    return { microphone: false, camera: false };
+  }
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -13,10 +38,15 @@ function createWindow() {
       contextIsolation: true,
       enableRemoteModule: false,
       webSecurity: true,
+      // Enable media permissions
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false
     },
     icon: path.join(__dirname, '../public/lovable-uploads/aa502076-83e2-4336-bda8-00b2eaac7a75.png'),
     titleBarStyle: 'default',
     show: false,
+    // App metadata
+    title: 'StagAlgo - Advanced Trading Platform'
   });
 
   // Load the app
@@ -40,7 +70,10 @@ function createWindow() {
 }
 
 // This method will be called when Electron has finished initialization
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Request permissions during startup
+  await requestPermissions();
+  
   createWindow();
 
   app.on('activate', () => {

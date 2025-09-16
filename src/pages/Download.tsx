@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, Smartphone, Monitor, Globe, Star, Shield, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -152,46 +153,69 @@ export default function DownloadPage() {
           </Card>
 
           {/* Desktop Apps */}
-          <Card className="glow-gold hover:shadow-elevated transition-smooth">
+          <Card className="glow-gold hover:shadow-elevated transition-smooth border-primary/30">
             <CardHeader className="text-center">
               <Monitor className="w-12 h-12 mx-auto mb-4 text-warning" />
               <CardTitle>Desktop Apps</CardTitle>
               <CardDescription>
-                Native desktop applications for Windows, macOS, and Linux.
+                Native desktop applications with full permissions and installer wizard.
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center space-y-4">
               <div className="space-y-2">
                 <Badge variant="outline">✓ Full Screen Experience</Badge>
-                <Badge variant="outline">✓ Keyboard Shortcuts</Badge>
-                <Badge variant="outline">✓ Multi-Monitor Support</Badge>
+                <Badge variant="outline">✓ Voice & Audio Features</Badge>
+                <Badge variant="outline">✓ System Integration</Badge>
               </div>
               <div className="space-y-2">
                 <Button 
-                  className="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white"
-                  disabled
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                  onClick={() => {
+                    const userAgent = navigator.userAgent;
+                    const isWindows = userAgent.indexOf('Win') !== -1;
+                    const isMac = userAgent.indexOf('Mac') !== -1;
+                    const isLinux = userAgent.indexOf('Linux') !== -1;
+                    
+                    let os = 'Unknown';
+                    if (isWindows) os = 'Windows';
+                    else if (isMac) os = 'macOS';
+                    else if (isLinux) os = 'Linux';
+                    
+                    if (os !== 'Unknown') {
+                      // Trigger download
+                      const link = document.createElement('a');
+                      link.href = `https://releases.stagalgo.com/desktop/StagAlgo-${os}-Setup`;
+                      link.download = `StagAlgo-${os}-Setup`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      
+                      // Show toast
+                      const event = new CustomEvent('show-toast', {
+                        detail: {
+                          title: "Download Started",
+                          description: `Downloading StagAlgo for ${os}. Run the installer when download completes.`
+                        }
+                      });
+                      window.dispatchEvent(event);
+                    } else {
+                      alert('Desktop app is available for Windows, macOS, and Linux only.');
+                    }
+                  }}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Windows
+                  Download Desktop App
                 </Button>
-                <Button 
-                  className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white"
-                  disabled
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  macOS
-                </Button>
-                <Button 
-                  className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white"
-                  disabled
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Linux
-                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Includes installer wizard with permission setup
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Coming soon - Sign up for beta access
-              </p>
+              <Alert className="text-left">
+                <Shield className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Permissions:</strong> Installer will request microphone and speaker access for voice features.
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
         </div>

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 export function AuthPage() {
@@ -253,7 +253,7 @@ export function AuthPage() {
                     </Button>
                   </div>
                   
-                  <div className="text-center">
+                  <div className="text-center space-y-2">
                     <Button
                       type="button"
                       variant="link"
@@ -262,6 +262,17 @@ export function AuthPage() {
                     >
                       Forgot your password?
                     </Button>
+                    <div className="pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => window.open('/download', '_blank')}
+                        className="text-xs px-3 py-1 h-8"
+                      >
+                        <Download className="w-3 h-3 mr-1" />
+                        Download Desktop App
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </TabsContent>
