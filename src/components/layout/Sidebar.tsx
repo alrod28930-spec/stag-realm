@@ -17,7 +17,7 @@ import {
   Circle,
   Star,
   Target,
-  FlaskConical
+  Baby
 } from 'lucide-react';
 import {
   Sidebar,
@@ -71,7 +71,7 @@ export function AppSidebar() {
     { title: 'Charts', url: '/charts', icon: LineChart, description: 'Live streaming charts & trading' },
     { title: 'Workspace', url: '/workspace', icon: Crown, description: 'Elite multi-panel workspace' },
     { title: 'Brokerage Dock', url: '/brokerage-dock', icon: ExternalLink, description: 'Access external brokerage accounts' },
-    { title: 'Cradle', url: '/cradle', icon: FlaskConical, description: 'Strategy incubator' },
+    { title: 'Cradle', url: '/cradle', icon: Baby, description: 'Strategy incubator' },
   ];
 
   const adminItems = [
