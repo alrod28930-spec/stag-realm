@@ -109,13 +109,20 @@ class ServiceManager {
       service.intervals.forEach(interval => clearInterval(interval));
       service.intervals = [];
       
-      // Clean up channels
+      // Clear channels  
       service.channels.forEach(channel => {
         if (channel && typeof channel.unsubscribe === 'function') {
           channel.unsubscribe();
         }
       });
       service.channels = [];
+      
+      // Additional cleanup using serviceCleanupManager (async import)
+      import('@/utils/serviceCleanup').then(({ serviceCleanupManager }) => {
+        serviceCleanupManager.cleanupService(name);
+      }).catch(err => {
+        console.warn('Service cleanup manager import failed:', err);
+      });
       
       logService.log('info', `Service stopped: ${name}`);
     }

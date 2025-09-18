@@ -198,11 +198,35 @@ serviceManager.registerService('portfolioStore', usePortfolioStore, () => {
   // Cleanup handled by service manager
 });
 
-serviceManager.createGlobalInterval(async () => {
-  const { isConnected, refreshPortfolio } = usePortfolioStore.getState();
-  if (isConnected) {
-    await refreshPortfolio();
+// Use service manager for proper lifecycle management
+let portfolioInterval: NodeJS.Timeout | null = null;
+
+const startPortfolioSync = () => {
+  if (portfolioInterval) return; // Prevent multiple intervals
+  
+  portfolioInterval = serviceManager.createGlobalInterval(async () => {
+    const { isConnected, refreshPortfolio } = usePortfolioStore.getState();
+    if (isConnected) {
+      try {
+        await refreshPortfolio();
+      } catch (error) {
+        console.error('Portfolio refresh failed:', error);
+      }
+    }
+  }, 30000);
+};
+
+const stopPortfolioSync = () => {
+  if (portfolioInterval) {
+    clearInterval(portfolioInterval);
+    portfolioInterval = null;
   }
-}, 30000);
+};
+
+// Initialize sync
+startPortfolioSync();
+
+// Expose cleanup for testing
+(window as any).__stopPortfolioSync = stopPortfolioSync;
 
 serviceManager.startService('portfolioStore');

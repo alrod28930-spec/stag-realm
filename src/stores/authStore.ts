@@ -109,8 +109,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               set({ user: minimalUser, isAuthenticated: true, isLoading: false });
               eventBus.emit('user-login' as any, { email: minimalUser.email, timestamp: new Date() });
 
-              // Defer profile fetch to avoid deadlocks
-              setTimeout(async () => {
+              // Use proper async pattern instead of setTimeout
+              const fetchProfile = async () => {
                 try {
                   const { data: profile } = await supabase
                     .from('profiles')
@@ -124,9 +124,12 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     }));
                   }
                 } catch (e) {
-                  console.warn('Deferred profile fetch failed:', e);
+                  console.warn('Profile fetch failed:', e);
                 }
-              }, 0);
+              };
+              
+              // Use microtask instead of setTimeout for better timing
+              Promise.resolve().then(fetchProfile);
 
               console.log('✅ User signed in successfully:', minimalUser.email);
             } else if (event === 'SIGNED_OUT') {
