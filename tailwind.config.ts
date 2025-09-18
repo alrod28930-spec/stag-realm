@@ -80,6 +80,7 @@ export default {
 				'glow': 'var(--shadow-glow)',
 				'gold': 'var(--shadow-gold)',
 				'moonlight': 'var(--shadow-moonlight)',
+				'awareness': 'var(--shadow-awareness)',
 				'card': 'var(--shadow-card)',
 				'elevated': 'var(--shadow-elevated)'
 			},

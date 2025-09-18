@@ -67,13 +67,15 @@
     --gradient-starfield: radial-gradient(circle at 25% 25%, hsl(45 90% 65% / 0.1) 0%, transparent 50%), 
                           radial-gradient(circle at 75% 75%, hsl(45 90% 65% / 0.05) 0%, transparent 50%);
 
-    /* Colors - Lunar Mist */
+    /* Colors - Moonlit Awareness */
     --lunar-mist: 220 100% 84%;
+    --moonlit-awareness: 210 25% 75%;
 
     /* Shadows */
     --shadow-glow: 0 0 40px hsl(var(--primary) / 0.4);
     --shadow-gold: 0 0 20px hsl(45 90% 65% / 0.3);
-    --shadow-moonlight: 0 0 60px hsl(var(--lunar-mist) / 0.3), 0 0 120px hsl(var(--lunar-mist) / 0.1);
+    --shadow-moonlight: 0 0 60px hsl(var(--moonlit-awareness) / 0.4), 0 0 120px hsl(var(--moonlit-awareness) / 0.2);
+    --shadow-awareness: 0 0 80px hsl(var(--moonlit-awareness) / 0.3), inset 0 0 40px hsl(var(--moonlit-awareness) / 0.1);
     --shadow-card: 0 8px 32px hsl(220 30% 2% / 0.8);
     --shadow-elevated: 0 16px 64px hsl(220 30% 2% / 0.9);
 
@@ -171,6 +173,22 @@
   @keyframes starfield-drift {
     from { transform: translateY(0px); }
     to { transform: translateY(-100px); }
+  }
+
+  /* Moonlit Awareness Effects */
+  .moonlit-awareness {
+    box-shadow: var(--shadow-awareness);
+    animation: moonlit-pulse 4s ease-in-out infinite;
+    transition: var(--transition-glow);
+  }
+
+  @keyframes moonlit-pulse {
+    0%, 100% { 
+      box-shadow: 0 0 60px hsl(var(--moonlit-awareness) / 0.3), inset 0 0 40px hsl(var(--moonlit-awareness) / 0.1);
+    }
+    50% { 
+      box-shadow: 0 0 100px hsl(var(--moonlit-awareness) / 0.5), inset 0 0 60px hsl(var(--moonlit-awareness) / 0.15);
+    }
   }
 
   /* Gold Glow Effects */
