@@ -85,6 +85,7 @@ const App = () => {
                         <Route path="/about" element={<About />} />
                         <Route path="/user-manual" element={<UserManual />} />
                         <Route path="/subscription" element={<Subscription />} />
+                        <Route path="/workspace" element={<Workspace />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/system-monitor" element={<SystemMonitor />} />
                         <Route path="/admin" element={<AdminPortal />} />
