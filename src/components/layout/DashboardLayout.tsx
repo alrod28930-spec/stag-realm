@@ -15,7 +15,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex w-full bg-background starfield moonlit-awareness">
+      <div className="min-h-screen flex w-full bg-background starfield">
         <AppSidebar />
         
         <div className="flex-1 flex flex-col min-w-0">

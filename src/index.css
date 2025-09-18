@@ -135,6 +135,8 @@
     font-family: 'Inter', 'system-ui', sans-serif;
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
+    box-shadow: var(--shadow-awareness);
+    animation: moonlit-pulse 4s ease-in-out infinite;
   }
 
   h1, h2, h3, h4, h5, h6 {
