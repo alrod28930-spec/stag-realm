@@ -79,6 +79,7 @@ export default {
 			boxShadow: {
 				'glow': 'var(--shadow-glow)',
 				'gold': 'var(--shadow-gold)',
+				'moonlight': 'var(--shadow-moonlight)',
 				'card': 'var(--shadow-card)',
 				'elevated': 'var(--shadow-elevated)'
 			},
