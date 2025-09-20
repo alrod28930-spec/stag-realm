@@ -23,8 +23,8 @@ export function BotActivationModal({ isOpen, onClose, onConfirm }: BotActivation
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-amber-600" />
+            <div className="w-12 h-12 bg-amber-50/50 dark:bg-amber-900/20 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
               <AlertDialogTitle className="text-left">

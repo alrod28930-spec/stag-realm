@@ -37,15 +37,15 @@ const CATEGORY_ICONS = {
 };
 
 const RISK_COLORS = {
-  low: 'text-green-600 bg-green-50 border-green-200',
-  medium: 'text-amber-600 bg-amber-50 border-amber-200',
-  high: 'text-red-600 bg-red-50 border-red-200'
+  low: 'text-green-600 bg-green-50/50 border-green-200',
+  medium: 'text-amber-600 bg-amber-50/50 border-amber-200',
+  high: 'text-destructive bg-destructive/10 border-destructive/20'
 };
 
 const COMPLEXITY_COLORS = {
-  beginner: 'text-blue-600 bg-blue-50 border-blue-200',
-  intermediate: 'text-purple-600 bg-purple-50 border-purple-200',
-  advanced: 'text-red-600 bg-red-50 border-red-200'
+  beginner: 'text-primary bg-primary/10 border-primary/20',
+  intermediate: 'text-secondary-foreground bg-secondary border-secondary',
+  advanced: 'text-destructive bg-destructive/10 border-destructive/20'
 };
 
 export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
@@ -67,7 +67,7 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
     );
   }
 
-  const availableTemplates = botTemplateService.getTemplates(userTier as any);
+  const availableTemplates = botTemplateService.getTemplates(userTier as 'lite' | 'standard' | 'pro' | 'elite');
   
   const handleDeployBot = async (template: BotTemplate) => {
     setSelectedTemplate(template);

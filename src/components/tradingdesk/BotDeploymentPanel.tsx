@@ -114,7 +114,7 @@ export function BotDeploymentPanel({ isSystemActive, isDemo = false }: BotDeploy
     switch (level) {
       case 'low': return 'text-green-600';
       case 'medium': return 'text-amber-600';
-      case 'high': return 'text-red-600';
+      case 'high': return 'text-destructive';
     }
   };
 

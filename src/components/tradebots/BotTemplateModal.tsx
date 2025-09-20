@@ -51,10 +51,10 @@ export function BotTemplateModal({ isOpen, onClose, template, onConfirm }: BotTe
 
   const getRiskColor = (level: string) => {
     switch (level) {
-      case 'low': return 'text-green-600 bg-green-50 border-green-200';
-      case 'medium': return 'text-amber-600 bg-amber-50 border-amber-200';
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'low': return 'text-green-600 bg-green-50/50 border-green-200';
+      case 'medium': return 'text-amber-600 bg-amber-50/50 border-amber-200';
+      case 'high': return 'text-destructive bg-destructive/10 border-destructive/20';
+      default: return 'text-muted-foreground bg-muted border-border';
     }
   };
 

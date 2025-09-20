@@ -17,7 +17,6 @@ interface LiveTradeRequest {
 }
 
 interface PreTradeJournal {
-  [key: string]: any;
   id: string;
   botId?: string;
   symbol: string;
@@ -206,7 +205,7 @@ export class LiveTradeExecutionService {
     // Store journal in Supabase
     try {
       await supabase.from('rec_events').insert({
-        workspace_id: 'demo_workspace',
+        workspace_id: '00000000-0000-0000-0000-000000000001',
         event_type: 'trade.journal.created',
         severity: 1,
         entity_type: 'trade',
@@ -231,7 +230,7 @@ export class LiveTradeExecutionService {
   private async logTradeExecution(request: LiveTradeRequest, orderId: string): Promise<void> {
     try {
       await supabase.from('rec_events').insert({
-        workspace_id: 'demo_workspace',
+        workspace_id: '00000000-0000-0000-0000-000000000001',
         event_type: `trade.${request.source}.executed`,
         severity: 1,
         entity_type: 'trade',
