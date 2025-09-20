@@ -20,6 +20,7 @@ import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
 import { RiskAwareTradePanel } from '@/components/tradingdesk/RiskAwareTradePanel';
+import { LiveTradingPanel } from '@/components/tradingdesk/LiveTradingPanel';
 import { MultiChartPanel } from '@/components/charts/MultiChartPanel';
 import { OrderTicket } from '@/components/tradingdesk/OrderTicket';
 import { IntradayEquityCurve } from '@/components/charts/IntradayEquityCurve';
@@ -51,8 +52,8 @@ export default function TradingDesk() {
             </h1>
             <p className="text-muted-foreground mt-2">
               {isDemoMode 
-                ? "Explore manual trading and automated bot features with simulated data"
-                : "Execute trades manually and manage automated trading bots"
+                ? "Explore live trading and automated bot features with simulated data"
+                : "Execute live trades manually or deploy automated trading bots"
               }
             </p>
           </div>
@@ -72,7 +73,7 @@ export default function TradingDesk() {
       <Tabs defaultValue="manual" className="space-y-6">
         <ScrollArea className="w-full">
           <TabsList className="grid w-full grid-cols-6 min-w-max">
-            <TabsTrigger value="manual">Manual Trading</TabsTrigger>
+            <TabsTrigger value="manual">Live Trading</TabsTrigger>
             <TabsTrigger value="positions">Open Positions</TabsTrigger>
             <TabsTrigger value="history">Order History</TabsTrigger>
             <TabsTrigger value="bots" className="gap-2">
@@ -93,15 +94,9 @@ export default function TradingDesk() {
           />
           
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Order Ticket */}
+            {/* Live Trading Panel */}
             <div className="lg:col-span-1">
-              <OrderTicket 
-                symbol="AAPL"
-                currentPrice={150.25}
-                maxRiskPercent={2}
-                accountEquity={100000}
-                isDemo={isDemoMode}
-              />
+              <LiveTradingPanel isDemo={isDemoMode} />
             </div>
 
             {/* Intraday P&L Curve */}
