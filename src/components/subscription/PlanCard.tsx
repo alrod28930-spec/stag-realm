@@ -45,9 +45,30 @@ const getPlanVariant = (code: string) => {
   }
 };
 
+const getPlanTierValue = (code: string): number => {
+  switch (code) {
+    case 'lite': return 0;
+    case 'standard': return 1;
+    case 'pro': return 2;
+    case 'elite': return 3;
+    default: return 0;
+  }
+};
+
+const getButtonText = (currentPlan: string | null | undefined, targetPlan: string): string => {
+  if (!currentPlan) return 'Get Started';
+  if (currentPlan === targetPlan) return 'Current Plan';
+  
+  const currentTier = getPlanTierValue(currentPlan);
+  const targetTier = getPlanTierValue(targetPlan);
+  
+  if (targetTier > currentTier) return 'Upgrade';
+  if (targetTier < currentTier) return 'Downgrade';
+  return 'Select Plan';
+};
+
 export function PlanCard({ plan, currentPlan, onSelect, disabled }: PlanCardProps) {
   const isCurrentPlan = currentPlan === plan.code;
-  const isUpgrade = currentPlan && plan.code !== currentPlan;
   
   return (
     <Card className={`relative transition-all duration-200 hover:shadow-elegant ${
@@ -105,15 +126,7 @@ export function PlanCard({ plan, currentPlan, onSelect, disabled }: PlanCardProp
           className="w-full"
           size="lg"
         >
-          {isCurrentPlan 
-            ? 'Current Plan' 
-            : isUpgrade 
-              ? (currentPlan && ['lite', 'standard'].includes(currentPlan) && ['pro', 'elite'].includes(plan.code) 
-                  ? 'Upgrade' 
-                  : 'Change Plan'
-                )
-              : 'Get Started'
-          }
+          {getButtonText(currentPlan, plan.code)}
         </Button>
       </CardFooter>
     </Card>
