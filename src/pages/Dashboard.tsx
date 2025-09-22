@@ -42,7 +42,7 @@ export default function Dashboard() {
     }
   }, [loadPortfolio, subscribeToUpdates, isDemoMode]);
 
-  // Get portfolio data based on demo mode
+  // Get portfolio data - only demo account gets mock data, real accounts are empty until API connection
   const portfolioData = isDemoMode ? demoDataService.getPortfolio() : {
     equity: portfolio?.equity || 0,
     cash: portfolio?.cash || 0,
@@ -127,34 +127,59 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Brokerage Connection Notice */}
-      <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <Building2 className="h-5 w-5 text-primary" />
+      {/* Brokerage Connection Notice - only show for real accounts */}
+      {!isDemoMode && (
+        <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <Building2 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Connect Your Brokerage Account</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Connect your API keys to see live portfolio data and enable trading
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-sm">Connect Your Brokerage Account</h3>
-                <p className="text-xs text-muted-foreground">
-                  Set up live trading by connecting your broker in Settings
-                </p>
-              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center space-x-2"
+                onClick={() => window.location.href = '/settings'}
+              >
+                <Settings className="h-4 w-4" />
+                <span>Go to Settings</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State for Real Accounts Without API Connection */}
+      {!isDemoMode && portfolioValue === 0 && (
+        <Card className="bg-gradient-to-r from-orange/10 to-accent/10 border-orange/20">
+          <CardContent className="p-6 text-center">
+            <div className="p-3 rounded-lg bg-orange/20 w-fit mx-auto mb-4">
+              <AlertTriangle className="h-8 w-8 text-orange" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">No Portfolio Data Available</h3>
+            <p className="text-muted-foreground mb-4">
+              Connect your brokerage API keys in Settings to see your live portfolio data, positions, and trading history.
+            </p>
             <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center space-x-2"
+              variant="default" 
+              className="flex items-center space-x-2 mx-auto"
               onClick={() => window.location.href = '/settings'}
             >
               <Settings className="h-4 w-4" />
-              <span>Go to Settings</span>
-              <ArrowRight className="h-4 w-4" />
+              <span>Connect API Keys</span>
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

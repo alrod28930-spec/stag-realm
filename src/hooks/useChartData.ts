@@ -80,7 +80,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
       setError(null);
 
       try {
-        // Use demo data in demo mode or if no real-time data access
+        // Only use demo data for demo accounts, real accounts get empty data until API connection
         if (subscriptionStatus.isDemo) {
           setCandleData(DEMO_CANDLES);
           setIndicatorData(DEMO_INDICATORS);
@@ -89,7 +89,15 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           return;
         }
 
-        // Fetch real data for paid tiers
+        // Real accounts have empty data until API keys are connected
+        setCandleData([]);
+        setIndicatorData([]);  
+        setOracleSignals([]);
+        setLoading(false);
+        return;
+
+        // This code below will be used when API integration is added
+        /*
         const [candlesResponse, indicatorsResponse, signalsResponse] = await Promise.all([
           supabase
             .from('candles')
@@ -159,10 +167,16 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
       } catch (err) {
         console.error('Chart data fetch error:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch chart data');
-        // Fallback to demo data on error
-        setCandleData(DEMO_CANDLES);
-        setIndicatorData(DEMO_INDICATORS);
-        setOracleSignals(DEMO_SIGNALS);
+        // Fallback to empty data on error for real accounts
+        if (subscriptionStatus.isDemo) {
+          setCandleData(DEMO_CANDLES);
+          setIndicatorData(DEMO_INDICATORS);
+          setOracleSignals(DEMO_SIGNALS);
+        } else {
+          setCandleData([]);
+          setIndicatorData([]);
+          setOracleSignals([]);
+        }
       } finally {
         setLoading(false);
       }

@@ -6,11 +6,9 @@ import { demoDataService } from '@/services/demoDataService';
  */
 export function isDemoMode(): boolean {
   const authState = useAuthStore.getState();
-  // Demo account users get full access to view all features (but with demo data)
+  // Only the demo account gets demo data - real accounts should be empty until API keys are connected
   return authState.user?.email === 'demo@example.com' || 
-         authState.user?.email === 'john.trader@stagalgo.com' ||
-         authState.user?.id === '00000000-0000-0000-0000-000000000000' ||
-         authState.user?.id === '00000000-0000-0000-0000-000000000002';
+         authState.user?.id === '00000000-0000-0000-0000-000000000000';
 }
 
 /**
@@ -39,7 +37,7 @@ export function getDemoSafeUser() {
   if (isDemoMode()) {
     return {
       ...authState.user,
-      name: authState.user?.email === 'john.trader@stagalgo.com' ? 'Owner User' : 'Demo User',
+      name: 'Demo User',
       email: authState.user?.email || 'demo@example.com'
     };
   }
@@ -52,9 +50,7 @@ export function getDemoSafeUser() {
 export function useDemoMode() {
   const user = useAuthStore(state => state.user);
   const isDemo = user?.email === 'demo@example.com' || 
-                 user?.email === 'john.trader@stagalgo.com' ||
-                 user?.id === '00000000-0000-0000-0000-000000000000' ||
-                 user?.id === '00000000-0000-0000-0000-000000000002';
+                 user?.id === '00000000-0000-0000-0000-000000000000';
   return {
     isDemoMode: isDemo,
     demoUser: isDemo ? user : null

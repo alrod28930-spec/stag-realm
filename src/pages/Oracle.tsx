@@ -75,7 +75,7 @@ export default function Oracle(props: OracleProps = {}) {
 
   const loadOracleData = () => {
     if (isDemoMode) {
-      // Use demo data
+      // Use demo data for demo account only
       const demoSignals = demoDataService.getOracleSignals(100);
       setSignals(demoSignals.map(signal => ({
         id: signal.id,
@@ -83,65 +83,20 @@ export default function Oracle(props: OracleProps = {}) {
         description: signal.summary || 'Demonstration signal with mock data',
         type: (signal.signal_type === 'technical' ? 'technical_breakout' : 'news_sentiment') as any,
         severity: (signal.strength > 0.8 ? 'high' : 'medium') as any,
-        direction: (signal.direction > 0 ? 'bullish' : 'bearish') as any,
+        confidence: Math.round(signal.strength * 100),
         symbol: signal.symbol,
-        sector: 'Technology',
-        confidence: signal.strength,
         timestamp: new Date(signal.ts),
+        direction: (signal.direction > 0 ? 'bullish' : 'bearish') as any,
         sources: [signal.source || 'Demo Source'],
         data: { demoData: true, originalStrength: signal.strength }
       })));
-      
-      setAlerts([
-        {
-          id: 'demo-alert-1',
-          type: 'unusual_activity' as any,
-          title: 'Demo Market Alert',
-          message: 'This is a demonstration alert showing how market notifications appear',
-          severity: 'medium' as any,
-          timestamp: new Date(Date.now() - 10 * 60 * 1000),
-          affectedSymbols: ['DEMO'],
-          affectedSectors: ['Technology'],
-          actionRequired: false,
-          relatedSignals: ['demo-signal-1']
-        }
-      ]);
-      
-      setSectorHeatmap({
-        'Technology': { 
-          performance: 2.1, 
-          signals: 5,
-          volume: 1500000,
-          volatility: 0.15,
-          sentiment: 'positive' as any,
-          lastUpdated: new Date()
-        },
-        'Healthcare': { 
-          performance: -0.8, 
-          signals: 2,
-          volume: 800000,
-          volatility: 0.12,
-          sentiment: 'negative' as any,
-          lastUpdated: new Date()
-        },
-        'Finance': { 
-          performance: 1.3, 
-          signals: 3,
-          volume: 1200000,
-          volatility: 0.18,
-          sentiment: 'neutral' as any,
-          lastUpdated: new Date()
-        }
-      });
+      setIsLoading(false);
     } else {
-      // Use real data
-      setSignals(oracle.getSignals(100));
-      setAlerts(oracle.getAlerts(50));
-      setSectorHeatmap(oracle.getSectorHeatmap());
+      // Real accounts have empty signals until API connection
+      setSignals([]);
+      setIsLoading(false);
     }
-    setLastRefresh(new Date());
   };
-
   const applyFilters = () => {
     let filtered = [...signals];
 

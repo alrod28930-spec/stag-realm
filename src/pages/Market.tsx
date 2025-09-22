@@ -50,23 +50,16 @@ export default function Market() {
       }));
     }
     
-    return [
-      { symbol: 'AAPL', name: 'Apple Inc.', price: 175.50, change: +2.25, changePercent: +1.30, volume: '52.3M', marketCap: '2.75T' },
-      { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 142.30, change: -1.85, changePercent: -1.28, volume: '28.7M', marketCap: '1.78T' },
-      { symbol: 'MSFT', name: 'Microsoft Corp.', price: 378.90, change: +5.20, changePercent: +1.39, volume: '31.2M', marketCap: '2.82T' },
-      { symbol: 'TSLA', name: 'Tesla Inc.', price: 248.75, change: -12.45, changePercent: -4.77, volume: '89.1M', marketCap: '789B' },
-      { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 146.28, change: +0.95, changePercent: +0.65, volume: '41.8M', marketCap: '1.52T' },
-      { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 875.30, change: +18.75, changePercent: +2.19, volume: '67.4M', marketCap: '2.15T' },
-    ];
+    return [];
   };
 
   const marketData = getMarketData();
 
-  const indices = [
+  const indices = isDemoMode ? [
     { name: 'S&P 500', symbol: 'SPX', price: 4725.80, change: +24.15, changePercent: +0.51 },
     { name: 'NASDAQ', symbol: 'IXIC', price: 14876.50, change: -45.32, changePercent: -0.30 },
     { name: 'DOW JONES', symbol: 'DJI', price: 37285.10, change: +125.67, changePercent: +0.34 },
-  ];
+  ] : [];
 
   const topMovers = {
     gainers: [

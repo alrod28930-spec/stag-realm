@@ -60,6 +60,9 @@ export const AllocationPieChart: React.FC<AllocationPieChartProps> = ({
   const getCurrentData = () => {
     if (data) return data;
     
+    // Only show demo data for demo accounts, empty for real accounts
+    if (!isDemo) return [];
+    
     switch (viewMode) {
       case 'sector':
         return DEMO_SECTOR_DATA;

@@ -65,7 +65,7 @@ export default function Portfolio() {
     });
   };
 
-  // Get portfolio data - use demo data if in demo mode
+  // Get portfolio data - only demo account gets mock data, real accounts are empty until API connection
   const getPortfolioData = () => {
     if (isDemoMode) {
       return demoDataService.getPortfolio();
