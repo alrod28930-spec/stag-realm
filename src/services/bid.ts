@@ -5,6 +5,7 @@ import { dataCompression } from './dataCompression';
 import { learningEngine } from './learningEngine';
 import { storageManager } from './storageManager';
 import { ProcessedSignal, OracleAlert } from '../types/oracle';
+import { enhancedBID } from './bidEnhanced';
 
 // BID - Business Intelligence Database (single source of truth)
 export interface BIDPosition {
@@ -450,5 +451,9 @@ export class BID {
   }
 }
 
-// Export singleton instance
+// Export singleton instance (maintaining backward compatibility)
 export const bid = new BID();
+
+// Enhanced BID is available as enhancedBID for new intelligent features
+// The original bid instance is still used for basic data operations
+// while enhancedBID provides the intelligent learning and adaptation layer
