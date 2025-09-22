@@ -67,7 +67,7 @@ export function useSubscriptionAccess() {
         // Check if user is in demo mode
         const isDemo = isDemoMode();
         
-        // Check if this is the owner account (regular elite tier account)
+        // Check if this is the owner account (regular elite tier account, not demo)
         const isOwnerAccount = user?.email === 'alrod28930@gmail.com';
         
         if (isDemo) {
@@ -81,6 +81,7 @@ export function useSubscriptionAccess() {
           return;
         }
 
+        // Owner account gets elite tier as a regular account (not demo)
         if (isOwnerAccount) {
           setSubscriptionStatus({
             tier: 'elite',

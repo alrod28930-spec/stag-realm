@@ -30,12 +30,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       initializeAuth: async () => {
         console.log('🚀 Starting auth initialization');
         try {
-          // Check for special test users in persisted state first
+          // Check for special demo user in persisted state first
           const currentState = get();
           if (currentState.user?.email === 'demo@example.com' || 
-              currentState.user?.email === 'john.trader@stagalgo.com' ||
-              currentState.user?.id === '00000000-0000-0000-0000-000000000000' ||
-              currentState.user?.id === '00000000-0000-0000-0000-000000000002') {
+              currentState.user?.id === '00000000-0000-0000-0000-000000000000') {
             set({
               user: currentState.user,
               isAuthenticated: true,
@@ -53,7 +51,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           
           if (session?.user) {
             // Only proceed if user is confirmed or is a demo user
-            const isDemo = session.user.email === 'demo@example.com' || session.user.email === 'john.trader@stagalgo.com';
+            const isDemo = session.user.email === 'demo@example.com';
             const isConfirmed = session.user.email_confirmed_at || isDemo;
             
             if (isConfirmed) {
@@ -153,7 +151,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
         
         try {
-          // Handle special test accounts
+          // Handle demo account for testing
           if (credentials.email === 'demo@example.com' && credentials.password === 'demo123') {
             const demoUser: User = {
               id: '00000000-0000-0000-0000-000000000000',
@@ -179,34 +177,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             
             eventBus.emit('user-login' as any, { email: demoUser.email, timestamp: new Date() });
             return { data: { user: demoUser }, error: null };
-          }
-
-          // Handle owner account specially
-          if (credentials.email === 'john.trader@stagalgo.com' && credentials.password === 'owner123') {
-            const ownerUser: User = {
-              id: '00000000-0000-0000-0000-000000000002',
-              email: 'john.trader@stagalgo.com',
-              name: 'John Trader',
-              role: 'Owner',
-              organizationId: '00000000-0000-0000-0000-000000000001',
-              avatar: undefined,
-              isActive: true,
-              createdAt: new Date(),
-              lastLogin: new Date()
-            };
-
-            set({
-              user: ownerUser,
-              isAuthenticated: true,
-              isLoading: false
-            });
-            
-            // Initialize demo mode for owner account too
-            const { initializeDemoMode } = await import('@/utils/demoMode');
-            initializeDemoMode();
-            
-            eventBus.emit('user-login' as any, { email: ownerUser.email, timestamp: new Date() });
-            return { data: { user: ownerUser }, error: null };
           }
 
           // Regular authentication for non-demo accounts
@@ -313,9 +283,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         console.log('🔍 Current user during logout:', { email: user?.email, id: user?.id });
         
         try {
-          // Handle special test account logout  
-          if (user?.email === 'demo@example.com' || user?.email === 'john.trader@stagalgo.com') {
-            console.log('🎭 Logging out demo/test user');
+          // Handle special demo account logout  
+          if (user?.email === 'demo@example.com') {
+            console.log('🎭 Logging out demo user');
             set({
               user: null,
               organization: null,
