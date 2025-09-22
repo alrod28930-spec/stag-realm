@@ -123,7 +123,8 @@ export const PortfolioGrid: React.FC<PortfolioGridProps> = ({
     }
   ];
 
-  const activePositions = positions.length > 0 ? positions : demoPositions;
+  // ONLY show demo positions for the single demo account, empty for all other accounts
+  const activePositions = positions.length > 0 ? positions : (isDemo ? demoPositions : []);
 
   // Filter and sort positions
   const filteredPositions = activePositions

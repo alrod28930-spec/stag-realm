@@ -30,9 +30,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       initializeAuth: async () => {
         console.log('🚀 Starting auth initialization');
         try {
-          // Check for special demo user in persisted state first
+          // Check for THE SINGLE demo user in persisted state first
           const currentState = get();
-          if (currentState.user?.email === 'demo@example.com' || 
+          if (currentState.user?.email === 'demo@example.com' && 
               currentState.user?.id === '00000000-0000-0000-0000-000000000000') {
             set({
               user: currentState.user,

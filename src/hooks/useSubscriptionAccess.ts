@@ -64,10 +64,10 @@ export function useSubscriptionAccess() {
       try {
         setSubscriptionStatus(prev => ({ ...prev, loading: true, error: null }));
 
-        // Check if user is in demo mode
+        // Check if user is the SINGLE demo account (for landing page display only)
         const isDemo = isDemoMode();
         
-        // Check if this is the owner account (regular elite tier account, not demo)
+        // Owner account is a regular elite tier account with NO mock data
         const isOwnerAccount = user?.email === 'alrod28930@gmail.com';
         
         if (isDemo) {

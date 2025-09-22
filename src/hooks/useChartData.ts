@@ -80,7 +80,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
       setError(null);
 
       try {
-        // Only use demo data for demo accounts, real accounts get empty data until API connection
+        // ONLY the single demo account gets demo data - ALL other accounts are empty until API keys
         if (subscriptionStatus.isDemo) {
           setCandleData(DEMO_CANDLES);
           setIndicatorData(DEMO_INDICATORS);
@@ -89,7 +89,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           return;
         }
 
-        // Real accounts have empty data until API keys are connected
+        // ALL regular accounts (including alrod28930@gmail.com) have empty data until API connection
         setCandleData([]);
         setIndicatorData([]);  
         setOracleSignals([]);
@@ -168,12 +168,13 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
       } catch (err) {
         console.error('Chart data fetch error:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch chart data');
-        // Fallback to empty data on error for real accounts
+        // Fallback to empty data on error for ALL regular accounts (no mock data)
         if (subscriptionStatus.isDemo) {
           setCandleData(DEMO_CANDLES);
           setIndicatorData(DEMO_INDICATORS);
           setOracleSignals(DEMO_SIGNALS);
         } else {
+          // ALL regular accounts get empty data - no fallback mock data
           setCandleData([]);
           setIndicatorData([]);
           setOracleSignals([]);

@@ -29,12 +29,14 @@ const DEMO_RISK_METRICS: RiskMetric[] = [
 ];
 
 export const RiskMetricsChart: React.FC<RiskMetricsChartProps> = ({
-  metrics = DEMO_RISK_METRICS,
+  metrics,
   title = 'Risk Metrics Dashboard',
   height = 300,
   className = '',
   isDemo = false
 }) => {
+  // Use actual metrics or empty array for regular accounts, demo data only for demo account
+  const chartData = metrics || (isDemo ? DEMO_RISK_METRICS : []);
   const getColorByStatus = (status: string) => {
     switch (status) {
       case 'safe':
@@ -95,8 +97,8 @@ export const RiskMetricsChart: React.FC<RiskMetricsChartProps> = ({
   };
 
   const overallRiskLevel = () => {
-    const dangerCount = metrics.filter(m => m.status === 'danger').length;
-    const warningCount = metrics.filter(m => m.status === 'warning').length;
+    const dangerCount = chartData.filter(m => m.status === 'danger').length;
+    const warningCount = chartData.filter(m => m.status === 'warning').length;
     
     if (dangerCount > 0) return 'danger';
     if (warningCount > 0) return 'warning';
@@ -130,7 +132,7 @@ export const RiskMetricsChart: React.FC<RiskMetricsChartProps> = ({
       
       <CardContent className="pt-0">
         <ResponsiveContainer width="100%" height={height}>
-          <BarChart data={metrics} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis 
               dataKey="name" 
@@ -146,7 +148,7 @@ export const RiskMetricsChart: React.FC<RiskMetricsChartProps> = ({
             />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {metrics.map((entry, index) => (
+              {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={getColorByStatus(entry.status)} />
               ))}
             </Bar>
@@ -154,7 +156,7 @@ export const RiskMetricsChart: React.FC<RiskMetricsChartProps> = ({
         </ResponsiveContainer>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-          {metrics.map((metric) => (
+          {chartData.map((metric) => (
             <div key={metric.name} className="flex items-center justify-between p-2 rounded border">
               <div className="flex items-center gap-2">
                 {getStatusIcon(metric.status)}

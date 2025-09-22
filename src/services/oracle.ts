@@ -35,10 +35,11 @@ class OracleService {
   }
 
   private isDemoMode(): boolean {
-    // Check if we're in demo mode by checking the current user
+    // Check if we're in SINGLE demo account mode (for landing page display only)
     if (typeof window !== 'undefined') {
       const authStore = (window as any).__authStore;
-      return authStore?.user?.email === 'demo@example.com';
+      return authStore?.user?.email === 'demo@example.com' && 
+             authStore?.user?.id === '00000000-0000-0000-0000-000000000000';
     }
     return false;
   }

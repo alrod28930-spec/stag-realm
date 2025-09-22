@@ -6,7 +6,7 @@ import { isDemoMode } from './demoMode';
  */
 export async function checkFeatureAccess(workspaceId: string, feature: string): Promise<boolean> {
   try {
-    // Demo users get access to all features for viewing
+    // Demo users have access to all features only if they are the SINGLE demo account
     if (isDemoMode()) {
       return true;
     }

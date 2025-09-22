@@ -2,12 +2,13 @@ import { useAuthStore } from '@/stores/authStore';
 import { demoDataService } from '@/services/demoDataService';
 
 /**
- * Check if the current user is using the demo account or should have demo access
+ * Check if the current user is using the SINGLE demo account for landing page display
+ * ALL other accounts (including alrod28930@gmail.com) should show NO mock data
  */
 export function isDemoMode(): boolean {
   const authState = useAuthStore.getState();
-  // Only the demo account gets demo data - real accounts should be empty until API keys are connected
-  return authState.user?.email === 'demo@example.com' || 
+  // ONLY the single demo account gets demo data - ALL other accounts are empty until API keys connected
+  return authState.user?.email === 'demo@example.com' && 
          authState.user?.id === '00000000-0000-0000-0000-000000000000';
 }
 
@@ -49,7 +50,8 @@ export function getDemoSafeUser() {
  */
 export function useDemoMode() {
   const user = useAuthStore(state => state.user);
-  const isDemo = user?.email === 'demo@example.com' || 
+  // ONLY the single demo account gets demo data - ALL other accounts are empty
+  const isDemo = user?.email === 'demo@example.com' && 
                  user?.id === '00000000-0000-0000-0000-000000000000';
   return {
     isDemoMode: isDemo,

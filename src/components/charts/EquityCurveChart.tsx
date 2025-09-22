@@ -33,7 +33,7 @@ const DEMO_EQUITY_DATA: EquityPoint[] = [
 ];
 
 export const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
-  data = DEMO_EQUITY_DATA,
+  data,
   title = 'Portfolio Equity Curve',
   showBenchmark = true,
   showDrawdown = false,
@@ -41,8 +41,10 @@ export const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
   className = '',
   isDemo = false
 }) => {
-  const currentEquity = data[data.length - 1]?.equity || 0;
-  const startingEquity = data[0]?.equity || 0;
+  // Use actual data or empty array for regular accounts, demo data only for demo account
+  const chartData = data || (isDemo ? DEMO_EQUITY_DATA : []);
+  const currentEquity = chartData[chartData.length - 1]?.equity || 0;
+  const startingEquity = chartData[0]?.equity || 0;
   const totalReturn = ((currentEquity - startingEquity) / startingEquity) * 100;
   const isPositive = totalReturn >= 0;
 
@@ -85,7 +87,7 @@ export const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
       
       <CardContent className="pt-0">
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis 
               dataKey="date" 
