@@ -64,17 +64,28 @@ export function useSubscriptionAccess() {
       try {
         setSubscriptionStatus(prev => ({ ...prev, loading: true, error: null }));
 
-        // Check if user is in demo mode or is the demo owner
+        // Check if user is in demo mode
         const isDemo = isDemoMode();
         
-        // Also check if this is the demo owner account for development
-        const isDemoOwner = user?.email === 'alrod28930@gmail.com';
+        // Check if this is the owner account (regular elite tier account)
+        const isOwnerAccount = user?.email === 'alrod28930@gmail.com';
         
-        if (isDemo || isDemoOwner) {
+        if (isDemo) {
           setSubscriptionStatus({
             tier: 'elite',
             isActive: true,
-            isDemo: isDemo && !isDemoOwner,
+            isDemo: true,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
+
+        if (isOwnerAccount) {
+          setSubscriptionStatus({
+            tier: 'elite',
+            isActive: true,
+            isDemo: false,
             loading: false,
             error: null,
           });
