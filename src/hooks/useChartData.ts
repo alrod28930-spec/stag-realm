@@ -114,7 +114,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
             .eq('tf', timeframe)
             .order('ts', { ascending: true })
             .limit(100),
-            
+             
           supabase
             .from('oracle_signals')
             .select('*')
@@ -163,6 +163,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
         setCandleData(candles);
         setIndicatorData(indicators);
         setOracleSignals(signals);
+        */
 
       } catch (err) {
         console.error('Chart data fetch error:', err);
