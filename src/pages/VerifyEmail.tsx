@@ -108,10 +108,12 @@ const VerifyEmail = () => {
   };
 
   const getNextPath = (kind?: 'code' | 'otp', type?: VerifyType): string => {
+    // Avoid env vars; always use in-app routes
     if (type === 'recovery') {
-      return import.meta.env.VITE_REDIRECT_AFTER_RESET || '/reset/complete';
+      return '/reset/complete';
     }
-    return import.meta.env.VITE_REDIRECT_AFTER_VERIFY || '/dashboard';
+    // Default to dashboard (root path renders Dashboard)
+    return '/';
   };
 
   const handleResendVerification = async () => {

@@ -46,47 +46,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             return;
           }
 
-          // Get initial session
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session?.user) {
-            // Only proceed if user is confirmed or is a demo user
-            const isDemo = session.user.email === 'demo@example.com';
-            const isConfirmed = session.user.email_confirmed_at || isDemo;
-            
-            if (isConfirmed) {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle();
-
-              const user: User = {
-                id: session.user.id,
-                email: session.user.email || '',
-                name: profile?.display_name || session.user.email || '',
-                role: 'Member',
-                organizationId: '00000000-0000-0000-0000-000000000001',
-                avatar: undefined,
-                isActive: true,
-                createdAt: new Date(session.user.created_at),
-                lastLogin: new Date()
-              };
-
-              set({
-                user,
-                isAuthenticated: true,
-                isLoading: false
-              });
-            } else {
-              console.log('User session exists but email not confirmed');
-              set({ isLoading: false, isAuthenticated: false, user: null });
-            }
-          } else {
-            set({ isLoading: false });
-          }
-
-          // Listen for auth changes - avoid async work in the callback
+          // Listen for auth changes - set up FIRST to avoid missed events
           const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             console.log('🔄 Auth state change event:', event, { hasSession: !!session, userId: session?.user?.id });
 
@@ -141,6 +101,46 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           // Optionally store subscription ref if needed
           (window as any).__supabaseAuthSub = subscription;
+
+          // THEN get initial session after listener is attached
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            // Only proceed if user is confirmed or is a demo user
+            const isDemo = session.user.email === 'demo@example.com';
+            const isConfirmed = session.user.email_confirmed_at || isDemo;
+            
+            if (isConfirmed) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+              const user: User = {
+                id: session.user.id,
+                email: session.user.email || '',
+                name: profile?.display_name || session.user.email || '',
+                role: 'Member',
+                organizationId: '00000000-0000-0000-0000-000000000001',
+                avatar: undefined,
+                isActive: true,
+                createdAt: new Date(session.user.created_at),
+                lastLogin: new Date()
+              };
+
+              set({
+                user,
+                isAuthenticated: true,
+                isLoading: false
+              });
+            } else {
+              console.log('User session exists but email not confirmed');
+              set({ isLoading: false, isAuthenticated: false, user: null });
+            }
+          } else {
+            set({ isLoading: false });
+          }
         } catch (error) {
           logger.error('Auth initialization failed', { error });
           set({ isLoading: false });
