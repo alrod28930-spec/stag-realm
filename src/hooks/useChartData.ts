@@ -89,7 +89,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           return;
         }
 
-        // ALL regular accounts (including alrod28930@gmail.com) have empty data until API connection
+        // ALL regular accounts have empty data until API connection
         setCandleData([]);
         setIndicatorData([]);  
         setOracleSignals([]);

@@ -2,26 +2,20 @@
 import { useAuthStore } from '@/stores/authStore';
 
 /**
- * Check if user is a test account (demo or owner)
+ * Check if user is the demo account
  */
 export function isTestAccount(): boolean {
   const user = useAuthStore.getState().user;
   return (
     user?.email === 'demo@example.com' ||
-    user?.email === 'john.trader@stagalgo.com' ||
-    user?.id === '00000000-0000-0000-0000-000000000000' ||
-    user?.id === '00000000-0000-0000-0000-000000000002'
+    user?.id === '00000000-0000-0000-0000-000000000000'
   );
 }
 
 /**
- * Get test-safe storage key for Cradle sheets
+ * Get storage key for Cradle sheets
  */
 export function getCradleStorageKey(): string {
-  const user = useAuthStore.getState().user;
-  if (user?.email === 'john.trader@stagalgo.com') {
-    return 'owner-cradle-sheets';
-  }
   return 'demo-cradle-sheets';
 }
 
@@ -30,7 +24,6 @@ export function getCradleStorageKey(): string {
  */
 export function clearTestData(): void {
   localStorage.removeItem('demo-cradle-sheets');
-  localStorage.removeItem('owner-cradle-sheets');
 }
 
 /**
@@ -60,10 +53,7 @@ export function validateTestAccountSafety(): {
   
   if (isTest) {
     // Test accounts should never use database operations
-    if (user && (
-      user.id !== '00000000-0000-0000-0000-000000000000' &&
-      user.id !== '00000000-0000-0000-0000-000000000002'
-    )) {
+    if (user && user.id !== '00000000-0000-0000-0000-000000000000') {
       errors.push(`Test account has unexpected ID: ${user.id}`);
     }
   }

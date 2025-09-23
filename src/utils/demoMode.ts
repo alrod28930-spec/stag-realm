@@ -3,7 +3,7 @@ import { demoDataService } from '@/services/demoDataService';
 
 /**
  * Check if the current user is using the SINGLE demo account for landing page display
- * ALL other accounts (including alrod28930@gmail.com) should show NO mock data
+ * ALL other accounts should show NO mock data
  */
 export function isDemoMode(): boolean {
   const authState = useAuthStore.getState();
@@ -20,7 +20,7 @@ export function isDemoAccess(): boolean {
 }
 
 /**
- * Initialize demo mode when demo user or owner test account logs in
+ * Initialize demo mode when demo user logs in
  */
 export function initializeDemoMode(): void {
   if (isDemoMode()) {

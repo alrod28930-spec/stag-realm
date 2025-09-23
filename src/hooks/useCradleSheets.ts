@@ -32,11 +32,9 @@ export function useCradleSheets() {
         if (demoSheets) {
           setSheets(JSON.parse(demoSheets));
         } else {
-          // Create default demo sheet
-          const sheetName = user?.email === 'john.trader@stagalgo.com' ? 'Owner Sheet' : 'Demo Sheet';
           const defaultSheet = {
             id: 'demo-sheet-1',
-            name: sheetName,
+            name: 'Demo Sheet',
             data: {
               cells: {},
               rows: 1000,

@@ -246,20 +246,8 @@ export function AuthPage() {
                       disabled={isLoading}
                     >
                       Demo Account
-                    </Button>
-                    <Button 
-                      type="button"
-                      variant="outline"
-                      className="w-full text-xs"
-                      onClick={() => {
-                        setEmail('john.trader@stagalgo.com');
-                        setPassword('owner123');
-                      }}
-                      disabled={isLoading}
-                    >
-                      Owner Account
-                    </Button>
-                  </div>
+                     </Button>
+                   </div>
                   
                   <div className="text-center space-y-2">
                     <Button

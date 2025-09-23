@@ -43,7 +43,7 @@ export const useSecurityAudit = (enabledChecks?: string[]): SecurityAuditResult 
         });
       }
 
-      if (isAuthenticated && user?.email !== 'demo@example.com' && user?.email !== 'john.trader@stagalgo.com') {
+      if (isAuthenticated && user?.email !== 'demo@example.com') {
         checks.push({
           id: 'email-not-confirmed',
           level: 'warning',

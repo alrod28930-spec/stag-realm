@@ -118,8 +118,7 @@ export class PaperTradingTester {
     try {
       // First check if we're using a test account
       const authStore = (window as any).__authStore;
-      const isTestAccount = authStore?.user?.email === 'demo@example.com' || 
-                           authStore?.user?.email === 'john.trader@stagalgo.com';
+      const isTestAccount = authStore?.user?.email === 'demo@example.com';
       
       if (isTestAccount) {
         this.workspaceId = '00000000-0000-0000-0000-000000000001';
@@ -192,8 +191,7 @@ export class PaperTradingTester {
       
       // For test accounts, simulate the connection test
       const authStore = (window as any).__authStore;
-      const isTestAccount = authStore?.user?.email === 'demo@example.com' || 
-                           authStore?.user?.email === 'john.trader@stagalgo.com';
+      const isTestAccount = authStore?.user?.email === 'demo@example.com';
       
       if (isTestAccount) {
         // Simulate successful connection for test accounts
@@ -252,8 +250,7 @@ export class PaperTradingTester {
   private async testPortfolioSync(): Promise<TestResult> {
     try {
       const authStore = (window as any).__authStore;
-      const isTestAccount = authStore?.user?.email === 'demo@example.com' || 
-                           authStore?.user?.email === 'john.trader@stagalgo.com';
+      const isTestAccount = authStore?.user?.email === 'demo@example.com';
       
       if (isTestAccount) {
         // For test accounts, verify existing demo portfolio data
@@ -312,8 +309,7 @@ export class PaperTradingTester {
   private async testManualTrade(): Promise<TestResult> {
     try {
       const authStore = (window as any).__authStore;
-      const isTestAccount = authStore?.user?.email === 'demo@example.com' || 
-                           authStore?.user?.email === 'john.trader@stagalgo.com';
+      const isTestAccount = authStore?.user?.email === 'demo@example.com';
                            
       const testTrade = {
         symbol: 'AAPL',
