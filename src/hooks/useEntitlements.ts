@@ -23,6 +23,8 @@ export function useEntitlements(workspaceId: string | undefined) {
       return;
     }
 
+    let mounted = true;
+
     const fetchEntitlements = async () => {
       try {
         setLoading(true);
@@ -34,19 +36,28 @@ export function useEntitlements(workspaceId: string | undefined) {
           .eq('workspace_id', workspaceId)
           .eq('enabled', true);
 
+        if (!mounted) return;
+
         if (fetchError) throw fetchError;
         setEntitlements(data || []);
       } catch (err) {
+        if (!mounted) return;
         console.error('Error fetching entitlements:', err);
         setError(err instanceof Error ? err.message : 'Failed to load entitlements');
         setEntitlements([]);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchEntitlements();
-  }, [workspaceId, user]);
+    
+    return () => {
+      mounted = false;
+    };
+  }, [workspaceId, user?.id]); // Only depend on workspaceId and user.id
 
   const hasFeature = (featureCode: string): boolean => {
     // Demo users have access to all features only if they are the SINGLE demo account

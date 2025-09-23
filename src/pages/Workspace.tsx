@@ -13,6 +13,7 @@ import { WorkspaceLayout } from '@/components/workspace/WorkspaceLayout';
 import { WorkspaceSelector } from '@/components/workspace/WorkspaceSelector';
 import { WorkspaceStatusBar } from '@/components/workspace/WorkspaceStatusBar';
 import { WorkspaceMetrics } from '@/components/workspace/WorkspaceMetrics';
+import { WorkspaceErrorBoundary } from '@/components/workspace/WorkspaceErrorBoundary';
 import { 
   Maximize, 
   Minimize, 
@@ -26,7 +27,7 @@ import type { WorkspaceLayoutConfig, PanelConfig } from '@/types/workspace';
 
 const Workspace: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
-  const { workspaceId } = useWorkspace();
+  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
   const { hasFeature, loading: entitlementsLoading } = useEntitlements(workspaceId);
   const { toast } = useToast();
   
@@ -45,156 +46,42 @@ const Workspace: React.FC = () => {
   });
   
   const [savedLayouts, setSavedLayouts] = useState<WorkspaceLayoutConfig[]>([]);
-  const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
+  const [isLoadingLayouts, setIsLoadingLayouts] = useState(false);
 
   const hasEliteAccess = hasFeature('workspace_multi_panel');
 
-  // Load saved layouts
-  const loadLayouts = useCallback(async () => {
-    if (!user?.id || !workspaceId) return;
-    
-    setIsLoadingLayouts(true);
-    try {
-      const { data, error } = await supabase
-        .from('ui_layouts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('workspace_id', workspaceId)
-        .order('updated_at', { ascending: false });
+  // Show loading state
+  if (workspaceLoading || entitlementsLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading workspace...</p>
+        </div>
+      </div>
+    );
+  }
 
-      if (error) throw error;
+  // Show error state
+  if (workspaceError) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Card className="max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Workspace Error</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground text-sm">{workspaceError}</p>
+            <Button onClick={() => window.location.reload()}>
+              Reload Page
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-        const layouts = (data || []).map(item => ({
-          id: item.id,
-          name: item.name,
-          ...(item.layout as any),
-          created_at: item.created_at,
-          updated_at: item.updated_at
-        }));
-
-      setSavedLayouts(layouts);
-      
-      // Load "Last Used" layout if exists
-      const lastUsed = layouts.find(l => l.name === 'Last Used');
-      if (lastUsed) {
-        setCurrentLayout(lastUsed);
-      }
-    } catch (error) {
-      console.error('Error loading layouts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load workspace layouts",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingLayouts(false);
-    }
-  }, [user?.id, workspaceId, toast]);
-
-  // Save layout
-  const saveLayout = useCallback(async (layout: WorkspaceLayoutConfig, isAutoSave = false) => {
-    if (!user?.id || !workspaceId) return;
-
-    try {
-      const layoutData = {
-        gridCols: layout.gridCols,
-        gridRows: layout.gridRows,
-        panels: layout.panels
-      };
-
-      await supabase
-        .from('ui_layouts')
-        .upsert({
-          id: layout.id === 'default' ? undefined : layout.id,
-          user_id: user.id,
-          workspace_id: workspaceId,
-          name: layout.name,
-          layout: layoutData as any
-        }, {
-          onConflict: 'user_id,workspace_id,name'
-        });
-
-      if (!isAutoSave) {
-        toast({
-          title: "Layout Saved",
-          description: `"${layout.name}" has been saved successfully.`
-        });
-      }
-
-      // Reload layouts
-      await loadLayouts();
-    } catch (error) {
-      console.error('Error saving layout:', error);
-      toast({
-        title: "Error", 
-        description: "Failed to save layout",
-        variant: "destructive"
-      });
-    }
-  }, [user?.id, workspaceId, loadLayouts, toast]);
-
-  // Auto-save to "Last Used"
-  useEffect(() => {
-    const autoSaveLayout = {
-      ...currentLayout,
-      name: 'Last Used'
-    };
-    
-    const timeoutId = setTimeout(() => {
-      saveLayout(autoSaveLayout, true);
-    }, 2000);
-
-    return () => clearTimeout(timeoutId);
-  }, [currentLayout, saveLayout]);
-
-  // Load layouts on mount
-  useEffect(() => {
-    if (hasEliteAccess && user?.id && workspaceId) {
-      loadLayouts();
-    }
-  }, [hasEliteAccess, user?.id, workspaceId, loadLayouts]);
-
-  // Keyboard shortcuts
-  const shortcuts = [
-    {
-      key: 'b',
-      meta: true,
-      shift: true,
-      callback: () => setIsBubbleMode(!isBubbleMode),
-      description: 'Toggle Bubble Mode'
-    },
-    {
-      key: '1',
-      meta: true,
-      callback: () => setCurrentLayout(prev => ({ ...prev, gridCols: 1, gridRows: 1, panels: [prev.panels[0]] })),
-      description: 'Switch to 1x1 layout'
-    },
-    {
-      key: '2',
-      meta: true,
-      callback: () => setCurrentLayout(prev => ({ ...prev, gridCols: 2, gridRows: 1, panels: prev.panels.slice(0, 2) })),
-      description: 'Switch to 2x1 layout'
-    },
-    {
-      key: '4',
-      meta: true,
-      callback: () => setCurrentLayout(prev => ({ ...prev, gridCols: 2, gridRows: 2, panels: prev.panels.slice(0, 4) })),
-      description: 'Switch to 2x2 layout'
-    },
-    {
-      key: 'Escape',
-      callback: () => {
-        if (isBubbleMode) {
-          setIsBubbleMode(false);
-        }
-      },
-      description: 'Exit Bubble Mode'
-    }
-  ];
-
-  useKeyboardShortcuts(shortcuts, { enabled: hasEliteAccess });
-
-  // Handle preset layouts
+  // Handle preset layouts - simplified
   const setPresetLayout = (cols: number, rows: number) => {
     const totalPanels = cols * rows;
     const panels = Array.from({ length: totalPanels }, (_, i) => ({
@@ -210,13 +97,35 @@ const Workspace: React.FC = () => {
     }));
   };
 
-  // Loading state
-  if (entitlementsLoading || isLoadingLayouts) {
+  // Keyboard shortcuts - simplified
+  const shortcuts = [
+    {
+      key: 'b',
+      meta: true,
+      shift: true,
+      callback: () => setIsBubbleMode(!isBubbleMode),
+      description: 'Toggle Bubble Mode'
+    },
+    {
+      key: 'Escape',
+      callback: () => {
+        if (isBubbleMode) {
+          setIsBubbleMode(false);
+        }
+      },
+      description: 'Exit Bubble Mode'
+    }
+  ];
+
+  useKeyboardShortcuts(shortcuts, { enabled: hasEliteAccess });
+
+  // Loading state - simplified check
+  if (entitlementsLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading workspace...</p>
+          <p className="text-muted-foreground">Loading workspace permissions...</p>
         </div>
       </div>
     );
@@ -225,119 +134,125 @@ const Workspace: React.FC = () => {
   // Elite access required
   if (!hasEliteAccess) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <LockedCard
-          feature="workspace_multi_panel"
-          title="Elite Workspace"
-          description="Multi-panel drag-and-drop workspace with bubble mode and advanced layouting capabilities."
-        />
-      </div>
+      <WorkspaceErrorBoundary>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <LockedCard
+            feature="workspace_multi_panel"
+            title="Elite Workspace"
+            description="Multi-panel drag-and-drop workspace with bubble mode and advanced layouting capabilities."
+          />
+        </div>
+      </WorkspaceErrorBoundary>
     );
   }
 
   // Bubble Mode - Full screen workspace
   if (isBubbleMode) {
     return (
-      <div className="fixed inset-0 z-50 bg-background">
-        {/* Exit Bubble Mode */}
-        <Button
-          variant="outline" 
-          size="sm"
-          onClick={() => setIsBubbleMode(false)}
-          className="absolute top-4 right-4 z-10 gap-2"
-        >
-          <Minimize className="w-4 h-4" />
-          Exit Bubble
-        </Button>
-        
-        <WorkspaceLayout
-          layout={currentLayout}
-          onLayoutChange={setCurrentLayout}
-          isBubbleMode={true}
-        />
-      </div>
+      <WorkspaceErrorBoundary>
+        <div className="fixed inset-0 z-50 bg-background">
+          {/* Exit Bubble Mode */}
+          <Button
+            variant="outline" 
+            size="sm"
+            onClick={() => setIsBubbleMode(false)}
+            className="absolute top-4 right-4 z-10 gap-2"
+          >
+            <Minimize className="w-4 h-4" />
+            Exit Bubble
+          </Button>
+          
+          <WorkspaceLayout
+            layout={currentLayout}
+            onLayoutChange={setCurrentLayout}
+            isBubbleMode={true}
+          />
+        </div>
+      </WorkspaceErrorBoundary>
     );
   }
 
   // Normal Mode
   return (
-    <div className="flex h-full bg-background">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Bar with Workspace Status */}
-        <WorkspaceStatusBar />
-        
-        <div className="border-b border-border bg-card/30 p-4 space-y-4">
-          {/* Workspace Metrics */}
-          <WorkspaceMetrics />
+    <WorkspaceErrorBoundary>
+      <div className="flex h-full bg-background">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Top Bar with Workspace Status */}
+          <WorkspaceStatusBar />
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="border-b border-border bg-card/30 p-4 space-y-4">
+            {/* Workspace Metrics */}
+            <WorkspaceMetrics />
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-warning" />
+                  <h1 className="text-xl font-bold">Elite Workspace</h1>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  {currentLayout.gridCols}×{currentLayout.gridRows} Layout
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
-                <Crown className="w-5 h-5 text-warning" />
-                <h1 className="text-xl font-bold">Elite Workspace</h1>
-              </div>
-              
-              <div className="text-sm text-muted-foreground">
-                {currentLayout.gridCols}×{currentLayout.gridRows} Layout
-              </div>
-            </div>
+                {/* Layout Presets */}
+                <div className="flex rounded-md border border-border">
+                  {[
+                    { cols: 1, rows: 1, label: '1×1' },
+                    { cols: 2, rows: 1, label: '1×2' }, 
+                    { cols: 1, rows: 2, label: '2×1' },
+                    { cols: 2, rows: 2, label: '2×2' }
+                  ].map(({ cols, rows, label }) => (
+                    <Button
+                      key={label}
+                      variant="ghost"
+                      size="sm"
+                      className={`px-3 rounded-none ${
+                        currentLayout.gridCols === cols && currentLayout.gridRows === rows
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-accent'
+                      }`}
+                      onClick={() => setPresetLayout(cols, rows)}
+                    >
+                      <Grid3X3 className="w-4 h-4 mr-1" />
+                      {label}
+                    </Button>
+                  ))}
+                </div>
 
-            <div className="flex items-center gap-2">
-              {/* Layout Presets */}
-              <div className="flex rounded-md border border-border">
-                {[
-                  { cols: 1, rows: 1, label: '1×1' },
-                  { cols: 2, rows: 1, label: '1×2' }, 
-                  { cols: 1, rows: 2, label: '2×1' },
-                  { cols: 2, rows: 2, label: '2×2' }
-                ].map(({ cols, rows, label }) => (
-                  <Button
-                    key={label}
-                    variant="ghost"
-                    size="sm"
-                    className={`px-3 rounded-none ${
-                      currentLayout.gridCols === cols && currentLayout.gridRows === rows
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-accent'
-                    }`}
-                    onClick={() => setPresetLayout(cols, rows)}
-                  >
-                    <Grid3X3 className="w-4 h-4 mr-1" />
-                    {label}
-                  </Button>
-                ))}
+                {/* Bubble Mode */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBubbleMode(true)}
+                  className="gap-2"
+                >
+                  <Maximize className="w-4 h-4" />
+                  Bubble Mode
+                </Button>
               </div>
-
-              {/* Bubble Mode */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsBubbleMode(true)}
-                className="gap-2"
-              >
-                <Maximize className="w-4 h-4" />
-                Bubble Mode
-              </Button>
             </div>
           </div>
-        </div>
 
-        {/* Workspace */}
-        <div className="flex-1 overflow-hidden">
-          <WorkspaceLayout
-            layout={currentLayout}
-            onLayoutChange={setCurrentLayout}
-            isBubbleMode={false}
-          />
-        </div>
+          {/* Workspace */}
+          <div className="flex-1 overflow-hidden">
+            <WorkspaceLayout
+              layout={currentLayout}
+              onLayoutChange={setCurrentLayout}
+              isBubbleMode={false}
+            />
+          </div>
 
-        {/* Compliance Footer */}
-        <div className="border-t border-border bg-muted/50 px-4 py-2 text-center text-xs text-muted-foreground">
-          Educational software. StagAlgo does not hold funds.
+          {/* Compliance Footer */}
+          <div className="border-t border-border bg-muted/50 px-4 py-2 text-center text-xs text-muted-foreground">
+            Educational software. StagAlgo does not hold funds.
+          </div>
         </div>
       </div>
-    </div>
+    </WorkspaceErrorBoundary>
   );
 };
 

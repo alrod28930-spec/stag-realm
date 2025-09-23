@@ -112,14 +112,17 @@ export function useWorkspace(): UseWorkspaceResult {
         throw new Error('Not a member of this workspace');
       }
 
-      // Get workspace details
+      // Get workspace details with better error handling
       const { data: workspaceData, error: workspaceError } = await supabase
         .from('workspaces')
         .select('*')
         .eq('id', newWorkspaceId)
-        .single();
+        .maybeSingle();
 
       if (workspaceError) throw workspaceError;
+      if (!workspaceData) {
+        throw new Error('Workspace not found');
+      }
 
       setWorkspace(workspaceData);
       setWorkspaceId(newWorkspaceId);
@@ -151,19 +154,124 @@ export function useWorkspace(): UseWorkspaceResult {
   };
 
   const refreshWorkspace = async () => {
-    await loadWorkspace();
+    if (!user?.id) return;
+    
+    try {
+      const currentWorkspaceId = await getCurrentUserWorkspace();
+      if (!currentWorkspaceId) {
+        setError('No workspace assigned');
+        return;
+      }
+
+      const { data: workspaceData, error: workspaceError } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('id', currentWorkspaceId)
+        .maybeSingle();
+
+      if (workspaceError) throw workspaceError;
+      if (!workspaceData) {
+        setError(`Workspace not found: ${currentWorkspaceId}`);
+        return;
+      }
+
+      setWorkspace(workspaceData);
+      setWorkspaceId(currentWorkspaceId);
+      setError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh workspace';
+      setError(errorMessage);
+      logService.log('error', 'Workspace refresh failed', { error: err });
+    }
   };
 
   useEffect(() => {
-    if (user?.id) {
-      loadWorkspace();
-    } else {
+    if (!user?.id) {
       setLoading(false);
       setWorkspace(null);
       setWorkspaceId(null);
       setError(null);
+      return;
     }
-  }, [user?.id]);
+
+    let mounted = true;
+    
+    const loadWorkspaceData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const currentWorkspaceId = await getCurrentUserWorkspace();
+        if (!mounted) return;
+        
+        if (!currentWorkspaceId) {
+          setError('No workspace assigned');
+          return;
+        }
+
+        // Get workspace details with better error handling
+        const { data: workspaceData, error: workspaceError } = await supabase
+          .from('workspaces')
+          .select('*')
+          .eq('id', currentWorkspaceId)
+          .maybeSingle();
+
+        if (!mounted) return;
+        
+        if (workspaceError) {
+          logService.log('error', 'Failed to query workspace', { 
+            error: workspaceError, 
+            workspaceId: currentWorkspaceId 
+          });
+          throw workspaceError;
+        }
+
+        if (!workspaceData) {
+          setError(`Workspace not found: ${currentWorkspaceId}`);
+          logService.log('error', 'Workspace not found in database', { 
+            workspaceId: currentWorkspaceId 
+          });
+          return;
+        }
+
+        setWorkspace(workspaceData);
+        setWorkspaceId(currentWorkspaceId);
+
+        // Initialize entitlements if needed - but don't block on it
+        if (workspaceData) {
+          // Do this async without blocking
+          Promise.resolve().then(async () => {
+            try {
+              await entitlementService.initializeDefaultEntitlements(currentWorkspaceId);
+              await entitlementService.syncWithSubscription(currentWorkspaceId);
+            } catch (entitlementError) {
+              // Log but don't fail the workspace load
+              logService.log('warn', 'Failed to sync entitlements', { 
+                error: entitlementError, 
+                workspaceId: currentWorkspaceId 
+              });
+            }
+          });
+        }
+
+      } catch (err) {
+        if (!mounted) return;
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load workspace';
+        setError(errorMessage);
+        logService.log('error', 'Workspace load failed', { error: err });
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadWorkspaceData();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]); // Only depend on user.id, nothing else
 
   return {
     workspace,

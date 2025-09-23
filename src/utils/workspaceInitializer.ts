@@ -12,14 +12,33 @@ export async function ensureUserHasWorkspace(): Promise<string | null> {
       const authStore = (window as any).__authStore;
       if (authStore?.user?.email === 'demo@example.com' ||
           authStore?.user?.id === '00000000-0000-0000-0000-000000000000') {
-        // Ensure demo user has workspace membership
-        await ensureDemoWorkspaceMembership();
         return '00000000-0000-0000-0000-000000000001';
       }
       return null;
     }
 
-    // Check if user already has workspace membership
+    // First check user_settings for default workspace
+    const { data: userSettings } = await supabase
+      .from('user_settings')
+      .select('workspace_default')
+      .eq('user_id', user.id)
+      .maybeSingle();
+      
+    if (userSettings?.workspace_default) {
+      // Verify user is still a member of this workspace
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .eq('workspace_id', userSettings.workspace_default)
+        .maybeSingle();
+        
+      if (membership) {
+        return userSettings.workspace_default;
+      }
+    }
+
+    // Check if user has any workspace membership
     const { data: existingMembership } = await supabase
       .from('workspace_members')
       .select('workspace_id')
@@ -27,6 +46,15 @@ export async function ensureUserHasWorkspace(): Promise<string | null> {
       .maybeSingle();
     
     if (existingMembership) {
+      // Update user settings to remember this workspace
+      await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          workspace_default: existingMembership.workspace_id
+        }, {
+          onConflict: 'user_id'
+        });
       return existingMembership.workspace_id;
     }
 
@@ -77,6 +105,16 @@ export async function ensureUserHasWorkspace(): Promise<string | null> {
         logService.log('error', 'Failed to create workspace membership', { error: membershipError });
       }
     }
+
+    // Update user settings
+    await supabase
+      .from('user_settings')
+      .upsert({
+        user_id: user.id,
+        workspace_default: workspaceId
+      }, {
+        onConflict: 'user_id'
+      });
 
     logService.log('info', 'User workspace ensured', { 
       userId: user.id, 

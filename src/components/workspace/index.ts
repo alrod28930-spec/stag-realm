@@ -7,3 +7,4 @@ export { PanelContent } from './PanelContent';
 export { WorkspaceSelector } from './WorkspaceSelector';
 export { WorkspaceStatusBar } from './WorkspaceStatusBar';
 export { WorkspaceMetrics } from './WorkspaceMetrics';
+export { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
