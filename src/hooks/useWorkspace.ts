@@ -45,14 +45,28 @@ export function useWorkspace(): UseWorkspaceResult {
         return;
       }
 
-      // Get workspace details
+      // Get workspace details with better error handling
       const { data: workspaceData, error: workspaceError } = await supabase
         .from('workspaces')
         .select('*')
         .eq('id', currentWorkspaceId)
-        .single();
+        .maybeSingle();
 
-      if (workspaceError) throw workspaceError;
+      if (workspaceError) {
+        logService.log('error', 'Failed to query workspace', { 
+          error: workspaceError, 
+          workspaceId: currentWorkspaceId 
+        });
+        throw workspaceError;
+      }
+
+      if (!workspaceData) {
+        setError(`Workspace not found: ${currentWorkspaceId}`);
+        logService.log('error', 'Workspace not found in database', { 
+          workspaceId: currentWorkspaceId 
+        });
+        return;
+      }
 
       setWorkspace(workspaceData);
       setWorkspaceId(currentWorkspaceId);
