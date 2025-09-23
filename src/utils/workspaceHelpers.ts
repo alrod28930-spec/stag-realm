@@ -5,7 +5,7 @@ import { logService } from '@/services/logging';
 export interface CreateWorkspaceOptions {
   name: string;
   owner_id: string;
-  wtype?: 'personal' | 'team' | 'enterprise';
+  wtype?: 'personal' | 'business' | 'team';
 }
 
 export interface WorkspaceMember {
@@ -192,7 +192,7 @@ export async function getUserWorkspaces(userId: string): Promise<any[]> {
  */
 export async function updateWorkspace(
   workspaceId: string, 
-  updates: { name?: string; wtype?: string }
+  updates: { name?: string; wtype?: 'personal' | 'business' | 'team' }
 ): Promise<void> {
   try {
     const { error } = await supabase

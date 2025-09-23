@@ -19,6 +19,7 @@ import {
   Activity
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
@@ -78,9 +79,10 @@ export default function PaperTrading() {
   });
   
   const { user } = useAuthStore();
+  const { workspaceId } = useWorkspace();
   
-  // Get workspace ID from user context  
-  const workspaceId = user?.organizationId || '00000000-0000-0000-0000-000000000001';
+  // Get workspace ID from proper workspace system  
+  const actualWorkspaceId = workspaceId || '00000000-0000-0000-0000-000000000001';
   const { toast } = useToast();
 
   useEffect(() => {

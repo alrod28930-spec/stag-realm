@@ -140,7 +140,14 @@ class EntitlementService {
         .eq('enabled', true);
 
       if (error) throw error;
-      return data || [];
+      
+      // Cast the source field to the correct type
+      return (data || []).map(item => ({
+        workspace_id: item.workspace_id,
+        feature_code: item.feature_code,
+        enabled: item.enabled,
+        source: item.source as 'subscription' | 'grant' | 'trial' | 'default'
+      }));
     } catch (error) {
       logService.log('error', 'Failed to get entitlements', { error, workspaceId });
       return [];

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 interface DividendData {
   symbol: string;
@@ -26,8 +27,9 @@ export const useDividendData = (initialSymbol?: string): UseDividendDataResult =
   
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const { workspaceId } = useWorkspace();
   
-  const workspaceId = user?.organizationId || '00000000-0000-0000-0000-000000000001';
+  const actualWorkspaceId = workspaceId || '00000000-0000-0000-0000-000000000001';
 
   const fetchDividendData = async (symbol: string) => {
     if (!symbol || !user?.id) return;
@@ -39,7 +41,7 @@ export const useDividendData = (initialSymbol?: string): UseDividendDataResult =
       const { data, error: fetchError } = await supabase.functions.invoke('get-dividends', {
         body: { 
           symbol: symbol.toUpperCase(),
-          workspace_id: workspaceId
+          workspace_id: actualWorkspaceId
         }
       });
 
@@ -76,7 +78,7 @@ export const useDividendData = (initialSymbol?: string): UseDividendDataResult =
     if (initialSymbol) {
       fetchDividendData(initialSymbol);
     }
-  }, [initialSymbol, user?.id, workspaceId]);
+  }, [initialSymbol, user?.id, actualWorkspaceId]);
 
   return {
     dividendData,

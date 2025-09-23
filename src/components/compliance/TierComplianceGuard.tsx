@@ -7,6 +7,7 @@ import { AlertTriangle, Shield, Scale } from 'lucide-react';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 interface TierComplianceGuardProps {
   children: React.ReactNode;
@@ -24,6 +25,9 @@ const TierComplianceGuard: React.FC<TierComplianceGuardProps> = ({
   
   const { subscriptionStatus } = useSubscriptionAccess();
   const { user } = useAuthStore();
+  const { workspaceId } = useWorkspace();
+  
+  const actualWorkspaceId = workspaceId || '00000000-0000-0000-0000-000000000001';
   const [showComplianceModal, setShowComplianceModal] = useState(false);
   const [acceptedRisk, setAcceptedRisk] = useState(false);
   const [acceptedKYC, setAcceptedKYC] = useState(false);
@@ -70,7 +74,7 @@ const TierComplianceGuard: React.FC<TierComplianceGuardProps> = ({
         .from('compliance_acknowledgments')
         .insert({
           user_id: user.id,
-          workspace_id: user.organizationId,
+          workspace_id: actualWorkspaceId,
           document_type: 'live_trading_risk',
           version: '1.0',
         });

@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   Calculator, 
@@ -76,11 +77,12 @@ export const DividendCalculator: React.FC<DividendCalculatorProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { toast } = useToast();
   const { user } = useAuthStore();
+  const { toast } = useToast();
   
-  // Get workspace ID from user context  
-  const workspaceId = user?.organizationId || '00000000-0000-0000-0000-000000000001';
+  // Get workspace ID from proper workspace system
+  const { workspaceId } = useWorkspace();
+  const actualWorkspaceId = workspaceId || '00000000-0000-0000-0000-000000000001';
   const userId = user?.id || '00000000-0000-0000-0000-000000000000';
 
   // Fetch dividend data when symbol changes

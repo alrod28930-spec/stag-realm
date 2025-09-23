@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LockedCard } from '@/components/subscription/LockedCard';
 import { WorkspaceLayout } from '@/components/workspace/WorkspaceLayout';
+import { WorkspaceSelector } from '@/components/workspace/WorkspaceSelector';
+import { WorkspaceStatusBar } from '@/components/workspace/WorkspaceStatusBar';
+import { WorkspaceMetrics } from '@/components/workspace/WorkspaceMetrics';
 import { 
   Maximize, 
   Minimize, 
@@ -22,7 +26,8 @@ import type { WorkspaceLayoutConfig, PanelConfig } from '@/types/workspace';
 
 const Workspace: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
-  const { hasFeature, loading: entitlementsLoading } = useEntitlements(user?.organizationId);
+  const { workspaceId } = useWorkspace();
+  const { hasFeature, loading: entitlementsLoading } = useEntitlements(workspaceId);
   const { toast } = useToast();
   
   const [isBubbleMode, setIsBubbleMode] = useState(false);
@@ -42,11 +47,11 @@ const Workspace: React.FC = () => {
   const [savedLayouts, setSavedLayouts] = useState<WorkspaceLayoutConfig[]>([]);
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
 
-  const hasEliteAccess = hasFeature('WORKSPACE_MULTI_PANEL');
+  const hasEliteAccess = hasFeature('workspace_multi_panel');
 
   // Load saved layouts
   const loadLayouts = useCallback(async () => {
-    if (!user?.id || !user?.organizationId) return;
+    if (!user?.id || !workspaceId) return;
     
     setIsLoadingLayouts(true);
     try {
@@ -54,7 +59,7 @@ const Workspace: React.FC = () => {
         .from('ui_layouts')
         .select('*')
         .eq('user_id', user.id)
-        .eq('workspace_id', user.organizationId)
+        .eq('workspace_id', workspaceId)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -84,11 +89,11 @@ const Workspace: React.FC = () => {
     } finally {
       setIsLoadingLayouts(false);
     }
-  }, [user?.id, user?.organizationId, toast]);
+  }, [user?.id, workspaceId, toast]);
 
   // Save layout
   const saveLayout = useCallback(async (layout: WorkspaceLayoutConfig, isAutoSave = false) => {
-    if (!user?.id || !user?.organizationId) return;
+    if (!user?.id || !workspaceId) return;
 
     try {
       const layoutData = {
@@ -102,7 +107,7 @@ const Workspace: React.FC = () => {
         .upsert({
           id: layout.id === 'default' ? undefined : layout.id,
           user_id: user.id,
-          workspace_id: user.organizationId,
+          workspace_id: workspaceId,
           name: layout.name,
           layout: layoutData as any
         }, {
@@ -126,7 +131,7 @@ const Workspace: React.FC = () => {
         variant: "destructive"
       });
     }
-  }, [user?.id, user?.organizationId, loadLayouts, toast]);
+  }, [user?.id, workspaceId, loadLayouts, toast]);
 
   // Auto-save to "Last Used"
   useEffect(() => {
@@ -144,10 +149,10 @@ const Workspace: React.FC = () => {
 
   // Load layouts on mount
   useEffect(() => {
-    if (hasEliteAccess && user?.id) {
+    if (hasEliteAccess && user?.id && workspaceId) {
       loadLayouts();
     }
-  }, [hasEliteAccess, user?.id, loadLayouts]);
+  }, [hasEliteAccess, user?.id, workspaceId, loadLayouts]);
 
   // Keyboard shortcuts
   const shortcuts = [
@@ -222,7 +227,7 @@ const Workspace: React.FC = () => {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <LockedCard
-          feature="WORKSPACE_MULTI_PANEL"
+          feature="workspace_multi_panel"
           title="Elite Workspace"
           description="Multi-panel drag-and-drop workspace with bubble mode and advanced layouting capabilities."
         />
@@ -259,8 +264,13 @@ const Workspace: React.FC = () => {
     <div className="flex h-full bg-background">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
-        <div className="border-b border-border bg-card/30 p-4">
+        {/* Top Bar with Workspace Status */}
+        <WorkspaceStatusBar />
+        
+        <div className="border-b border-border bg-card/30 p-4 space-y-4">
+          {/* Workspace Metrics */}
+          <WorkspaceMetrics />
+          
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
