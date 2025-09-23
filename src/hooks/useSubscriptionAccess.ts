@@ -67,11 +67,26 @@ export function useSubscriptionAccess() {
         // Check if user is the SINGLE demo account (for landing page display only)
         const isDemo = isDemoMode();
         
+        // Elite tier testing account - full access with real data
+        const isEliteTestAccount = user?.email === 'alrod28930@gmail.com';
+        
         if (isDemo) {
           setSubscriptionStatus({
             tier: 'elite',
             isActive: true,
             isDemo: true,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
+
+        // Elite tier testing account gets full access as regular account
+        if (isEliteTestAccount) {
+          setSubscriptionStatus({
+            tier: 'elite',
+            isActive: true,
+            isDemo: false,
             loading: false,
             error: null,
           });

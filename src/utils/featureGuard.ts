@@ -11,6 +11,12 @@ export async function checkFeatureAccess(workspaceId: string, feature: string): 
       return true;
     }
 
+    // Elite tier testing account gets access to all features
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email === 'alrod28930@gmail.com') {
+      return true;
+    }
+
 
     const { data, error } = await supabase.rpc('has_entitlement', {
       p_workspace: workspaceId,

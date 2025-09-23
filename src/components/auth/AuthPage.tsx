@@ -247,6 +247,18 @@ export function AuthPage() {
                     >
                       Demo Account
                      </Button>
+                     <Button 
+                       type="button"
+                       variant="outline"
+                       className="w-full text-xs"
+                       onClick={() => {
+                         setEmail('alrod28930@gmail.com');
+                         setPassword('testing123');
+                       }}
+                       disabled={isLoading}
+                     >
+                       Elite Test Account
+                     </Button>
                    </div>
                   
                   <div className="text-center space-y-2">
