@@ -141,7 +141,7 @@ class EntitlementService {
 
       if (error) throw error;
       
-      // Cast the source field to the correct type
+      // Map and cast the source field to the correct type
       return (data || []).map(item => ({
         workspace_id: item.workspace_id,
         feature_code: item.feature_code,

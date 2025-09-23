@@ -195,9 +195,14 @@ export async function updateWorkspace(
   updates: { name?: string; wtype?: 'personal' | 'business' | 'team' }
 ): Promise<void> {
   try {
+    // Ensure wtype is properly typed for database
+    const validatedUpdates: { name?: string; wtype?: 'personal' | 'business' | 'team' } = {
+      ...updates
+    };
+    
     const { error } = await supabase
       .from('workspaces')
-      .update(updates)
+      .update(validatedUpdates)
       .eq('id', workspaceId);
 
     if (error) throw error;
