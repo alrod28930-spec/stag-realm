@@ -15,6 +15,8 @@ export interface WorkspaceInfo {
   updated_at: string;
 }
 
+const DEMO_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
+
 export interface UseWorkspaceResult {
   workspace: WorkspaceInfo | null;
   workspaceId: string | null;
@@ -61,10 +63,24 @@ export function useWorkspace(): UseWorkspaceResult {
       }
 
       if (!workspaceData) {
-        setError(`Workspace not found: ${currentWorkspaceId}`);
-        logService.log('error', 'Workspace not found in database', { 
-          workspaceId: currentWorkspaceId 
-        });
+        if (currentWorkspaceId === DEMO_WORKSPACE_ID) {
+          const fallback: WorkspaceInfo = {
+            id: DEMO_WORKSPACE_ID,
+            name: 'Demo Workspace',
+            owner_id: null,
+            wtype: 'personal',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setWorkspace(fallback);
+          setWorkspaceId(currentWorkspaceId);
+          setError(null);
+        } else {
+          setError(`Workspace not found: ${currentWorkspaceId}`);
+          logService.log('error', 'Workspace not found in database', { 
+            workspaceId: currentWorkspaceId 
+          });
+        }
         return;
       }
 
@@ -169,9 +185,22 @@ export function useWorkspace(): UseWorkspaceResult {
         .eq('id', currentWorkspaceId)
         .maybeSingle();
 
-      if (workspaceError) throw workspaceError;
       if (!workspaceData) {
-        setError(`Workspace not found: ${currentWorkspaceId}`);
+        if (currentWorkspaceId === DEMO_WORKSPACE_ID) {
+          const fallback: WorkspaceInfo = {
+            id: DEMO_WORKSPACE_ID,
+            name: 'Demo Workspace',
+            owner_id: null,
+            wtype: 'personal',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setWorkspace(fallback);
+          setWorkspaceId(currentWorkspaceId);
+          setError(null);
+        } else {
+          setError(`Workspace not found: ${currentWorkspaceId}`);
+        }
         return;
       }
 
@@ -227,10 +256,24 @@ export function useWorkspace(): UseWorkspaceResult {
         }
 
         if (!workspaceData) {
-          setError(`Workspace not found: ${currentWorkspaceId}`);
-          logService.log('error', 'Workspace not found in database', { 
-            workspaceId: currentWorkspaceId 
-          });
+          if (currentWorkspaceId === DEMO_WORKSPACE_ID) {
+            const fallback: WorkspaceInfo = {
+              id: DEMO_WORKSPACE_ID,
+              name: 'Demo Workspace',
+              owner_id: null,
+              wtype: 'personal',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+            setWorkspace(fallback);
+            setWorkspaceId(currentWorkspaceId);
+            setError(null);
+          } else {
+            setError(`Workspace not found: ${currentWorkspaceId}`);
+            logService.log('error', 'Workspace not found in database', { 
+              workspaceId: currentWorkspaceId 
+            });
+          }
           return;
         }
 
