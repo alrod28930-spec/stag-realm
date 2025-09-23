@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useEntitlements } from '@/hooks/useEntitlements';
@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LockedCard } from '@/components/subscription/LockedCard';
 import { WorkspaceLayout } from '@/components/workspace/WorkspaceLayout';
-import { WorkspaceSelector } from '@/components/workspace/WorkspaceSelector';
 import { WorkspaceStatusBar } from '@/components/workspace/WorkspaceStatusBar';
 import { WorkspaceMetrics } from '@/components/workspace/WorkspaceMetrics';
 import { WorkspaceErrorBoundary } from '@/components/workspace/WorkspaceErrorBoundary';
@@ -18,12 +17,11 @@ import {
   Maximize, 
   Minimize, 
   Grid3X3, 
-  Monitor,
-  Sparkles,
-  Crown
+  Crown,
+  Sparkles
 } from 'lucide-react';
 
-import type { WorkspaceLayoutConfig, PanelConfig } from '@/types/workspace';
+import type { WorkspaceLayoutConfig } from '@/types/workspace';
 
 const Workspace: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
@@ -44,45 +42,11 @@ const Workspace: React.FC = () => {
       { id: 'panel-4', type: 'empty' }
     ]
   });
-  
-  const [savedLayouts, setSavedLayouts] = useState<WorkspaceLayoutConfig[]>([]);
-  const [isLoadingLayouts, setIsLoadingLayouts] = useState(false);
 
   const hasEliteAccess = hasFeature('workspace_multi_panel');
 
-  // Show loading state
-  if (workspaceLoading || entitlementsLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading workspace...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (workspaceError) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <Card className="max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Workspace Error</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground text-sm">{workspaceError}</p>
-            <Button onClick={() => window.location.reload()}>
-              Reload Page
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Handle preset layouts - simplified
-  const setPresetLayout = (cols: number, rows: number) => {
+  // Handle layout preset changes
+  const setPresetLayout = useCallback((cols: number, rows: number) => {
     const totalPanels = cols * rows;
     const panels = Array.from({ length: totalPanels }, (_, i) => ({
       id: `panel-${i + 1}`,
@@ -95,9 +59,9 @@ const Workspace: React.FC = () => {
       gridRows: rows,
       panels
     }));
-  };
+  }, []);
 
-  // Keyboard shortcuts - simplified
+  // Keyboard shortcuts
   const shortcuts = [
     {
       key: 'b',
@@ -119,19 +83,38 @@ const Workspace: React.FC = () => {
 
   useKeyboardShortcuts(shortcuts, { enabled: hasEliteAccess });
 
-  // Loading state - simplified check
-  if (entitlementsLoading) {
+  // Loading states
+  if (workspaceLoading || entitlementsLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading workspace permissions...</p>
+          <p className="text-muted-foreground">Loading workspace...</p>
         </div>
       </div>
     );
   }
 
-  // Elite access required
+  // Error state
+  if (workspaceError) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Card className="max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Workspace Error</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground text-sm">{workspaceError}</p>
+            <Button onClick={() => window.location.reload()}>
+              Reload Page
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Feature access check
   if (!hasEliteAccess) {
     return (
       <WorkspaceErrorBoundary>
@@ -146,14 +129,13 @@ const Workspace: React.FC = () => {
     );
   }
 
-  // Bubble Mode - Full screen workspace
+  // Bubble Mode (Full screen)
   if (isBubbleMode) {
     return (
       <WorkspaceErrorBoundary>
         <div className="fixed inset-0 z-50 bg-background">
-          {/* Exit Bubble Mode */}
           <Button
-            variant="outline" 
+            variant="outline"
             size="sm"
             onClick={() => setIsBubbleMode(false)}
             className="absolute top-4 right-4 z-10 gap-2"
@@ -176,13 +158,12 @@ const Workspace: React.FC = () => {
   return (
     <WorkspaceErrorBoundary>
       <div className="flex h-full bg-background">
-        {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          {/* Top Bar with Workspace Status */}
+          {/* Status Bar */}
           <WorkspaceStatusBar />
           
+          {/* Header */}
           <div className="border-b border-border bg-card/30 p-4 space-y-4">
-            {/* Workspace Metrics */}
             <WorkspaceMetrics />
             
             <div className="flex items-center justify-between">
@@ -246,7 +227,7 @@ const Workspace: React.FC = () => {
             />
           </div>
 
-          {/* Compliance Footer */}
+          {/* Footer */}
           <div className="border-t border-border bg-muted/50 px-4 py-2 text-center text-xs text-muted-foreground">
             Educational software. StagAlgo does not hold funds.
           </div>

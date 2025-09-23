@@ -75,7 +75,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     });
   }, [layout, onLayoutChange]);
 
-  const gridTemplate = `repeat(${layout.gridCols}, 1fr) / repeat(${layout.gridRows}, 1fr)`;
+  const gridTemplate = `repeat(${layout.gridRows}, 1fr) / repeat(${layout.gridCols}, 1fr)`;
 
   return (
     <DndProvider backend={HTML5Backend}>

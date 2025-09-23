@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -55,32 +54,11 @@ export const AVAILABLE_TABS = [
     category: 'analysis'
   },
   {
-    id: 'oracle',
-    title: 'Oracle',
+    id: 'intelligence',
+    title: 'Intelligence',
     icon: Eye,
-    description: 'Market signals and predictions',
+    description: 'Market intelligence dashboard',
     category: 'analysis'
-  },
-  {
-    id: 'recorder',
-    title: 'Recorder',
-    icon: Play,
-    description: 'System events and audit trail',
-    category: 'monitoring'
-  },
-  {
-    id: 'news',
-    title: 'News',
-    icon: Newspaper,
-    description: 'Market news and analysis',
-    category: 'analysis'
-  },
-  {
-    id: 'watchlist',
-    title: 'Watchlist',
-    icon: Star,
-    description: 'Tracked symbols and alerts',
-    category: 'trading'
   },
   {
     id: 'cradle',
@@ -100,12 +78,6 @@ export const AVAILABLE_TABS = [
 
 // Quick external URL presets
 const URL_PRESETS = [
-  {
-    id: 'alpaca',
-    title: 'Alpaca Dashboard',
-    url: 'https://app.alpaca.markets/',
-    icon: ExternalLink
-  },
   {
     id: 'tradingview',
     title: 'TradingView',
@@ -129,12 +101,6 @@ const URL_PRESETS = [
 export const WorkspaceSidebar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [customUrl, setCustomUrl] = useState('');
-  const [recentTabs] = useState([
-    'charts',
-    'trading-desk', 
-    'portfolio',
-    'analyst'
-  ]);
 
   // Filter tabs based on search
   const filteredTabs = AVAILABLE_TABS.filter(tab =>
@@ -159,15 +125,6 @@ export const WorkspaceSidebar: React.FC = () => {
       return;
     }
 
-    // Create a draggable custom URL
-    const customTab = {
-      id: `custom-${Date.now()}`,
-      title: new URL(customUrl).hostname,
-      url: customUrl,
-      icon: ExternalLink,
-      isCustom: true
-    };
-
     setCustomUrl('');
   };
 
@@ -175,7 +132,6 @@ export const WorkspaceSidebar: React.FC = () => {
     switch (category) {
       case 'trading': return <BarChart3 className="w-4 h-4" />;
       case 'analysis': return <Brain className="w-4 h-4" />;
-      case 'monitoring': return <Play className="w-4 h-4" />;
       case 'external': return <ExternalLink className="w-4 h-4" />;
       default: return <Palette className="w-4 h-4" />;
     }
@@ -211,26 +167,6 @@ export const WorkspaceSidebar: React.FC = () => {
           <TabsContent value="tabs" className="mt-4 h-full">
             <ScrollArea className="h-[calc(100vh-280px)]">
               <div className="space-y-6">
-                {/* Recent Tabs */}
-                {recentTabs.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm font-medium text-muted-foreground">Recent</span>
-                    </div>
-                    <div className="space-y-2">
-                      {recentTabs.map(tabId => {
-                        const tab = AVAILABLE_TABS.find(t => t.id === tabId);
-                        if (!tab) return null;
-                        return (
-                          <DraggableTab key={tab.id} tab={tab} isRecent />
-                        );
-                      })}
-                    </div>
-                    <Separator className="mt-4" />
-                  </div>
-                )}
-
                 {/* Grouped Tabs */}
                 {Object.entries(groupedTabs).map(([category, tabs]) => (
                   <div key={category}>

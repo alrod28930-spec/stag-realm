@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDrop } from 'react-dnd';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -8,7 +8,6 @@ import {
   X, 
   ExternalLink, 
   Maximize2, 
-  Settings, 
   AlertTriangle,
   Monitor,
   Palette 
@@ -92,7 +91,7 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
   };
 
   // Clear drag over state when not hovering
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOver) {
       onDragOver(false);
     }
