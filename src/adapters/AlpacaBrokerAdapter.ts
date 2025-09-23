@@ -1,18 +1,42 @@
 import { BrokerAdapter, Position, PortfolioSummary, TradeOrder, TradeResult } from './BrokerAdapter';
 import { logService } from '@/services/logging';
+import { supabase } from '@/integrations/supabase/client';
 
 export class AlpacaBrokerAdapter extends BrokerAdapter {
   private alpacaApiKey?: string;
   private alpacaSecretKey?: string;
   private paperBaseUrl = 'https://paper-api.alpaca.markets';
+  private liveBaseUrl = 'https://api.alpaca.markets';
+  private isLiveTrading = false;
 
-  async connect(apiKey: string, secretKey: string): Promise<boolean> {
-    this.alpacaApiKey = apiKey;
-    this.alpacaSecretKey = secretKey;
+  async connect(apiKey?: string, secretKey?: string): Promise<boolean> {
+    // If no keys provided, try to get from Supabase secrets
+    if (!apiKey || !secretKey) {
+      try {
+        const { data: keyData, error: keyError } = await supabase.functions.invoke('get-alpaca-credentials');
+        if (!keyError && keyData) {
+          this.alpacaApiKey = keyData.apiKey;
+          this.alpacaSecretKey = keyData.secretKey;
+          this.isLiveTrading = keyData.isLive || false;
+        } else {
+          logService.log('warn', 'Could not retrieve stored credentials, using provided keys');
+          this.alpacaApiKey = apiKey;
+          this.alpacaSecretKey = secretKey;
+        }
+      } catch (error) {
+        logService.log('warn', 'Failed to get stored credentials', { error });
+        this.alpacaApiKey = apiKey;
+        this.alpacaSecretKey = secretKey;
+      }
+    } else {
+      this.alpacaApiKey = apiKey;
+      this.alpacaSecretKey = secretKey;
+    }
     
     try {
       // Test connection by fetching account info
-      const response = await fetch(`${this.paperBaseUrl}/v2/account`, {
+      const baseUrl = this.isLiveTrading ? this.liveBaseUrl : this.paperBaseUrl;
+      const response = await fetch(`${baseUrl}/v2/account`, {
         headers: {
           'APCA-API-KEY-ID': this.alpacaApiKey,
           'APCA-API-SECRET-KEY': this.alpacaSecretKey,
@@ -48,8 +72,10 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
     }
 
     try {
+      const baseUrl = this.isLiveTrading ? this.liveBaseUrl : this.paperBaseUrl;
+      
       // Fetch account info
-      const accountResponse = await fetch(`${this.paperBaseUrl}/v2/account`, {
+      const accountResponse = await fetch(`${baseUrl}/v2/account`, {
         headers: {
           'APCA-API-KEY-ID': this.alpacaApiKey,
           'APCA-API-SECRET-KEY': this.alpacaSecretKey,
@@ -63,7 +89,7 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
       const account = await accountResponse.json();
 
       // Fetch positions
-      const positionsResponse = await fetch(`${this.paperBaseUrl}/v2/positions`, {
+      const positionsResponse = await fetch(`${baseUrl}/v2/positions`, {
         headers: {
           'APCA-API-KEY-ID': this.alpacaApiKey,
           'APCA-API-SECRET-KEY': this.alpacaSecretKey,
@@ -120,6 +146,8 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
     }
 
     try {
+      const baseUrl = this.isLiveTrading ? this.liveBaseUrl : this.paperBaseUrl;
+      
       const alpacaOrder = {
         symbol: order.symbol,
         qty: order.quantity.toString(),
@@ -130,7 +158,7 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
         ...(order.stopPrice && { stop_price: order.stopPrice.toString() })
       };
 
-      const response = await fetch(`${this.paperBaseUrl}/v2/orders`, {
+      const response = await fetch(`${baseUrl}/v2/orders`, {
         method: 'POST',
         headers: {
           'APCA-API-KEY-ID': this.alpacaApiKey,
@@ -170,7 +198,8 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
       throw new Error('Not connected to Alpaca');
     }
 
-    const response = await fetch(`${this.paperBaseUrl}/v2/account`, {
+    const baseUrl = this.isLiveTrading ? this.liveBaseUrl : this.paperBaseUrl;
+    const response = await fetch(`${baseUrl}/v2/account`, {
       headers: {
         'APCA-API-KEY-ID': this.alpacaApiKey,
         'APCA-API-SECRET-KEY': this.alpacaSecretKey,

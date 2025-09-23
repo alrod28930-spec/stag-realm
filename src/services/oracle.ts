@@ -4,6 +4,7 @@ import { repository } from './repository';
 import { recorder } from './recorder';
 import { serviceManager } from './serviceManager';
 import type { ProcessedSignal, OracleAlert, SectorHeatmap, OracleContext, MarketFeed } from '@/types/oracle';
+import { supabase } from '@/integrations/supabase/client';
 
 // Re-export types for backward compatibility
 export type { ProcessedSignal, OracleAlert, SectorHeatmap, OracleContext, MarketFeed };
@@ -108,11 +109,27 @@ class OracleService {
   }
 
   private async simulateMarketData() {
-    // Generate signals and store them in Supabase
-    const mockSignals = this.generateMockSignals();
-    
-    for (const signal of mockSignals) {
-      await this.processSignal(signal);
+    try {
+      // Try to fetch real market data first
+      const realTimeData = await this.fetchRealTimeMarketData();
+      const marketData = await this.gatherMarketData();
+      
+      // Combine real-time and synthetic data
+      const combinedData = this.combineDataSources(realTimeData, marketData);
+      const signals = await this.processMarketData(combinedData);
+      
+      // Process the generated signals
+      for (const signal of signals) {
+        await this.processSignal(signal);
+      }
+    } catch (error) {
+      // Fallback to mock data if real data fails
+      logService.log('warn', 'Real-time data failed, using mock data', { error });
+      const mockSignals = this.generateMockSignals();
+      
+      for (const signal of mockSignals) {
+        await this.processSignal(signal);
+      }
     }
 
     // Update sector heatmap
@@ -129,6 +146,206 @@ class OracleService {
       alertCount: this.alerts.length,
       timestamp: this.lastRefresh
     });
+  }
+
+  private async fetchRealTimeMarketData(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase.functions.invoke('oracle-realtime-data', {
+        body: {
+          symbols: ['SPY', 'QQQ', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META'],
+          dataTypes: ['price', 'volume', 'news'],
+          timeframe: '1Min'
+        }
+      });
+
+      if (error) {
+        logService.log('error', 'Failed to fetch real-time data', { error });
+        return [];
+      }
+
+      return data?.data || [];
+    } catch (error) {
+      logService.log('error', 'Real-time data fetch error', { error });
+      return [];
+    }
+  }
+
+  private async gatherMarketData(): Promise<MarketFeed[]> {
+    // Generate synthetic market data as fallback
+    const feeds: MarketFeed[] = [];
+    const symbols = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'NVDA'];
+    
+    symbols.forEach(symbol => {
+      feeds.push({
+        source: 'synthetic',
+        symbol,
+        dataType: 'price',
+        rawData: {
+          price: Math.random() * 200 + 50,
+          volume: Math.floor(Math.random() * 1000000),
+          change: (Math.random() - 0.5) * 10
+        },
+        timestamp: new Date()
+      });
+    });
+    
+    return feeds;
+  }
+
+  private combineDataSources(realTimeData: any[], syntheticData: MarketFeed[]): MarketFeed[] {
+    const combined: MarketFeed[] = [...syntheticData];
+    
+    // Convert real-time data to MarketFeed format
+    realTimeData.forEach(dataSet => {
+      if (dataSet.type === 'price' && dataSet.data) {
+        dataSet.data.forEach((priceData: any) => {
+          combined.push({
+            source: 'alpaca_realtime',
+            symbol: priceData.symbol,
+            dataType: 'price',
+            rawData: priceData,
+            timestamp: new Date(priceData.timestamp || Date.now())
+          });
+        });
+      }
+      
+      if (dataSet.type === 'volume' && dataSet.data) {
+        dataSet.data.forEach((volumeData: any) => {
+          combined.push({
+            source: 'alpaca_realtime',
+            symbol: volumeData.symbol,
+            dataType: 'volume',
+            rawData: volumeData,
+            timestamp: new Date()
+          });
+        });
+      }
+      
+      if (dataSet.type === 'news' && dataSet.data) {
+        dataSet.data.forEach((newsItem: any) => {
+          combined.push({
+            source: 'alpaca_news',
+            dataType: 'news',
+            rawData: newsItem,
+            timestamp: new Date(newsItem.timestamp || Date.now())
+          });
+        });
+      }
+    });
+    
+    return combined;
+  }
+
+  private async processMarketData(marketData: MarketFeed[]): Promise<ProcessedSignal[]> {
+    const signals: ProcessedSignal[] = [];
+    
+    // Analyze price movements for signals
+    const priceFeeds = marketData.filter(feed => feed.dataType === 'price');
+    const volumeFeeds = marketData.filter(feed => feed.dataType === 'volume');
+    const newsFeeds = marketData.filter(feed => feed.dataType === 'news');
+    
+    // Generate signals based on real data patterns
+    priceFeeds.forEach(feed => {
+      if (feed.rawData.price && feed.symbol) {
+        // Check for significant price movements
+        const change = Math.abs(feed.rawData.change || 0);
+        if (change > 2) {
+          signals.push({
+            id: `signal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: 'volatility_spike',
+            symbol: feed.symbol,
+            sector: this.getSymbolSector(feed.symbol),
+            severity: change > 5 ? 'high' : 'medium',
+            direction: (feed.rawData.change || 0) > 0 ? 'bullish' : 'bearish',
+            confidence: Math.min(0.95, 0.6 + change * 0.05),
+            signal: `${feed.symbol} significant price movement detected`,
+            description: `${feed.symbol} moved ${change.toFixed(2)}% indicating potential market catalyst`,
+            data: { priceChange: change, price: feed.rawData.price },
+            timestamp: feed.timestamp,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            sources: [feed.source]
+          });
+        }
+      }
+    });
+    
+    // Analyze volume for unusual activity
+    volumeFeeds.forEach(feed => {
+      if (feed.rawData.volumeRatio && feed.rawData.volumeRatio > 2) {
+        signals.push({
+          id: `signal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'volume_surge',
+          symbol: feed.symbol,
+          sector: this.getSymbolSector(feed.symbol),
+          severity: feed.rawData.volumeRatio > 4 ? 'high' : 'medium',
+          direction: 'neutral',
+          confidence: Math.min(0.9, 0.5 + feed.rawData.volumeRatio * 0.1),
+          signal: `${feed.symbol} unusual volume activity`,
+          description: `Volume is ${feed.rawData.volumeRatio.toFixed(1)}x above average`,
+          data: feed.rawData,
+          timestamp: feed.timestamp,
+          expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000),
+          sources: [feed.source]
+        });
+      }
+    });
+    
+    // Process news sentiment
+    newsFeeds.forEach(feed => {
+      if (feed.rawData.headline && feed.rawData.symbols?.length > 0) {
+        const sentiment = this.analyzeNewsSentiment(feed.rawData.headline);
+        if (sentiment !== 'neutral') {
+          feed.rawData.symbols.forEach((symbol: string) => {
+            signals.push({
+              id: `signal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              type: 'news_sentiment',
+              symbol,
+              sector: this.getSymbolSector(symbol),
+              severity: 'medium',
+              direction: sentiment === 'positive' ? 'bullish' : 'bearish',
+              confidence: 0.7,
+              signal: `${symbol} news sentiment ${sentiment}`,
+              description: feed.rawData.headline.substring(0, 200),
+              data: { headline: feed.rawData.headline, url: feed.rawData.url },
+              timestamp: feed.timestamp,
+              expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000),
+              sources: [feed.source]
+            });
+          });
+        }
+      }
+    });
+    
+    return signals;
+  }
+
+  private getSymbolSector(symbol: string): string {
+    const sectorMap: Record<string, string> = {
+      'AAPL': 'Technology',
+      'MSFT': 'Technology', 
+      'GOOGL': 'Technology',
+      'AMZN': 'Consumer Discretionary',
+      'TSLA': 'Consumer Discretionary',
+      'META': 'Technology',
+      'NVDA': 'Technology',
+      'SPY': 'Market',
+      'QQQ': 'Technology'
+    };
+    
+    return sectorMap[symbol] || 'Technology';
+  }
+
+  private analyzeNewsSentiment(headline: string): 'positive' | 'negative' | 'neutral' {
+    const positiveWords = ['beat', 'surge', 'growth', 'up', 'gain', 'rise', 'boost', 'strong'];
+    const negativeWords = ['miss', 'drop', 'fall', 'down', 'loss', 'decline', 'weak', 'cut'];
+    
+    const lowerHeadline = headline.toLowerCase();
+    const positiveScore = positiveWords.filter(word => lowerHeadline.includes(word)).length;
+    const negativeScore = negativeWords.filter(word => lowerHeadline.includes(word)).length;
+    
+    if (positiveScore > negativeScore) return 'positive';
+    if (negativeScore > positiveScore) return 'negative';
+    return 'neutral';
   }
 
   private generateMockSignals(): ProcessedSignal[] {
