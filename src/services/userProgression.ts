@@ -265,6 +265,21 @@ export class UserProgressionSystem {
     this.updateFocusAreas(profile);
   }
   
+  private recordLessonCompletion(userId: string, lesson: any): void {
+    const profile = this.userProfiles.get(userId);
+    if (!profile) return;
+    
+    // Record the lesson concept as learned
+    if (lesson.concept) {
+      this.recordConceptLearning(userId, lesson.concept);
+    }
+    
+    // Increase learning velocity for completing lessons
+    profile.learningVelocity = Math.min(1.0, profile.learningVelocity + 0.05);
+    
+    logService.log('debug', 'Lesson completion recorded', { userId, lessonId: lesson.id });
+  }
+  
   private adaptRecommendations(profile: UserLearningProfile, trade: any): void {
     // Adapt position sizing recommendations
     if (profile.decisionPatterns.positionSizing.tendency === 'over') {
