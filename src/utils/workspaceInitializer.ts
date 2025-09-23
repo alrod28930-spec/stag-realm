@@ -6,15 +6,22 @@ export async function ensureUserHasWorkspace(): Promise<string | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Handle demo account specially - never query database
-    if (!user || user.id === '00000000-0000-0000-0000-000000000000') {
-      // Check if we have a demo user from the auth store
-      const authStore = (window as any).__authStore;
-      if (authStore?.user?.email === 'demo@example.com' ||
-          authStore?.user?.id === '00000000-0000-0000-0000-000000000000') {
-        return '00000000-0000-0000-0000-000000000001';
-      }
+    // Handle demo account specially - check auth store first for demo users
+    const authStore = (window as any).__authStore;
+    if (authStore?.user?.email === 'demo@example.com' ||
+        authStore?.user?.id === '00000000-0000-0000-0000-000000000000') {
+      return '00000000-0000-0000-0000-000000000001';
+    }
+    
+    // If no authenticated user, return null (not demo)
+    if (!user) {
+      logService.log('warn', 'No authenticated user found in ensureUserHasWorkspace');
       return null;
+    }
+    
+    // Explicitly check for demo user ID to prevent confusion
+    if (user.id === '00000000-0000-0000-0000-000000000000') {
+      return '00000000-0000-0000-0000-000000000001';
     }
 
     // First check user_settings for default workspace
