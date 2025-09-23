@@ -1,56 +1,9 @@
 // Authentication and Workspace Helper Functions
 import { supabase } from '@/integrations/supabase/client';
+import { ensureUserHasWorkspace } from './workspaceInitializer';
 
 export async function getCurrentUserWorkspace(): Promise<string | null> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    // Handle demo account specially - never query database
-    if (!user || user.id === '00000000-0000-0000-0000-000000000000') {
-      // Check if we have a demo user from the auth store
-      const authStore = (window as any).__authStore;
-      if (authStore?.user?.email === 'demo@example.com' ||
-          authStore?.user?.id === '00000000-0000-0000-0000-000000000000') {
-        return '00000000-0000-0000-0000-000000000001'; // Default workspace for demo account
-      }
-      return null;
-    }
-
-    // Get user's workspace
-    const { data: workspace } = await supabase
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    if (!workspace) {
-      // Create default workspace for user if none exists
-      const { data: newWorkspace } = await supabase
-        .from('workspaces')
-        .insert({
-          name: `${user.email}'s Workspace`,
-          owner_id: user.id,
-          wtype: 'personal'
-        })
-        .select()
-        .single();
-        
-      if (newWorkspace) {
-        await supabase.from('workspace_members').insert({
-          workspace_id: newWorkspace.id,
-          user_id: user.id,
-          role: 'owner'
-        });
-        return newWorkspace.id;
-      }
-      return null;
-    }
-    
-    return workspace.workspace_id;
-  } catch (error) {
-    console.warn('Failed to get user workspace:', error);
-    return null;
-  }
+  return await ensureUserHasWorkspace();
 }
 
 export async function getCurrentUser() {

@@ -40,9 +40,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               isLoading: false
             });
             
-            // Initialize demo mode
+            // Initialize demo mode and workspace
             const { initializeDemoMode } = await import('@/utils/demoMode');
+            const { initializeUserWorkspace } = await import('@/utils/workspaceInitializer');
             initializeDemoMode();
+            await initializeUserWorkspace();
             return;
           }
 
@@ -66,6 +68,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
               set({ user: minimalUser, isAuthenticated: true, isLoading: false });
               eventBus.emit('user-login' as any, { email: minimalUser.email, timestamp: new Date() });
+
+              // Initialize workspace for user
+              const initializeWorkspaceAsync = async () => {
+                const { initializeUserWorkspace } = await import('@/utils/workspaceInitializer');
+                await initializeUserWorkspace();
+              };
+              initializeWorkspaceAsync(); // Execute without blocking
 
               // Use proper async pattern instead of setTimeout
               const fetchProfile = async () => {
@@ -171,9 +180,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               isLoading: false
             });
             
-            // Initialize demo mode
+            // Initialize demo mode and workspace
             const { initializeDemoMode } = await import('@/utils/demoMode');
+            const { initializeUserWorkspace } = await import('@/utils/workspaceInitializer');
             initializeDemoMode();
+            await initializeUserWorkspace();
             
             eventBus.emit('user-login' as any, { email: demoUser.email, timestamp: new Date() });
             return { data: { user: demoUser }, error: null };
