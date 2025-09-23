@@ -42,7 +42,6 @@ const Workspace: React.FC = () => {
   const [savedLayouts, setSavedLayouts] = useState<WorkspaceLayoutConfig[]>([]);
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
 
-  // Check if user has Elite tier access
   const hasEliteAccess = hasFeature('WORKSPACE_MULTI_PANEL');
 
   // Load saved layouts

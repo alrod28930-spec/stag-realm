@@ -150,6 +150,13 @@ class OracleService {
 
   private async fetchRealTimeMarketData(): Promise<any[]> {
     try {
+      // Skip real-time data for demo users
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user || user.id === '00000000-0000-0000-0000-000000000000') {
+        return []; // Return empty array for demo users
+      }
+
       const { data, error } = await supabase.functions.invoke('oracle-realtime-data', {
         body: {
           symbols: ['SPY', 'QQQ', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META'],

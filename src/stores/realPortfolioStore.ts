@@ -106,18 +106,21 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
   },
 
   subscribeToUpdates: () => {
-    // Get workspace ID dynamically
+    // Get workspace ID dynamically - make this more robust
+    let cleanupFn = () => {};
+    
     const setupSubscriptions = async () => {
-      const { getCurrentUserWorkspace } = await import('@/utils/auth');
-      const workspaceId = await getCurrentUserWorkspace();
-      
-      if (!workspaceId) {
-        console.warn('Cannot set up subscriptions - no workspace found');
-        return () => {};
-      }
+      try {
+        const { getCurrentUserWorkspace } = await import('@/utils/auth');
+        const workspaceId = await getCurrentUserWorkspace();
+        
+        if (!workspaceId) {
+          console.warn('Cannot set up subscriptions - no workspace found');
+          return () => {};
+        }
 
-      // Subscribe to portfolio changes
-      const portfolioChannel = supabase
+        // Subscribe to portfolio changes
+        const portfolioChannel = supabase
         .channel('portfolio-changes')
         .on(
           'postgres_changes',
@@ -189,13 +192,20 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
         supabase.removeChannel(portfolioChannel);
         supabase.removeChannel(positionsChannel);
       };
+    } catch (error) {
+      console.error('Failed to setup subscriptions:', error);
+      return () => {};
+    }
     };
     
-    // Execute async setup and return cleanup
-    let cleanupFn = () => {};
-    setupSubscriptions().then(cleanup => {
-      cleanupFn = cleanup;
-    });
+    // Setup subscriptions with better error handling
+    setupSubscriptions()
+      .then(cleanup => {
+        cleanupFn = cleanup || (() => {});
+      })
+      .catch(error => {
+        console.error('Failed to setup portfolio subscriptions:', error);
+      });
     
     return () => cleanupFn();
   },
