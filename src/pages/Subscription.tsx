@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
 import { PlanCard, Plan } from '@/components/subscription/PlanCard';
 import { BillingManagement } from '@/components/subscription/BillingManagement';
@@ -77,10 +78,8 @@ export default function Subscription() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   
-  // TODO: Get these from workspace context when implemented
-  const workspaceId = undefined; // Disabled until workspace system is implemented
-  const isWorkspaceOwner = true; 
-  const workspaceName = 'My Workspace';
+  const { workspace, workspaceId, isOwner: isWorkspaceOwner, loading: workspaceLoading } = useWorkspace();
+  const workspaceName = workspace?.name || 'My Workspace';
   const demoMode = isDemoMode();
 
   const {
@@ -220,7 +219,7 @@ export default function Subscription() {
                   plan={plan}
                   currentPlan={subscription?.planCode}
                   onSelect={handleSelectPlan}
-                  disabled={loading || subscriptionLoading || !isWorkspaceOwner}
+                  disabled={loading || subscriptionLoading || workspaceLoading || !isWorkspaceOwner}
                 />
               ))}
             </div>
