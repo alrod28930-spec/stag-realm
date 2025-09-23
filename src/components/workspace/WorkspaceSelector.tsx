@@ -1,128 +1,160 @@
-// Workspace Selector Component
 import React, { useState } from 'react';
-import { Check, ChevronsUpDown, Plus, Settings } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Command, 
-  CommandEmpty, 
-  CommandGroup, 
-  CommandInput, 
-  CommandItem,
-  CommandList 
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { getUserWorkspaces } from '@/utils/workspaceHelpers';
 import { useAuthStore } from '@/stores/authStore';
-import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  Users, 
+  Shield, 
+  Crown, 
+  Plus,
+  Check,
+  RefreshCw
+} from 'lucide-react';
 
-interface WorkspaceSelectorProps {
-  className?: string;
-}
-
-export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ className }) => {
-  const [open, setOpen] = useState(false);
-  const [workspaces, setWorkspaces] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  
+export const WorkspaceSelector: React.FC = () => {
+  const { workspace, switchWorkspace, loading } = useWorkspace();
   const { user } = useAuthStore();
-  const { workspace, switchWorkspace } = useWorkspace();
-  const { toast } = useToast();
+  const [availableWorkspaces, setAvailableWorkspaces] = useState<any[]>([]);
+  const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
 
-  const loadWorkspaces = async () => {
-    if (!user?.id || loading) return;
+  const loadAvailableWorkspaces = async () => {
+    if (!user?.id) return;
     
-    setLoading(true);
+    setLoadingWorkspaces(true);
     try {
-      const userWorkspaces = await getUserWorkspaces(user.id);
-      setWorkspaces(userWorkspaces);
+      const { data, error } = await supabase
+        .from('workspace_members')
+        .select(`
+          workspace_id,
+          workspaces (
+            id,
+            name,
+            wtype,
+            owner_id,
+            created_at
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      
+      const workspaces = data?.map(item => item.workspaces).filter(Boolean) || [];
+      setAvailableWorkspaces(workspaces);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load workspaces",
-        variant: "destructive"
-      });
+      console.error('Failed to load workspaces:', error);
     } finally {
-      setLoading(false);
+      setLoadingWorkspaces(false);
     }
   };
 
-  const handleWorkspaceSwitch = async (workspaceId: string) => {
-    try {
-      await switchWorkspace(workspaceId);
-      setOpen(false);
-      toast({
-        title: "Workspace Switched",
-        description: "Successfully switched workspace"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to switch workspace",
-        variant: "destructive"
-      });
+  const getWorkspaceIcon = (wtype: string) => {
+    switch (wtype) {
+      case 'personal': return <Shield className="w-4 h-4" />;
+      case 'team': return <Users className="w-4 h-4" />;
+      case 'business': return <Crown className="w-4 h-4" />;
+      default: return <Shield className="w-4 h-4" />;
+    }
+  };
+
+  const getWorkspaceTypeColor = (wtype: string) => {
+    switch (wtype) {
+      case 'personal': return 'default';
+      case 'team': return 'secondary';
+      case 'business': return 'destructive';
+      default: return 'default';
     }
   };
 
   React.useEffect(() => {
-    if (open && workspaces.length === 0) {
-      loadWorkspaces();
+    if (user?.id) {
+      loadAvailableWorkspaces();
     }
-  }, [open]);
+  }, [user?.id]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={`w-[280px] justify-between ${className}`}
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-primary" />
-            <span className="truncate">
-              {workspace?.name || "Select workspace..."}
-            </span>
-          </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0">
-        <Command>
-          <CommandInput placeholder="Search workspaces..." />
-          <CommandList>
-            <CommandEmpty>
-              {loading ? "Loading workspaces..." : "No workspaces found."}
-            </CommandEmpty>
-            <CommandGroup>
-              {workspaces.map((ws) => (
-                <CommandItem
-                  key={ws.id}
-                  value={ws.id}
-                  onSelect={() => handleWorkspaceSwitch(ws.id)}
-                  className="flex items-center justify-between"
-                >
+    <Card className="w-80">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Workspaces
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadAvailableWorkspaces}
+            disabled={loadingWorkspaces}
+            className="h-8 w-8 p-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingWorkspaces ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-64">
+          <div className="space-y-2">
+            {availableWorkspaces.map((ws) => (
+              <div
+                key={ws.id}
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  workspace?.id === ws.id 
+                    ? 'border-primary bg-primary/5' 
+                    : 'hover:bg-accent'
+                }`}
+                onClick={() => {
+                  if (workspace?.id !== ws.id && !loading) {
+                    switchWorkspace(ws.id);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      workspace?.id === ws.id ? 'bg-primary' : 'bg-muted-foreground'
-                    }`} />
-                    <div>
-                      <div className="font-medium">{ws.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {ws.wtype} • {ws.membership_role}
-                      </div>
-                    </div>
+                    {getWorkspaceIcon(ws.wtype)}
+                    <span className="font-medium text-sm truncate">
+                      {ws.name}
+                    </span>
                   </div>
-                  {workspace?.id === ws.id && (
-                    <Check className="h-4 w-4" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+                  
+                  <div className="flex items-center gap-1">
+                    {workspace?.id === ws.id && (
+                      <Check className="w-4 h-4 text-primary" />
+                    )}
+                    <Badge 
+                      variant={getWorkspaceTypeColor(ws.wtype) as any}
+                      className="text-xs"
+                    >
+                      {ws.wtype}
+                    </Badge>
+                  </div>
+                </div>
+                
+                {ws.owner_id === user?.id && (
+                  <Badge variant="outline" className="text-xs mt-2">
+                    Owner
+                  </Badge>
+                )}
+              </div>
+            ))}
+            
+            {availableWorkspaces.length === 0 && !loadingWorkspaces && (
+              <div className="text-center py-4 text-muted-foreground">
+                <p className="text-sm">No workspaces available</p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+        
+        <div className="mt-4 pt-4 border-t">
+          <Button variant="outline" className="w-full" size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Workspace
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
