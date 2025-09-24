@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { OrderValidation } from '@/components/trading/OrderValidation';
 import { OrderStatusTracker, TrackedOrder, OrderUpdate } from '@/components/trading/OrderStatusTracker';
+import { MarketTracker } from '@/components/market/MarketTracker';
 
 interface PayloadData {
   side?: string;
@@ -382,7 +383,12 @@ export default function PaperTrading() {
         </TabsList>
 
         <TabsContent value="trading">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Market Tracker */}
+            <div className="lg:col-span-1">
+              <MarketTracker />
+            </div>
+            
             {/* Order Entry */}
             <Card className="lg:col-span-1 bg-gradient-card shadow-card">
               <CardHeader>
