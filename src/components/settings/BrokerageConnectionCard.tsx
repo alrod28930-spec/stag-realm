@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useBrokerageSync } from '@/hooks/useBrokerageSync';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Link, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Loader2, Link, Plus, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import type { BrokerageConnection } from '@/types/userSettings';
 
 interface BrokerageConnectionCardProps {
@@ -19,6 +20,7 @@ interface BrokerageConnectionCardProps {
 export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: BrokerageConnectionCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [newConnection, setNewConnection] = useState({
     provider: '',
     accountLabel: '',
@@ -27,6 +29,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
     accountType: 'paper'
   });
   const { toast } = useToast();
+  const { triggerSync, autoSyncAfterConnection } = useBrokerageSync();
 
   const handleAddConnection = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,10 +62,17 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
 
       if (error) throw error;
 
+      const connectionId = data?.connection_id;
+      
       toast({
         title: "Connection Added",
         description: `${newConnection.provider} connection has been securely stored.`,
       });
+
+      // Trigger automatic sync in the background
+      if (connectionId) {
+        autoSyncAfterConnection(workspaceId, connectionId);
+      }
 
       setNewConnection({
         provider: '',
@@ -112,6 +122,19 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
     }
   };
 
+  const handleManualSync = async (connectionId?: string) => {
+    setIsSyncing(true);
+    try {
+      await triggerSync(workspaceId, connectionId);
+      // Refresh data after sync
+      setTimeout(() => {
+        onUpdate();
+      }, 1000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -128,9 +151,24 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
           onClick={() => setIsAdding(true)}
           className="bg-gradient-primary hover:opacity-90"
         >
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="w-4 w-4 mr-2" />
           Add Connection
         </Button>
+        {connections.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => handleManualSync()}
+            disabled={isSyncing}
+            className="ml-2"
+          >
+            {isSyncing ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            {isSyncing ? 'Syncing...' : 'Sync All'}
+          </Button>
+        )}
       </CardHeader>
       
       <CardContent className="space-y-4">
