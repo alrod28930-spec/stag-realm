@@ -22,6 +22,12 @@ serve(async (req) => {
   }
 
   try {
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -30,22 +36,14 @@ serve(async (req) => {
           autoRefreshToken: false, 
           persistSession: false,
           detectSessionInUrl: false
-        }
+        },
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
       }
     );
-
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
-    // Set the auth token for this request
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) {
-        throw new Error('Invalid session');
-      }
-    });
 
     const { workspace_id, provider, account_label, api_key, api_secret, scope }: CredentialRequest = await req.json();
 
