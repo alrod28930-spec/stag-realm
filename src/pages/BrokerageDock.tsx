@@ -57,11 +57,11 @@ export default function BrokerageDock() {
         clearTimeout(timeoutRefs[windowIndex].current!);
       }
 
-      // Set up timeout for loading
+      // Set up timeout for loading - shorter for better UX
       timeoutRefs[windowIndex].current = setTimeout(() => {
         console.log(`Iframe ${windowIndex} load timeout for:`, window.url);
         updateWindowState(windowIndex, { isLoading: false, loadError: true });
-      }, 10000);
+      }, 8000);
 
       const iframe = iframeRefs[windowIndex].current!;
 
@@ -71,7 +71,35 @@ export default function BrokerageDock() {
           clearTimeout(timeoutRefs[windowIndex].current!);
           timeoutRefs[windowIndex].current = null;
         }
-        updateWindowState(windowIndex, { isLoading: false, loadError: false });
+        
+        // Additional check for blocked content after a short delay
+        setTimeout(() => {
+          try {
+            // For known financial sites that block iframes, show error immediately
+            const url = window.url.toLowerCase();
+            const blockedDomains = ['alpaca.markets', 'robinhood.com', 'schwab.com', 'fidelity.com', 'etrade.com'];
+            const isKnownBlocked = blockedDomains.some(domain => url.includes(domain));
+            
+            if (isKnownBlocked) {
+              console.log(`Known blocked domain detected: ${window.url}`);
+              updateWindowState(windowIndex, { isLoading: false, loadError: true });
+              return;
+            }
+            
+            // Try to detect if content is actually loading
+            const iframeDoc = iframe.contentDocument;
+            if (iframeDoc && iframeDoc.body && iframeDoc.body.innerHTML.trim() === '') {
+              console.log(`Iframe ${windowIndex} appears empty/blocked:`, window.url);
+              updateWindowState(windowIndex, { isLoading: false, loadError: true });
+            } else {
+              updateWindowState(windowIndex, { isLoading: false, loadError: false });
+            }
+          } catch (e) {
+            // Cross-origin error is expected and means the site is actually loading
+            console.log(`Iframe ${windowIndex} cross-origin (site loading):`, window.url);
+            updateWindowState(windowIndex, { isLoading: false, loadError: false });
+          }
+        }, 2000);
       };
 
       const handleError = () => {
@@ -122,28 +150,42 @@ export default function BrokerageDock() {
     // Try multiple data transfer types
     const droppedText = e.dataTransfer.getData('text/plain') || 
                        e.dataTransfer.getData('text/uri-list') || 
-                       e.dataTransfer.getData('text/html');
+                       e.dataTransfer.getData('text/html') ||
+                       e.dataTransfer.getData('URL');
     
     console.log('Dropped text:', droppedText);
     
     if (droppedText) {
-      // More flexible URL detection
-      const urlPattern = /https?:\/\/[^\s]+|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.+[a-zA-Z]{2,}/;
-      const isUrl = droppedText.startsWith('http') || 
-                   droppedText.startsWith('www.') || 
-                   urlPattern.test(droppedText) ||
-                   droppedText.includes('.');
+      // Clean up the URL - remove any HTML tags if present
+      let cleanUrl = droppedText.replace(/<[^>]*>/g, '').trim();
       
-      console.log('Is URL detected:', isUrl);
+      // More flexible URL detection - specifically handle alpaca domains
+      const urlPattern = /https?:\/\/[^\s]+|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.+[a-zA-Z]{2,}/;
+      const isUrl = cleanUrl.startsWith('http') || 
+                   cleanUrl.startsWith('www.') || 
+                   urlPattern.test(cleanUrl) ||
+                   cleanUrl.includes('.') ||
+                   cleanUrl.includes('alpaca.markets');
+      
+      console.log('Is URL detected:', isUrl, 'Clean URL:', cleanUrl);
       
       if (isUrl) {
-        console.log('Attempting to navigate to:', droppedText);
-        navigateToUrl(windowIndex, droppedText);
+        console.log('Attempting to navigate to:', cleanUrl);
+        navigateToUrl(windowIndex, cleanUrl);
       } else {
-        console.log('Dropped text not recognized as URL:', droppedText);
+        console.log('Dropped text not recognized as URL:', cleanUrl);
+        // Try to search for a URL within the dropped text
+        const urlMatch = droppedText.match(/https?:\/\/[^\s]+/);
+        if (urlMatch) {
+          console.log('Found URL in text:', urlMatch[0]);
+          navigateToUrl(windowIndex, urlMatch[0]);
+        }
       }
     } else {
       console.log('No text data found in drop event');
+      // Try to get data from files if it's a file drop
+      const files = Array.from(e.dataTransfer.files);
+      console.log('Files dropped:', files);
     }
   };
 
@@ -221,18 +263,33 @@ export default function BrokerageDock() {
                   <div className="text-center space-y-4">
                     <div className="text-destructive">
                       <Shield className="h-12 w-12 mx-auto mb-2" />
-                      <h3 className="text-lg font-medium">Cannot Load Site</h3>
-                      <p className="text-sm text-muted-foreground">
-                        This website blocks iframe embedding for security.
+                      <h3 className="text-lg font-medium">
+                        {window.url.toLowerCase().includes('alpaca') 
+                          ? 'Alpaca Blocks Embedding' 
+                          : 'Cannot Load Site'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                        {window.url.toLowerCase().includes('alpaca')
+                          ? 'Alpaca and other brokerages block iframe embedding for security. Use the button below to access your account.'
+                          : 'This website blocks iframe embedding for security reasons.'}
                       </p>
                     </div>
-                    <button 
-                      onClick={() => openInNewTab(windowIndex)}
-                      className="inline-flex items-center px-4 py-2 border border-muted rounded-md text-sm hover:bg-muted/50 transition-colors"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Open Externally
-                    </button>
+                    <div className="space-y-2">
+                      <button 
+                        onClick={() => openInNewTab(windowIndex)}
+                        className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        {window.url.toLowerCase().includes('alpaca') 
+                          ? 'Open Alpaca Account' 
+                          : 'Open in New Tab'}
+                      </button>
+                      {window.url.toLowerCase().includes('alpaca') && (
+                        <p className="text-xs text-muted-foreground">
+                          Quick access: paper.alpaca.markets • app.alpaca.markets
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
