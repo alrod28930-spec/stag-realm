@@ -30,20 +30,23 @@ serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
         auth: { 
           autoRefreshToken: false, 
           persistSession: false,
           detectSessionInUrl: false
-        },
-        global: {
-          headers: {
-            Authorization: authHeader,
-          },
-        },
+        }
       }
     );
+
+    // Verify the JWT token from the authorization header
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    
+    if (authError || !user) {
+      throw new Error('Invalid authentication');
+    }
 
     const { workspace_id, provider, account_label, api_key, api_secret, scope }: CredentialRequest = await req.json();
 
@@ -118,7 +121,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error encrypting credentials:', error);
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to encrypt credentials'
+      error: (error as Error).message || 'Failed to encrypt credentials'
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
