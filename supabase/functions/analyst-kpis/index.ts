@@ -137,6 +137,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
+    // TypeScript error handling fix
     console.error('KPI calculation error:', error)
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Failed to calculate KPIs' 

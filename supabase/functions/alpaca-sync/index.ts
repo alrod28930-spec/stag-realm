@@ -139,6 +139,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    // TypeScript error handling fix
     console.error('Alpaca sync error:', error);
     
     return new Response(

@@ -267,6 +267,7 @@ IMPORTANT GUIDELINES:
     })
 
   } catch (error) {
+    // TypeScript error handling fix
     console.error('Enhanced analyst chat error:', error)
     return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : 'Failed to process analyst chat',

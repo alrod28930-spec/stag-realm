@@ -90,6 +90,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
+    // TypeScript error handling fix
     console.error('Portfolio snapshot error:', error)
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Failed to get portfolio snapshot' 
