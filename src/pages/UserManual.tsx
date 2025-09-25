@@ -55,7 +55,7 @@ export default function UserManual() {
         'StagAlgo is a comprehensive algorithmic trading platform designed for both novice and professional traders.',
         'The platform combines AI-powered market analysis, real-time charting, automated trading strategies, and comprehensive risk management.',
         'Built with a modern architecture featuring a moonlit awareness interface design, StagAlgo provides multi-tier access (Standard, Pro, Elite) to accommodate different trading needs and experience levels.',
-        'The platform integrates with major brokerages and provides both paper trading for learning and live trading for execution.',
+        'The platform integrates with major brokerages and provides both paper and live trading capabilities.',
         'Enhanced visual awareness features including moonlit border glow help maintain focus during active trading sessions.',
         'All features are compliant with financial regulations and include comprehensive disclaimers and risk management.'
       ],
@@ -168,14 +168,14 @@ export default function UserManual() {
         'Integration with connected brokerages enables seamless order routing.',
         'Manual Order Cards and Order Tickets provide intuitive order entry interfaces.',
         'Bot Execution Panel allows automated trading strategy deployment.',
-        'Paper Trading Test Panel enables risk-free strategy validation.',
+        'System Testing Panel enables risk-free strategy validation.',
         'Comprehensive compliance footer ensures regulatory awareness.'
       ],
       tips: [
         'Always review order details before submission',
         'Use appropriate order types for your strategy',
         'Monitor order status and be prepared to cancel if needed',
-        'Test strategies in Paper Trading mode first',
+        'Test strategies through your brokerage connection first',
         'Use Risk-Aware Trading Panel for enhanced safety'
       ],
       warnings: [
@@ -247,11 +247,11 @@ export default function UserManual() {
         'Aggressive Mode Disclaimer ensures proper risk acknowledgment.',
         'Bot Feedback Panel provides performance analytics and adjustment recommendations.',
         'Risk Disclaimer Modal ensures proper understanding of automated trading risks.',
-        'Integration with paper trading for safe strategy testing.'
+        'Integration with brokerage connections for safe strategy testing.'
       ],
       tips: [
         'Start with conservative risk settings',
-        'Test all strategies in paper trading first',
+        'Test all strategies with your brokerage connection first',
         'Monitor bot performance regularly',
         'Understand risk disclaimers before enabling aggressive modes',
         'Use Strategy Library for proven approaches'
@@ -319,28 +319,6 @@ export default function UserManual() {
         'Cradle is for educational and experimental use only',
         'Backtesting results do not guarantee future performance',
         'Always validate strategies with multiple testing methods'
-      ]
-    },
-    {
-      id: 'paper-trading',
-      title: 'Paper Trading Sandbox',
-      description: 'Risk-free trading practice and strategy validation',
-      icon: Target,
-      content: [
-        'Paper Trading provides a comprehensive risk-free environment to practice trading strategies (Standard tier and above).',
-        'Virtual $100,000 account allows realistic trading simulation without real money risk.',
-        'All order types and market conditions are simulated to match real trading environments.',
-        'Complete trade history and performance tracking help evaluate your strategies.',
-        'Paper Trading Tester service validates strategy performance automatically.',
-        'Demo Mode integration provides seamless transition between real and simulated trading.',
-        'Perfect for learning the platform and testing new approaches safely.'
-      ],
-      tips: [
-        'Treat paper trading seriously to build good habits',
-        'Test different order types and strategies',
-        'Use paper trading to learn the platform before live trading',
-        'Monitor performance metrics just as you would in live trading',
-        'Practice risk management techniques'
       ]
     },
     {
@@ -627,7 +605,7 @@ export default function UserManual() {
                     <ul className="text-sm space-y-1 text-muted-foreground pl-8">
                       <li>• Start with Demo Mode to explore features safely</li>
                       <li>• Review this User Manual thoroughly</li>
-                      <li>• Practice with Paper Trading ($100k virtual account)</li>
+                      <li>• Practice with your brokerage connection's paper trading features</li>
                       <li>• Familiarize yourself with the voice interface</li>
                     </ul>
                   </div>
@@ -691,7 +669,7 @@ export default function UserManual() {
                     <div className="text-sm">
                       <p className="font-semibold text-warning mb-1">Important Reminders:</p>
                       <ul className="text-muted-foreground space-y-1">
-                        <li>• Always start with paper trading to learn without risk</li>
+                        <li>• Always start with your broker's paper trading features to learn without risk</li>
                         <li>• Read and understand all risk disclosures before live trading</li>
                         <li>• Keep your brokerage credentials secure and regularly updated</li>
                         <li>• Monitor system status and your internet connection during active trading</li>
@@ -806,7 +784,7 @@ export default function UserManual() {
                       <td className="text-center p-3">✅</td>
                     </tr>
                     <tr className="border-b">
-                      <td className="p-3">Paper Trading</td>
+                      <td className="p-3">Brokerage Integration</td>
                       <td className="text-center p-3">✅</td>
                       <td className="text-center p-3">✅</td>
                       <td className="text-center p-3">✅</td>

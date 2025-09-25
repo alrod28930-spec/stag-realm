@@ -23,14 +23,15 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
     provider: '',
     accountLabel: '',
     apiKey: '',
-    apiSecret: ''
+    apiSecret: '',
+    accountType: 'paper'
   });
   const { toast } = useToast();
 
   const handleAddConnection = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newConnection.provider || !newConnection.apiKey || !newConnection.apiSecret) {
+    if (!newConnection.provider || !newConnection.apiKey || !newConnection.apiSecret || !newConnection.accountType) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -49,7 +50,10 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
           account_label: newConnection.accountLabel || undefined,
           api_key: newConnection.apiKey,
           api_secret: newConnection.apiSecret,
-          scope: { paper: true } // Default to paper trading
+          scope: { 
+            paper: newConnection.accountType === 'paper',
+            live: newConnection.accountType === 'live'
+          }
         }
       });
 
@@ -64,7 +68,8 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
         provider: '',
         accountLabel: '',
         apiKey: '',
-        apiSecret: ''
+        apiSecret: '',
+        accountType: 'paper'
       });
       setIsAdding(false);
       onUpdate();
@@ -116,7 +121,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
             Brokerage Connections
           </CardTitle>
           <CardDescription>
-            Securely connect your brokerage accounts for live trading
+            Securely connect your brokerage accounts for both live and paper trading
           </CardDescription>
         </div>
         <Button
@@ -155,14 +160,30 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
                   </div>
 
                   <div>
-                    <Label htmlFor="account-label">Account Label</Label>
-                    <Input
-                      id="account-label"
-                      placeholder="e.g., Main Trading Account"
-                      value={newConnection.accountLabel}
-                      onChange={(e) => setNewConnection({ ...newConnection, accountLabel: e.target.value })}
-                    />
+                    <Label htmlFor="account-type">Account Type *</Label>
+                    <Select
+                      value={newConnection.accountType}
+                      onValueChange={(value) => setNewConnection({ ...newConnection, accountType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="paper">Paper Trading</SelectItem>
+                        <SelectItem value="live">Live Trading</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="account-label">Account Label</Label>
+                  <Input
+                    id="account-label"
+                    placeholder="e.g., Main Trading Account"
+                    value={newConnection.accountLabel}
+                    onChange={(e) => setNewConnection({ ...newConnection, accountLabel: e.target.value })}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -230,7 +251,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
           <div className="text-center py-8 text-muted-foreground">
             <Link className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No brokerage connections yet.</p>
-            <p className="text-sm">Add a connection to start live trading.</p>
+            <p className="text-sm">Add a connection to start trading with live or paper accounts.</p>
           </div>
         )}
 

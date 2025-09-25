@@ -14,7 +14,6 @@ import { useEffect, lazy, Suspense } from "react";
 import Market from "@/pages/Market";
 
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const PaperTrading = lazy(() => import("@/pages/PaperTrading"));
 
 const Portfolio = lazy(() => import("@/pages/Portfolio"));
 const TradingDesk = lazy(() => import("@/pages/TradingDesk"));
@@ -76,7 +75,6 @@ const App = () => {
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/intelligence" element={<Intelligence />} />
                         <Route path="/market" element={<Market />} />
-                        <Route path="/paper-trading" element={<PaperTrading />} />
                         <Route path="/portfolio" element={<Portfolio />} />
                         <Route path="/trading-desk" element={<TradingDesk />} />
                         <Route path="/charts" element={<Charts />} />

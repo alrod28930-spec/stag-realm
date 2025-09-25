@@ -17,6 +17,7 @@ import { PaperTradingTestPanel } from '@/components/tradingdesk/PaperTradingTest
 import { SystemAuditPanel } from '@/components/debug/SystemAuditPanel';
 import { Bot } from 'lucide-react';
 import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
+import { MarketTracker } from '@/components/market/MarketTracker';
 import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
 import { RiskAwareTradePanel } from '@/components/tradingdesk/RiskAwareTradePanel';
@@ -86,36 +87,12 @@ export default function TradingDesk() {
         </ScrollArea>
 
         <TabsContent value="manual" className="space-y-6">
-          {/* Real-Time Trading Charts */}
-          <MultiChartPanel 
-            defaultSymbols={['AAPL', 'TSLA', 'SPY', 'QQQ']}
-            maxCharts={4}
-            allowDOMView={true}
-          />
-          
+          <DailyTradesCard />
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Live Trading Panel */}
-            <div className="lg:col-span-1">
-              <LiveTradingPanel isDemo={isDemoMode} />
-            </div>
-
-            {/* Intraday P&L Curve */}
-            <div className="lg:col-span-2">
-              <IntradayEquityCurve 
-                height={400}
-                startingEquity={100000}
-                maxDailyLoss={-1000}
-                targetPnL={500}
-                isDemo={isDemoMode}
-              />
-            </div>
-
-            {/* KPIs and Performance */}
-            <div className="lg:col-span-1 space-y-4">
-              <KpiRow />
-              <AllocationsCard />
-              <HitRateCard />
-            </div>
+            <MarketTracker />
+            <AllocationsCard />
+            <HitRateCard />
+            <ManualOrderCard />
           </div>
         </TabsContent>
 

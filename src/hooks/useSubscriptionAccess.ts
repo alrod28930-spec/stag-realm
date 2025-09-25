@@ -27,7 +27,6 @@ const TAB_FEATURES = {
   '/': { code: 'TAB_DASHBOARD', tier: 'standard' as SubscriptionTier },
   '/intelligence': { code: 'TAB_INTELLIGENCE', tier: 'standard' as SubscriptionTier },
   '/market': { code: 'TAB_MARKET', tier: 'standard' as SubscriptionTier },
-  '/paper-trading': { code: 'TAB_PAPER_TRADING', tier: 'standard' as SubscriptionTier },
   '/portfolio': { code: 'TAB_PORTFOLIO', tier: 'pro' as SubscriptionTier },
   '/trading-desk': { code: 'TAB_TRADING_DESK', tier: 'pro' as SubscriptionTier },
   '/trade-bots': { code: 'TAB_TRADE_BOTS', tier: 'pro' as SubscriptionTier },
