@@ -74,7 +74,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in decrypt function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to process request'
+      error: error instanceof Error ? error.message : 'Failed to process request'
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

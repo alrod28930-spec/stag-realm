@@ -139,7 +139,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('KPI calculation error:', error)
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to calculate KPIs' 
+      error: error instanceof Error ? error.message : 'Failed to calculate KPIs' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

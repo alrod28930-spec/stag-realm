@@ -144,7 +144,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Failed to sync with Alpaca'
+        error: error instanceof Error ? error.message : 'Failed to sync with Alpaca'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

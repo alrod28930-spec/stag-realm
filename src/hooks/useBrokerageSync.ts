@@ -47,6 +47,9 @@ export function useBrokerageSync() {
           title: "Sync Successful",
           description: `Successfully synced ${successCount} brokerage account(s)`,
         });
+        
+        // Store sync timestamp in localStorage for persistence
+        localStorage.setItem(`brokerage_sync_${workspaceId}`, new Date().toISOString());
       } else {
         toast({
           title: "Sync Issues",
@@ -76,8 +79,24 @@ export function useBrokerageSync() {
     }, 2000);
   }, [triggerSync]);
 
+  const checkLastSync = useCallback((workspaceId: string) => {
+    const lastSync = localStorage.getItem(`brokerage_sync_${workspaceId}`);
+    return lastSync ? new Date(lastSync) : null;
+  }, []);
+
+  const needsResync = useCallback((workspaceId: string, maxAgeMinutes: number = 30) => {
+    const lastSync = checkLastSync(workspaceId);
+    if (!lastSync) return true;
+    
+    const now = new Date();
+    const diffMinutes = (now.getTime() - lastSync.getTime()) / (1000 * 60);
+    return diffMinutes > maxAgeMinutes;
+  }, [checkLastSync]);
+
   return {
     triggerSync,
-    autoSyncAfterConnection
+    autoSyncAfterConnection,
+    checkLastSync,
+    needsResync
   };
 }

@@ -137,7 +137,7 @@ serve(async (req) => {
     console.error('TTS error:', error)
     return new Response(JSON.stringify({ 
       audio_url: null,
-      error: error.message || 'Failed to generate speech'
+      error: error instanceof Error ? error.message : 'Failed to generate speech'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

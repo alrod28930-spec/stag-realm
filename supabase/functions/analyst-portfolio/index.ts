@@ -92,7 +92,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Portfolio snapshot error:', error)
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to get portfolio snapshot' 
+      error: error instanceof Error ? error.message : 'Failed to get portfolio snapshot' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

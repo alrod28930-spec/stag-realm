@@ -123,10 +123,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch market data', 
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error' 
       }),
       { 
-        status: 500, 
+        status: 500,
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'application/json' 

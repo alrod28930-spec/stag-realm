@@ -160,7 +160,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Risk evaluation error:', error)
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to evaluate risk' 
+      error: error instanceof Error ? error.message : 'Failed to evaluate risk' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

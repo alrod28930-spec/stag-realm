@@ -255,20 +255,21 @@ USER QUESTION: "${transcribedText}"`
     console.error('Unified voice processing error:', error)
     
     // Provide specific error messages
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     let errorMessage = 'Voice processing failed'
-    if (error.message.includes('invalid_api_key')) {
+    if (errorMsg.includes('invalid_api_key')) {
       errorMessage = 'OpenAI API key is invalid. Please check configuration.'
-    } else if (error.message.includes('No speech detected')) {
+    } else if (errorMsg.includes('No speech detected')) {
       errorMessage = 'No speech detected. Please speak clearly and try again.'
-    } else if (error.message.includes('transcription')) {
+    } else if (errorMsg.includes('transcription')) {
       errorMessage = 'Could not understand audio. Please try speaking again.'
-    } else if (error.message.includes('Analysis failed')) {
+    } else if (errorMsg.includes('Analysis failed')) {
       errorMessage = 'Analysis temporarily unavailable. Please try again.'
     }
 
     return new Response(JSON.stringify({
       error: errorMessage,
-      details: error.message,
+      details: errorMsg,
       timestamp: new Date().toISOString()
     }), {
       status: 500,

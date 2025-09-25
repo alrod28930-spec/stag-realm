@@ -489,15 +489,16 @@ CONTEXT: User is actively trading on StagAlgo and needs immediate insights for d
     
     // Enhanced error handling with specific error types
     let errorMessage = 'I apologize, but I encountered an issue processing your request.';
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     let statusCode = 500;
     
-    if (error.message.includes('Audio verification failed')) {
+    if (errorMsg.includes('Audio verification failed')) {
       errorMessage = 'Audio input verification failed. Please try speaking again.';
       statusCode = 400;
-    } else if (error.message.includes('Failed to transcribe')) {
+    } else if (errorMsg.includes('Failed to transcribe')) {
       errorMessage = 'I had trouble understanding your audio. Could you please try again?';
       statusCode = 422;
-    } else if (error.message.includes('Failed to generate response')) {
+    } else if (errorMsg.includes('Failed to generate response')) {
       errorMessage = 'I\'m having difficulty processing your question right now. Please try again.';
       statusCode = 503;
     }

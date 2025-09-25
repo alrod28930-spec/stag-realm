@@ -383,7 +383,7 @@ FUNCTION CALLING:
           toolResults[toolCall.function.name] = result
         } catch (error) {
           console.error(`Tool call failed: ${toolCall.function.name}`, error)
-          toolResults[toolCall.function.name] = { error: error.message }
+          toolResults[toolCall.function.name] = { error: error instanceof Error ? error.message : 'Unknown error' }
         }
       }
 

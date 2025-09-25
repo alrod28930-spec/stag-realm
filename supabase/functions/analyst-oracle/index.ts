@@ -119,7 +119,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Oracle signals error:', error)
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to get Oracle signals' 
+      error: error instanceof Error ? error.message : 'Failed to get Oracle signals' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -269,7 +269,7 @@ IMPORTANT GUIDELINES:
   } catch (error) {
     console.error('Enhanced analyst chat error:', error)
     return new Response(JSON.stringify({
-      error: error.message || 'Failed to process analyst chat',
+      error: error instanceof Error ? error.message : 'Failed to process analyst chat',
       timestamp: new Date().toISOString()
     }), {
       status: 500,

@@ -80,7 +80,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Recent trades error:', error)
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to get recent trades' 
+      error: error instanceof Error ? error.message : 'Failed to get recent trades' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
