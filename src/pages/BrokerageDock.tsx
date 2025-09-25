@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Shield, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Shield, ExternalLink, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface WindowState {
   url: string;
@@ -196,6 +196,10 @@ export default function BrokerageDock() {
     }
   };
 
+  const clearWindow = (windowIndex: number) => {
+    updateWindowState(windowIndex, { url: '', isLoading: false, loadError: false });
+  };
+
   const scrollToWindow = (windowIndex: number) => {
     setCurrentWindow(windowIndex);
     if (scrollContainerRef.current) {
@@ -218,15 +222,26 @@ export default function BrokerageDock() {
               <Badge variant="outline">
                 Window {windowIndex + 1}
               </Badge>
-              {window.url && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openInNewTab(windowIndex)}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              )}
+              <div className="flex items-center gap-1">
+                {window.url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openInNewTab(windowIndex)}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                )}
+                {window.url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => clearWindow(windowIndex)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             
             <div 
