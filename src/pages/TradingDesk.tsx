@@ -87,6 +87,18 @@ export default function TradingDesk() {
         </ScrollArea>
 
         <TabsContent value="manual" className="space-y-6">
+          {/* Trading Charts */}
+          <MultiChartPanel 
+            defaultSymbols={['AAPL', 'TSLA', 'SPY', 'QQQ']}
+            maxCharts={4}
+            onOrderPlace={(order) => {
+              console.log('Order placed from chart:', order);
+              // Handle order placement
+            }}
+            allowDOMView={true}
+          />
+          
+          {/* Trading Metrics */}
           <DailyTradesCard />
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <MarketTracker />
@@ -105,9 +117,7 @@ export default function TradingDesk() {
         </TabsContent>
 
         <TabsContent value="bots" className="space-y-6">
-          <div className="h-screen overflow-hidden">
-            <TradeBots />
-          </div>
+          <LiveTradingPanel isDemo={isDemoMode} />
         </TabsContent>
 
         <TabsContent value="testing" className="space-y-6">
