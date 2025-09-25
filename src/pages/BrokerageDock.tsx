@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -156,30 +156,12 @@ export default function BrokerageDock() {
     console.log('Dropped text:', droppedText);
     
     if (droppedText) {
-      // Clean up the URL - remove any HTML tags if present
-      let cleanUrl = droppedText.replace(/<[^>]*>/g, '').trim();
-      
-      // More flexible URL detection - specifically handle alpaca domains
-      const urlPattern = /https?:\/\/[^\s]+|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.+[a-zA-Z]{2,}/;
-      const isUrl = cleanUrl.startsWith('http') || 
-                   cleanUrl.startsWith('www.') || 
-                   urlPattern.test(cleanUrl) ||
-                   cleanUrl.includes('.') ||
-                   cleanUrl.includes('alpaca.markets');
-      
-      console.log('Is URL detected:', isUrl, 'Clean URL:', cleanUrl);
-      
-      if (isUrl) {
-        console.log('Attempting to navigate to:', cleanUrl);
-        navigateToUrl(windowIndex, cleanUrl);
+      const extractedUrl = validateAndExtractUrl(droppedText);
+      if (extractedUrl) {
+        console.log('Attempting to navigate to dropped URL:', extractedUrl);
+        navigateToUrl(windowIndex, extractedUrl);
       } else {
-        console.log('Dropped text not recognized as URL:', cleanUrl);
-        // Try to search for a URL within the dropped text
-        const urlMatch = droppedText.match(/https?:\/\/[^\s]+/);
-        if (urlMatch) {
-          console.log('Found URL in text:', urlMatch[0]);
-          navigateToUrl(windowIndex, urlMatch[0]);
-        }
+        console.log('Dropped text not recognized as URL:', droppedText);
       }
     } else {
       console.log('No text data found in drop event');
@@ -199,6 +181,78 @@ export default function BrokerageDock() {
   const clearWindow = (windowIndex: number) => {
     updateWindowState(windowIndex, { url: '', isLoading: false, loadError: false });
   };
+
+  // Validate and extract URL from text input
+  const validateAndExtractUrl = useCallback((text: string): string | null => {
+    if (!text || typeof text !== 'string') return null;
+    
+    // Trim and limit input length for security
+    const cleanText = text.trim().substring(0, 2048);
+    if (cleanText.length === 0) return null;
+    
+    // Remove HTML tags for security
+    const cleanUrl = cleanText.replace(/<[^>]*>/g, '').trim();
+    
+    // URL validation patterns
+    const urlPattern = /https?:\/\/[^\s]+|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.+[a-zA-Z]{2,}/;
+    const isUrl = cleanUrl.startsWith('http') || 
+                 cleanUrl.startsWith('www.') || 
+                 urlPattern.test(cleanUrl) ||
+                 cleanUrl.includes('.') ||
+                 cleanUrl.includes('alpaca.markets');
+    
+    if (isUrl) {
+      return cleanUrl;
+    }
+    
+    // Try to extract URL from within the text
+    const urlMatch = cleanText.match(/https?:\/\/[^\s]+/);
+    return urlMatch ? urlMatch[0] : null;
+  }, []);
+
+  // Handle paste functionality
+  const handlePaste = useCallback(async (windowIndex: number) => {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        console.log('Clipboard API not available');
+        return;
+      }
+      
+      const clipboardText = await navigator.clipboard.readText();
+      console.log('Pasted text:', clipboardText);
+      
+      const extractedUrl = validateAndExtractUrl(clipboardText);
+      if (extractedUrl) {
+        console.log('Attempting to navigate to pasted URL:', extractedUrl);
+        navigateToUrl(windowIndex, extractedUrl);
+      } else {
+        console.log('No valid URL found in clipboard text');
+      }
+    } catch (error) {
+      console.log('Failed to read clipboard:', error);
+    }
+  }, [validateAndExtractUrl]);
+
+  // Handle keyboard events for paste
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+V (Windows/Linux) or Cmd+V (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        // Only handle paste if we're focused on the brokerage dock page
+        const activeElement = document.activeElement;
+        const isInputField = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+        
+        if (!isInputField) {
+          e.preventDefault();
+          // Paste into the current window
+          handlePaste(currentWindow);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handlePaste, currentWindow]);
 
   const scrollToWindow = (windowIndex: number) => {
     setCurrentWindow(windowIndex);
@@ -260,8 +314,9 @@ export default function BrokerageDock() {
               {!window.url && (
                 <div className="absolute inset-0 flex items-center justify-center text-center">
                   <div className="text-muted-foreground">
-                    <p className="text-lg font-medium mb-2">Drop a URL here</p>
-                    <p className="text-sm">Drag and drop any website URL into this window</p>
+                    <p className="text-lg font-medium mb-2">Drop or Paste a URL here</p>
+                    <p className="text-sm mb-1">Drag and drop any website URL into this window</p>
+                    <p className="text-xs text-muted-foreground/75">or press Ctrl+V (Cmd+V on Mac) to paste</p>
                   </div>
                 </div>
               )}
@@ -333,7 +388,7 @@ export default function BrokerageDock() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Brokerage Dock</h1>
           <p className="text-muted-foreground">
-            Drop URLs into any of the 3 windows below - scroll to navigate between them
+            Drop URLs into any window or paste with Ctrl+V (Cmd+V on Mac) - scroll to navigate between windows
           </p>
         </div>
         
