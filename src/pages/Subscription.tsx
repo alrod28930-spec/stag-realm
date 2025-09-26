@@ -11,7 +11,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
 import { PlanCard, Plan } from '@/components/subscription/PlanCard';
 import { BillingManagement } from '@/components/subscription/BillingManagement';
-import { isDemoMode } from '@/utils/demoMode';
+import { isLandingPageDemo } from '@/utils/demoMode';
 import { Shield, AlertTriangle } from 'lucide-react';
 
 // Plan configurations - using placeholder price IDs that should be configured when Stripe is set up
@@ -80,7 +80,7 @@ export default function Subscription() {
   
   const { workspace, workspaceId, isOwner: isWorkspaceOwner, loading: workspaceLoading } = useWorkspace();
   const workspaceName = workspace?.name || 'My Workspace';
-  const demoMode = isDemoMode();
+  const demoMode = isLandingPageDemo();
 
   const {
     subscription,

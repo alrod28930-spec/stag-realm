@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Crown, Zap, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { isDemoMode } from '@/utils/demoMode';
+import { isLandingPageDemo } from '@/utils/demoMode';
 import { logFeatureLock, getFeatureTier, getTierDisplayName } from '@/utils/featureGuard';
 
 interface LockedCardProps {
@@ -69,7 +69,7 @@ export function LockedCard({
   workspaceId 
 }: LockedCardProps) {
   const { toast } = useToast();
-  const demoMode = isDemoMode();
+  const demoMode = isLandingPageDemo();
   const requiredTier = getFeatureTier(feature);
   const tierDisplayName = getTierDisplayName(requiredTier);
 

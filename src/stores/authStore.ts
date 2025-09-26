@@ -41,9 +41,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             });
             
             // Initialize demo mode and workspace
-            const { initializeDemoMode } = await import('@/utils/demoMode');
+            const { initializeLandingPageDemo } = await import('@/utils/demoMode');
             const { initializeUserWorkspace } = await import('@/utils/workspaceInitializer');
-            initializeDemoMode();
+            initializeLandingPageDemo();
             await initializeUserWorkspace();
             return;
           }
@@ -181,9 +181,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             });
             
             // Initialize demo mode and workspace
-            const { initializeDemoMode } = await import('@/utils/demoMode');
+            const { initializeLandingPageDemo } = await import('@/utils/demoMode');
             const { initializeUserWorkspace } = await import('@/utils/workspaceInitializer');
-            initializeDemoMode();
+            initializeLandingPageDemo();
             await initializeUserWorkspace();
             
             eventBus.emit('user-login' as any, { email: demoUser.email, timestamp: new Date() });

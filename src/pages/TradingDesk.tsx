@@ -19,20 +19,16 @@ import TradeBots from '@/pages/TradeBots';
 import { PaperTradingTestPanel } from '@/components/tradingdesk/PaperTradingTestPanel';
 import { SystemAuditPanel } from '@/components/debug/SystemAuditPanel';
 import { Bot } from 'lucide-react';
-import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
 import { MarketTracker } from '@/components/market/MarketTracker';
-import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
 import { RiskAwareTradePanel } from '@/components/tradingdesk/RiskAwareTradePanel';
 import { LiveTradingPanel } from '@/components/tradingdesk/LiveTradingPanel';
 import { MultiChartPanel } from '@/components/charts/MultiChartPanel';
 import { OrderTicket } from '@/components/tradingdesk/OrderTicket';
 import { IntradayEquityCurve } from '@/components/charts/IntradayEquityCurve';
-import { useDemoMode } from '@/utils/demoMode';
 import { SymbolSearchInput } from '@/components/market/SymbolSearchInput';
 
 export default function TradingDesk() {
-  const { isDemoMode } = useDemoMode();
   const [selectedChartSymbol, setSelectedChartSymbol] = useState('AAPL');
 
   return (
@@ -41,26 +37,15 @@ export default function TradingDesk() {
         {/* Risk Disclaimer Banner */}
         <RiskDisclaimerBanner />
         
-        {/* Demo Disclaimer */}
-        {isDemoMode && (
-          <DemoDisclaimer feature="Trading Desk" />
-        )}
-        
         {/* Floating Risk Indicator */}
         <FloatingRiskIndicator />
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold flex items-center">
-              Trading Desk
-              {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
-            </h1>
+            <h1 className="text-3xl font-bold">Trading Desk</h1>
             <p className="text-muted-foreground mt-2">
-              {isDemoMode 
-                ? "Explore live trading and automated bot features with simulated data"
-                : "Execute live trades manually or deploy automated trading bots"
-              }
+              Execute live trades manually or deploy automated trading bots
             </p>
           </div>
         <div className="flex items-center gap-2">
@@ -148,7 +133,7 @@ export default function TradingDesk() {
               <BotCreationWizard onBotCreated={() => {}} />
               <BotExecutionPanel />
             </div>
-            <LiveTradingPanel isDemo={isDemoMode} />
+            <LiveTradingPanel isDemo={false} />
           </div>
         </TabsContent>
 

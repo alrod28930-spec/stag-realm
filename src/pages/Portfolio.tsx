@@ -22,10 +22,6 @@ import {
   Target,
   PieChart
 } from 'lucide-react';
-import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
-import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
-import { useDemoMode } from '@/utils/demoMode';
-import { demoDataService } from '@/services/demoDataService';
 import Recorder from '@/pages/Recorder';
 import { DividendCalculator } from '@/components/dividends/DividendCalculator';
 import { DividendButton } from '@/components/tradingdesk/DividendButton';
@@ -45,39 +41,25 @@ export default function Portfolio() {
   } = useRealPortfolioStore();
   
   const { toast } = useToast();
-  const { isDemoMode } = useDemoMode();
   const { workspaceId } = useWorkspace();
 
-  // Load portfolio data and subscribe to updates (only for non-demo users)
+  // Load portfolio data and subscribe to updates
   useEffect(() => {
-    if (!isDemoMode) {
-      loadPortfolio();
-      const unsubscribe = subscribeToUpdates();
-      return unsubscribe;
-    }
+    loadPortfolio();
+    const unsubscribe = subscribeToUpdates();
+    return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoMode]); // Remove functions from deps to prevent infinite loop
+  }, []); // Remove functions from deps to prevent infinite loop
 
   const handleRefresh = () => {
-    if (!isDemoMode) {
-      loadPortfolio();
-    }
+    loadPortfolio();
     toast({
       title: "Portfolio Refreshed",
-      description: isDemoMode ? "Demo portfolio data refreshed." : "Portfolio data has been updated.",
+      description: "Portfolio data has been updated.",
     });
   };
 
   const handleSyncAlpaca = async () => {
-    if (isDemoMode) {
-      toast({
-        title: "Demo Mode",
-        description: "Alpaca sync is not available in demo mode.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
       toast({
         title: "Syncing Portfolio...",
@@ -121,19 +103,12 @@ export default function Portfolio() {
     }
   };
 
-  // Get portfolio data - only demo account gets mock data, real accounts are empty until API connection
-  const getPortfolioData = () => {
-    if (isDemoMode) {
-      return demoDataService.getPortfolio();
-    }
-    return {
-      equity: portfolio?.equity || 0,
-      cash: portfolio?.cash || 0,
-      positions: positions || []
-    };
+  // Get portfolio data from real brokerage connections
+  const portfolioData = {
+    equity: portfolio?.equity || 0,
+    cash: portfolio?.cash || 0,
+    positions: positions || []
   };
-
-  const portfolioData = getPortfolioData();
   
   // Calculate portfolio metrics
   const portfolioValue = portfolioData.equity || 0;
@@ -176,41 +151,28 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-8">
-      {/* Demo Disclaimer */}
-      {isDemoMode && (
-        <DemoDisclaimer feature="Portfolio Management" />
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center">
-            Portfolio
-            {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
-          </h1>
+          <h1 className="text-3xl font-bold">Portfolio</h1>
           <p className="text-muted-foreground mt-2">
-            {isDemoMode 
-              ? "Explore portfolio tracking and management with demo data"
-              : "Track and manage your investment positions"
-            }
+            Track and manage your investment positions
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleRefresh} disabled={isLoading && !isDemoMode} size="sm" variant="outline">
-            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoading && !isDemoMode) ? 'animate-spin' : ''}`} />
+          <Button onClick={handleRefresh} disabled={isLoading} size="sm" variant="outline">
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          {!isDemoMode && (
-            <Button onClick={handleSyncAlpaca} size="sm">
-              <Building2 className="w-4 h-4 mr-2" />
-              Sync Alpaca
-            </Button>
-          )}
+          <Button onClick={handleSyncAlpaca} size="sm">
+            <Building2 className="w-4 h-4 mr-2" />
+            Sync Alpaca
+          </Button>
         </div>
       </div>
 
       {/* Error State */}
-      {error && !isDemoMode && (
+      {error && (
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
@@ -222,22 +184,20 @@ export default function Portfolio() {
       )}
 
       {/* Debug Section - Remove this once working */}
-      {!isDemoMode && (
-        <Card className="border-muted bg-muted/20">
-          <CardHeader>
-            <CardTitle className="text-sm">Debug Info</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-xs space-y-2">
-              <div>Workspace ID: {workspaceId}</div>
-              <div>Portfolio Data: {portfolio ? JSON.stringify(portfolio) : 'null'}</div>
-              <div>Positions Count: {positions.length}</div>
-              <div>Loading: {isLoading.toString()}</div>
-              <div>Error: {error || 'none'}</div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="border-muted bg-muted/20">
+        <CardHeader>
+          <CardTitle className="text-sm">Debug Info</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="text-xs space-y-2">
+            <div>Workspace ID: {workspaceId}</div>
+            <div>Portfolio Data: {portfolio ? JSON.stringify(portfolio) : 'null'}</div>
+            <div>Positions Count: {positions.length}</div>
+            <div>Loading: {isLoading.toString()}</div>
+            <div>Error: {error || 'none'}</div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -291,7 +251,7 @@ export default function Portfolio() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {(isLoading && !isDemoMode) ? (
+              {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="w-6 h-6 animate-spin" />
                   <span className="ml-2">Loading positions...</span>
@@ -300,10 +260,7 @@ export default function Portfolio() {
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">No positions found</p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    {isDemoMode 
-                      ? "Demo data shows an empty portfolio"
-                      : "Your portfolio positions will appear here once you have investments"
-                    }
+                    Your portfolio positions will appear here once you have investments
                   </p>
                 </div>
               ) : (
@@ -383,13 +340,13 @@ export default function Portfolio() {
             showBenchmark={true}
             showDrawdown={false}
             height={350}
-            isDemo={isDemoMode}
+            isDemo={false}
           />
           
           <RiskMetricsChart
             title="Risk Analysis"
             height={350}
-            isDemo={isDemoMode}
+            isDemo={false}
           />
         </div>
 
@@ -398,7 +355,7 @@ export default function Portfolio() {
             title="Holdings Allocation"
             viewMode="symbol"
             height={400}
-            isDemo={isDemoMode}
+            isDemo={false}
           />
 
           <Card>

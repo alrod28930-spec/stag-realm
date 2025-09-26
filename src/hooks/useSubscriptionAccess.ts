@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
-import { isDemoMode } from '@/utils/demoMode';
+import { isLandingPageDemo } from '@/utils/demoMode';
 
 export type SubscriptionTier = 'lite' | 'standard' | 'pro' | 'elite';
 
@@ -64,7 +64,7 @@ export function useSubscriptionAccess() {
         setSubscriptionStatus(prev => ({ ...prev, loading: true, error: null }));
 
         // Check if user is the SINGLE demo account (for landing page display only)
-        const isDemo = isDemoMode();
+        const isDemo = isLandingPageDemo();
         
         // Elite tier testing account - full access with real data
         const isEliteTestAccount = user?.email === 'alrod28930@gmail.com';

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
-import { isDemoMode } from '@/utils/demoMode';
+import { isLandingPageDemo } from '@/utils/demoMode';
 
 export interface Entitlement {
   feature_code: string;
@@ -61,7 +61,7 @@ export function useEntitlements(workspaceId: string | undefined) {
 
   const hasFeature = (featureCode: string): boolean => {
     // Demo users have access to all features only if they are the SINGLE demo account
-    if (isDemoMode()) {
+    if (isLandingPageDemo()) {
       return true;
     }
     
@@ -70,7 +70,7 @@ export function useEntitlements(workspaceId: string | undefined) {
 
   const checkFeature = async (featureCode: string): Promise<boolean> => {
     // Demo users have access to all features only if they are the SINGLE demo account
-    if (isDemoMode()) {
+    if (isLandingPageDemo()) {
       return true;
     }
     

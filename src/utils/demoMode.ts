@@ -2,28 +2,21 @@ import { useAuthStore } from '@/stores/authStore';
 import { demoDataService } from '@/services/demoDataService';
 
 /**
- * Check if the current user is using the SINGLE demo account for landing page display
- * ALL other accounts should show NO mock data
+ * Check if the current user is the SINGLE demo account for landing page display ONLY
+ * This should ONLY be used for the landing page demo portal
  */
-export function isDemoMode(): boolean {
+export function isLandingPageDemo(): boolean {
   const authState = useAuthStore.getState();
-  // ONLY the single demo account gets demo data - ALL other accounts are empty until API keys connected
   return authState.user?.email === 'demo@example.com' && 
          authState.user?.id === '00000000-0000-0000-0000-000000000000';
 }
 
 /**
- * Check if user should have demo-level access to all tabs for viewing
+ * Initialize landing page demo data when demo user logs in
+ * This is ONLY for the landing page viewing portal
  */
-export function isDemoAccess(): boolean {
-  return isDemoMode();
-}
-
-/**
- * Initialize demo mode when demo user logs in
- */
-export function initializeDemoMode(): void {
-  if (isDemoMode()) {
+export function initializeLandingPageDemo(): void {
+  if (isLandingPageDemo()) {
     demoDataService.activate();
   } else {
     demoDataService.deactivate();
@@ -31,30 +24,14 @@ export function initializeDemoMode(): void {
 }
 
 /**
- * Get demo-safe user data
+ * Landing page demo hook - ONLY for landing page components
  */
-export function getDemoSafeUser() {
-  const authState = useAuthStore.getState();
-  if (isDemoMode()) {
-    return {
-      ...authState.user,
-      name: 'Demo User',
-      email: authState.user?.email || 'demo@example.com'
-    };
-  }
-  return authState.user;
-}
-
-/**
- * Demo mode hook for React components
- */
-export function useDemoMode() {
+export function useLandingPageDemo() {
   const user = useAuthStore(state => state.user);
-  // ONLY the single demo account gets demo data - ALL other accounts are empty
   const isDemo = user?.email === 'demo@example.com' && 
                  user?.id === '00000000-0000-0000-0000-000000000000';
   return {
-    isDemoMode: isDemo,
+    isLandingPageDemo: isDemo,
     demoUser: isDemo ? user : null
   };
 }

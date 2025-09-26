@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/stores/authStore';
-import { useDemoMode } from '@/utils/demoMode';
+import { useLandingPageDemo } from '@/utils/demoMode';
 
 interface CradleSheet {
   id: string;
@@ -17,7 +17,7 @@ export function useCradleSheets() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuthStore();
-  const { isDemoMode } = useDemoMode();
+  const { isLandingPageDemo } = useLandingPageDemo();
 
   // Load user's sheets
   useEffect(() => {
@@ -27,7 +27,7 @@ export function useCradleSheets() {
   const loadSheets = async () => {
     try {
       // Check if this is a test account (demo or owner) - never touch database
-      if (isDemoMode) {
+        if (isLandingPageDemo) {
         const demoSheets = localStorage.getItem('demo-cradle-sheets');
         if (demoSheets) {
           setSheets(JSON.parse(demoSheets));
@@ -107,7 +107,7 @@ export function useCradleSheets() {
       };
 
       // Check if this is a test account (demo or owner) - never touch database
-      if (isDemoMode) {
+        if (isLandingPageDemo) {
         const newSheet: CradleSheet = {
           id: `demo-sheet-${Date.now()}`,
           name,
@@ -214,7 +214,7 @@ export function useCradleSheets() {
   const updateSheet = async (id: string, data: any): Promise<boolean> => {
     try {
       // Check if this is a test account (demo or owner) - never touch database
-      if (isDemoMode) {
+        if (isLandingPageDemo) {
         const updatedSheets = sheets.map(sheet => 
           sheet.id === id ? { ...sheet, data, updated_at: new Date().toISOString() } : sheet
         );
@@ -250,7 +250,7 @@ export function useCradleSheets() {
   const renameSheet = async (id: string, name: string): Promise<boolean> => {
     try {
       // Check if this is a test account (demo or owner) - never touch database
-      if (isDemoMode) {
+        if (isLandingPageDemo) {
         const updatedSheets = sheets.map(sheet => 
           sheet.id === id ? { ...sheet, name, updated_at: new Date().toISOString() } : sheet
         );
@@ -303,7 +303,7 @@ export function useCradleSheets() {
   const deleteSheet = async (id: string): Promise<boolean> => {
     try {
       // Check if this is a test account (demo or owner) - never touch database
-      if (isDemoMode) {
+      if (isLandingPageDemo) {
         const updatedSheets = sheets.filter(sheet => sheet.id !== id);
         setSheets(updatedSheets);
         localStorage.setItem('demo-cradle-sheets', JSON.stringify(updatedSheets));
@@ -363,7 +363,7 @@ export function useCradleSheets() {
   const logCradleAction = async (eventType: string, payload: any) => {
     try {
       // Never log actions for test accounts to prevent database issues
-      if (isDemoMode || !user || !isAuthenticated) {
+      if (isLandingPageDemo || !user || !isAuthenticated) {
         console.log('Skipping action logging for test account or unauthenticated user');
         return;
       }

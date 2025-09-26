@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { isDemoMode } from './demoMode';
+import { isLandingPageDemo } from './demoMode';
 
 /**
  * Check if a feature is available for a workspace
@@ -7,7 +7,7 @@ import { isDemoMode } from './demoMode';
 export async function checkFeatureAccess(workspaceId: string, feature: string): Promise<boolean> {
   try {
     // Demo users have access to all features only if they are the SINGLE demo account
-    if (isDemoMode()) {
+    if (isLandingPageDemo()) {
       return true;
     }
 
