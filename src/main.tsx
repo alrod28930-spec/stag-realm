@@ -2,6 +2,9 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
+// Initialize system coordination (nervous system)
+import './services/systemCoordinator';
+
 console.log('🚀 Main.tsx - Starting application...');
 
 // Check if root element exists
