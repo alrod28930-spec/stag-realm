@@ -38,13 +38,63 @@ serve(async (req) => {
     const { symbols = ['SPY', 'QQQ', 'AAPL'], dataTypes = ['price'], timeframe = '1Min' }: MarketDataRequest = 
       await req.json().catch(() => ({}))
 
-    // Get API credentials from environment
-    const alpacaApiKey = Deno.env.get('ALPACA_API_KEY')
-    const alpacaSecretKey = Deno.env.get('ALPACA_SECRET_KEY')
+    // Get user's workspace and API credentials from database
+    const { data: userSettings } = await supabase
+      .from('user_settings')
+      .select('workspace_default')
+      .eq('user_id', user.id)
+      .single()
+
+    const workspaceId = userSettings?.workspace_default || user.id
+
+    // Get user's brokerage connection
+    const { data: brokerageConnection, error: brokerageError } = await supabase
+      .from('connections_brokerages')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('provider', 'alpaca')
+      .eq('status', 'active')
+      .single()
+
+    if (brokerageError || !brokerageConnection) {
+      console.log('No active brokerage connection found for user:', user.id)
+      return new Response(
+        JSON.stringify({ 
+          error: 'No brokerage connection', 
+          details: 'Please connect your Alpaca account in Settings > Brokerage Dock' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Decrypt API credentials
+    const { data: decryptResult, error: decryptError } = await supabase.functions.invoke('decrypt-brokerage-credentials', {
+      body: { connectionId: brokerageConnection.id }
+    })
+
+    if (decryptError || !decryptResult) {
+      console.error('Failed to decrypt brokerage credentials:', decryptError)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to decrypt credentials', 
+          details: 'Unable to access your brokerage credentials' 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const alpacaApiKey = decryptResult.apiKey
+    const alpacaSecretKey = decryptResult.apiSecret
 
     if (!alpacaApiKey || !alpacaSecretKey) {
-      console.error('Missing Alpaca API credentials')
-      return new Response('API credentials not configured', { status: 500, headers: corsHeaders })
+      console.error('Invalid decrypted credentials')
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid credentials', 
+          details: 'Please reconnect your Alpaca account' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     const results = []
@@ -93,13 +143,12 @@ serve(async (req) => {
     // Store the fetched data in the database for analysis
     for (const result of results) {
       await supabase.from('oracle_signals').insert({
-        user_id: user.id,
+        workspace_id: workspaceId,
         signal_type: 'market_data',
         symbol: symbols.join(','),
-        data: result,
-        confidence: 0.9,
-        severity: 'medium',
-        created_at: new Date().toISOString()
+        strength: 0.9,
+        direction: 0,
+        summary: `Market data for ${symbols.join(', ')}`
       })
     }
 

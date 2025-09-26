@@ -41,7 +41,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   tradeHistory: [],
 
   // Connect to Broker
-  connectBroker: async (apiKey: string, brokerType: string = 'fake') => {
+  connectBroker: async (apiKey: string, brokerType: string = 'alpaca') => {
     const state = get();
     
     set({ 
@@ -50,9 +50,15 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     });
 
     try {
-      // For now, always use fake adapter
-      // Future: switch based on brokerType
-      const adapter = new FakeBrokerAdapter();
+      // Dynamically import the appropriate adapter
+      let adapter: BrokerAdapter;
+      
+      if (brokerType === 'alpaca') {
+        const { AlpacaBrokerAdapter } = await import('@/adapters/AlpacaBrokerAdapter');
+        adapter = new AlpacaBrokerAdapter();
+      } else {
+        adapter = new FakeBrokerAdapter();
+      }
       
       const success = await adapter.connect(apiKey);
       
