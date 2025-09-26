@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { LiveBotTradeOverlay } from './LiveBotTradeOverlay';
+import { ChartTradeMarkers } from './ChartTradeMarkers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,11 +22,22 @@ import {
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { useToast } from '@/hooks/use-toast';
 
+interface TradeMarker {
+  id: string;
+  price: number;
+  timestamp: Date;
+  action: 'buy' | 'sell';
+  botName: string;
+  quantity: number;
+  pnl?: number;
+}
+
 interface ChartConfig {
   id: string;
   symbol: string;
   timeframe: string;
   indicators: string[];
+  trades?: TradeMarker[];
 }
 
 interface MultiChartPanelProps {
@@ -42,10 +55,10 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
 }) => {
   const [chartLayout, setChartLayout] = useState<'1x1' | '2x1' | '2x2'>('2x2');
   const [charts, setCharts] = useState<ChartConfig[]>([
-    { id: '1', symbol: defaultSymbols[0], timeframe: '5m', indicators: ['vwap'] },
-    { id: '2', symbol: defaultSymbols[1], timeframe: '1m', indicators: ['vwap', 'sma9'] },
-    { id: '3', symbol: defaultSymbols[2], timeframe: '15m', indicators: ['sma21'] },
-    { id: '4', symbol: defaultSymbols[3], timeframe: '5m', indicators: ['vwap'] }
+    { id: '1', symbol: defaultSymbols[0], timeframe: '5m', indicators: ['vwap'], trades: [] },
+    { id: '2', symbol: defaultSymbols[1], timeframe: '1m', indicators: ['vwap', 'sma9'], trades: [] },
+    { id: '3', symbol: defaultSymbols[2], timeframe: '15m', indicators: ['sma21'], trades: [] },
+    { id: '4', symbol: defaultSymbols[3], timeframe: '5m', indicators: ['vwap'], trades: [] }
   ]);
   const [selectedChart, setSelectedChart] = useState('1');
   const [showOrderBook, setShowOrderBook] = useState(false);
@@ -78,6 +91,24 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
     ));
   };
 
+  const handleBotTradeExecuted = (chartId: string, trade: any) => {
+    const tradeMarker: TradeMarker = {
+      id: trade.id,
+      price: trade.price,
+      timestamp: trade.timestamp,
+      action: trade.action,
+      botName: trade.bot_name,
+      quantity: trade.quantity,
+      pnl: trade.pnl
+    };
+
+    setCharts(prev => prev.map(chart => 
+      chart.id === chartId && chart.symbol === trade.symbol
+        ? { ...chart, trades: [...(chart.trades || []), tradeMarker] }
+        : chart
+    ));
+  };
+
   const addChart = () => {
     if (charts.length >= maxCharts) {
       toast({
@@ -92,7 +123,8 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
       id: Date.now().toString(),
       symbol: 'AAPL',
       timeframe: '5m',
-      indicators: ['vwap']
+      indicators: ['vwap'],
+      trades: []
     };
 
     setCharts(prev => [...prev, newChart]);
@@ -300,7 +332,23 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                 </div>
               </CardHeader>
               
-              <CardContent className="p-0">
+              <CardContent className="p-0 relative">
+                {/* Live Bot Trade Overlay */}
+                <LiveBotTradeOverlay 
+                  symbol={chart.symbol}
+                  onTradeExecuted={(trade) => handleBotTradeExecuted(chart.id, trade)}
+                />
+                
+                {/* Chart Trade Markers */}
+                {chart.trades && chart.trades.length > 0 && (
+                  <ChartTradeMarkers 
+                    trades={chart.trades}
+                    chartHeight={getChartHeight()}
+                    chartWidth={800} // Default chart width
+                    priceRange={{ min: 100, max: 200 }} // Mock price range
+                  />
+                )}
+                
                 <RealTimeTradingChart
                   symbol={chart.symbol}
                   timeframe={chart.timeframe}
@@ -360,6 +408,25 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                 <span className="text-muted-foreground">Spread:</span>
                 <span className="font-mono">$0.02</span>
               </div>
+              {/* Bot Trading Stats */}
+              {chart.trades && chart.trades.length > 0 && (
+                <>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Bot Trades:</span>
+                    <span className="font-mono">{chart.trades.length}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Bot P&L:</span>
+                    <span className={`font-mono ${
+                      (chart.trades.reduce((sum, t) => sum + (t.pnl || 0), 0)) >= 0 
+                        ? 'text-green-600' 
+                        : 'text-red-600'
+                    }`}>
+                      ${chart.trades.reduce((sum, t) => sum + (t.pnl || 0), 0).toFixed(0)}
+                    </span>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ))}
