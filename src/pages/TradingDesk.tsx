@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ManualOrderCard } from '@/components/tradingdesk/ManualOrderCard';
@@ -26,6 +27,7 @@ import { MultiChartPanel } from '@/components/charts/MultiChartPanel';
 import { OrderTicket } from '@/components/tradingdesk/OrderTicket';
 import { IntradayEquityCurve } from '@/components/charts/IntradayEquityCurve';
 import { useDemoMode } from '@/utils/demoMode';
+import { SymbolSearchInput } from '@/components/market/SymbolSearchInput';
 
 export default function TradingDesk() {
   const { isDemoMode } = useDemoMode();
@@ -87,6 +89,24 @@ export default function TradingDesk() {
         </ScrollArea>
 
         <TabsContent value="manual" className="space-y-6">
+          {/* Symbol Selection */}
+          <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">AAPL</Button>
+              <Button variant="outline" size="sm">SPY</Button>
+              <Button variant="outline" size="sm">TSLA</Button>
+              <Button variant="outline" size="sm">QQQ</Button>
+            </div>
+            <SymbolSearchInput 
+              onSymbolSelect={(symbol) => {
+                console.log('Selected symbol:', symbol);
+                // Handle symbol selection
+              }}
+              placeholder="Search any symbol..."
+              className="flex-1"
+            />
+          </div>
+          
           {/* Trading Charts */}
           <MultiChartPanel 
             defaultSymbols={['AAPL', 'TSLA', 'SPY', 'QQQ']}

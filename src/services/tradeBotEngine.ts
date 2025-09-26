@@ -864,7 +864,7 @@ class TradeBotEngineService {
 
     bot.audit.risk_events.push(riskEvent);
 
-    recorder.recordSystemEvent('risk_event', {
+    recorder.recordSystemEvent('shutdown', {
       bot_id: bot.id,
       event_id: riskEventId,
       event_type: eventType,
