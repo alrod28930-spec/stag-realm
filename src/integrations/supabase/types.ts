@@ -1049,6 +1049,45 @@ export type Database = {
         }
         Relationships: []
       }
+      market_data: {
+        Row: {
+          change: number | null
+          change_percent: number | null
+          high: number | null
+          low: number | null
+          open: number | null
+          price: number | null
+          symbol: string
+          updated_at: string
+          volume: number | null
+          workspace_id: string
+        }
+        Insert: {
+          change?: number | null
+          change_percent?: number | null
+          high?: number | null
+          low?: number | null
+          open?: number | null
+          price?: number | null
+          symbol: string
+          updated_at?: string
+          volume?: number | null
+          workspace_id: string
+        }
+        Update: {
+          change?: number | null
+          change_percent?: number | null
+          high?: number | null
+          low?: number | null
+          open?: number | null
+          price?: number | null
+          symbol?: string
+          updated_at?: string
+          volume?: number | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       oracle_news: {
         Row: {
           headline: string | null
@@ -1216,6 +1255,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      orders: {
+        Row: {
+          broker_order_id: string | null
+          created_at: string
+          filled_avg_price: number | null
+          filled_qty: number | null
+          id: string
+          order_type: string
+          price: number | null
+          quantity: number
+          side: string
+          status: string
+          stop_price: number | null
+          symbol: string
+          time_in_force: string | null
+          updated_at: string
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          broker_order_id?: string | null
+          created_at?: string
+          filled_avg_price?: number | null
+          filled_qty?: number | null
+          id?: string
+          order_type: string
+          price?: number | null
+          quantity: number
+          side: string
+          status?: string
+          stop_price?: number | null
+          symbol: string
+          time_in_force?: string | null
+          updated_at?: string
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          broker_order_id?: string | null
+          created_at?: string
+          filled_avg_price?: number | null
+          filled_qty?: number | null
+          id?: string
+          order_type?: string
+          price?: number | null
+          quantity?: number
+          side?: string
+          status?: string
+          stop_price?: number | null
+          symbol?: string
+          time_in_force?: string | null
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
       }
       portfolio_current: {
         Row: {
