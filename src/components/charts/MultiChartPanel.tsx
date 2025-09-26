@@ -366,14 +366,14 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
 
                     {/* Bot Selector */}
                     <Select 
-                      value={chart.deployedBot || ""} 
-                      onValueChange={(botId) => botId ? deployBot(chart.id, botId) : undeployBot(chart.id)}
+                      value={chart.deployedBot || "manual"} 
+                      onValueChange={(botId) => botId !== "manual" ? deployBot(chart.id, botId) : undeployBot(chart.id)}
                     >
                       <SelectTrigger className="w-24 text-xs">
                         <SelectValue placeholder="Manual" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Manual</SelectItem>
+                        <SelectItem value="manual">Manual</SelectItem>
                         {availableBots.map((bot) => (
                           <SelectItem key={bot.id} value={bot.id}>
                             {bot.name}
