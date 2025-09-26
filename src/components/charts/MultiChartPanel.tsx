@@ -38,6 +38,8 @@ interface ChartConfig {
   timeframe: string;
   indicators: string[];
   trades?: TradeMarker[];
+  deployedBot?: string;
+  isAutomated?: boolean;
 }
 
 interface MultiChartPanelProps {
@@ -83,6 +85,13 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
   const popularSymbols = [
     'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX',
     'SPY', 'QQQ', 'IWM', 'DIA', 'VIX', 'GLD', 'SLV', 'TLT'
+  ];
+
+  const availableBots = [
+    { id: 'momentum-bot-1', name: 'Momentum Pro', strategy: 'momentum' },
+    { id: 'mean-revert-1', name: 'Mean Reversion', strategy: 'mean_reversion' },
+    { id: 'breakout-1', name: 'Breakout Hunter', strategy: 'breakout' },
+    { id: 'scalping-1', name: 'Quick Scalper', strategy: 'scalping' }
   ];
 
   const handleChartUpdate = (chartId: string, updates: Partial<ChartConfig>) => {
@@ -133,6 +142,38 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
   const removeChart = (chartId: string) => {
     if (charts.length <= 1) return;
     setCharts(prev => prev.filter(chart => chart.id !== chartId));
+  };
+
+  const deployBot = (chartId: string, botId: string) => {
+    const bot = availableBots.find(b => b.id === botId);
+    if (!bot) return;
+
+    setCharts(prev => prev.map(chart => 
+      chart.id === chartId 
+        ? { ...chart, deployedBot: botId, isAutomated: true }
+        : chart
+    ));
+
+    toast({
+      title: 'Bot Deployed',
+      description: `${bot.name} is now trading ${charts.find(c => c.id === chartId)?.symbol}`
+    });
+  };
+
+  const undeployBot = (chartId: string) => {
+    const chart = charts.find(c => c.id === chartId);
+    if (!chart?.deployedBot) return;
+
+    setCharts(prev => prev.map(c => 
+      c.id === chartId 
+        ? { ...c, deployedBot: undefined, isAutomated: false }
+        : c
+    ));
+
+    toast({
+      title: 'Bot Stopped',
+      description: `Chart switched back to manual mode`
+    });
   };
 
   const syncCharts = () => {
@@ -281,6 +322,11 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                     <Badge variant="outline" className="text-xs">
                       {chart.timeframe}
                     </Badge>
+                    {chart.isAutomated && (
+                      <Badge variant="default" className="text-xs">
+                        {availableBots.find(b => b.id === chart.deployedBot)?.name || 'Bot Active'}
+                      </Badge>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-1">
@@ -317,6 +363,36 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                         ))}
                       </SelectContent>
                     </Select>
+
+                    {/* Bot Selector */}
+                    <Select 
+                      value={chart.deployedBot || ""} 
+                      onValueChange={(botId) => botId ? deployBot(chart.id, botId) : undeployBot(chart.id)}
+                    >
+                      <SelectTrigger className="w-24 text-xs">
+                        <SelectValue placeholder="Manual" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Manual</SelectItem>
+                        {availableBots.map((bot) => (
+                          <SelectItem key={bot.id} value={bot.id}>
+                            {bot.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Stop Bot Button */}
+                    {chart.isAutomated && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => undeployBot(chart.id)}
+                        className="w-8 h-6 p-0 text-xs"
+                      >
+                        Stop
+                      </Button>
+                    )}
 
                     {charts.length > 1 && (
                       <Button
