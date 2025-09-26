@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,6 +32,7 @@ import { SymbolSearchInput } from '@/components/market/SymbolSearchInput';
 
 export default function TradingDesk() {
   const { isDemoMode } = useDemoMode();
+  const [selectedChartSymbol, setSelectedChartSymbol] = useState('AAPL');
 
   return (
     <TierComplianceGuard requiresLiveTrading={true}>
@@ -98,24 +100,27 @@ export default function TradingDesk() {
               <Button variant="outline" size="sm">QQQ</Button>
             </div>
             <SymbolSearchInput 
-              onSymbolSelect={(symbol) => {
-                console.log('Selected symbol:', symbol);
-                // Handle symbol selection
+              onSymbolSelect={(symbol, symbolInfo) => {
+                console.log('Selected symbol:', symbol, symbolInfo);
+                // TODO: Add symbol to chart panel or create new chart
+                setSelectedChartSymbol(symbol);
               }}
               placeholder="Search any symbol..."
               className="flex-1"
+              selectedSymbol={selectedChartSymbol}
             />
           </div>
           
           {/* Trading Charts */}
           <MultiChartPanel 
-            defaultSymbols={['AAPL', 'TSLA', 'SPY', 'QQQ']}
+            defaultSymbols={[selectedChartSymbol, 'SPY', 'QQQ']}
             maxCharts={4}
             onOrderPlace={(order) => {
               console.log('Order placed from chart:', order);
               // Handle order placement
             }}
             allowDOMView={true}
+            key={selectedChartSymbol} // Force re-render when symbol changes
           />
           
           {/* Trading Metrics */}

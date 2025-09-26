@@ -61,9 +61,13 @@ const Charts = () => {
               </Button>
             </div>
             <SymbolSearchInput 
-              onSymbolSelect={setSelectedSymbol}
+              onSymbolSelect={(symbol, symbolInfo) => {
+                setSelectedSymbol(symbol);
+                console.log('Selected symbol info:', symbolInfo);
+              }}
               placeholder="Search any symbol..."
               className="flex-1"
+              selectedSymbol={selectedSymbol}
             />
           </div>
 
