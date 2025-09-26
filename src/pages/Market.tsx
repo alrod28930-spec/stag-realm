@@ -1,331 +1,181 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+  Search, 
   TrendingUp, 
   TrendingDown, 
-  Search, 
-  Star,
-  Volume2,
+  RefreshCw,
   BarChart3,
-  MessageSquare
+  Activity,
+  DollarSign
 } from 'lucide-react';
-import { useCompliance } from '@/components/compliance/ComplianceProvider';
-import { LegalFooter } from '@/components/compliance/LegalFooter';
+import { useToast } from '@/hooks/use-toast';
+import { SymbolSearchInput } from '@/components/market/SymbolSearchInput';
+import { FullSearchPage } from '@/components/market/FullSearchPage';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
-import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
-import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { MarketDataDisclaimer } from '@/components/market/MarketDataDisclaimer';
-import { useDemoMode } from '@/utils/demoMode';
-import { demoDataService } from '@/services/demoDataService';
-import Analyst from '@/pages/Analyst';
 
 export default function Market() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const { showDisclaimer } = useCompliance();
-  const { isDemoMode } = useDemoMode();
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
+  // Simulate loading market data
   useEffect(() => {
-    // Trigger market search disclaimer on component access
-    showDisclaimer('market_search', 'view');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Remove showDisclaimer from deps to prevent infinite loop
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  // Get market data - use demo data if in demo mode
-  const getMarketData = () => {
-    if (isDemoMode) {
-      const demoSearchResults = demoDataService.getSearchResults('', 10);
-      return demoSearchResults.map(result => ({
-        symbol: result.symbol,
-        name: `${result.symbol} Corp.`,
-        price: result.currentPrice,
-        change: result.currentPrice * (result.changePercent / 100),
-        changePercent: result.changePercent,
-        volume: '45.2M',
-        marketCap: '1.25T'
-      }));
-    }
-    
-    return [];
+  // Market indices data (this would come from real market data API)
+  const indices = [
+    { symbol: 'SPY', name: 'S&P 500 ETF', price: 415.25, change: 2.15, changePercent: 0.52 },
+    { symbol: 'QQQ', name: 'Nasdaq 100 ETF', price: 348.90, change: -1.85, changePercent: -0.53 },
+    { symbol: 'IWM', name: 'Russell 2000 ETF', price: 195.75, change: 0.85, changePercent: 0.44 },
+    { symbol: 'DIA', name: 'Dow Jones ETF', price: 340.60, change: 1.25, changePercent: 0.37 },
+  ];
+
+  const handleSearch = (query: string) => {
+    setIsLoading(true);
+    // This would be replaced with real market data search
+    setTimeout(() => {
+      setSearchResults([]);
+      setIsLoading(false);
+    }, 500);
   };
-
-  const marketData = getMarketData();
-
-  const indices = isDemoMode ? [
-    { name: 'S&P 500', symbol: 'SPX', price: 4725.80, change: +24.15, changePercent: +0.51 },
-    { name: 'NASDAQ', symbol: 'IXIC', price: 14876.50, change: -45.32, changePercent: -0.30 },
-    { name: 'DOW JONES', symbol: 'DJI', price: 37285.10, change: +125.67, changePercent: +0.34 },
-  ] : [];
-
-  const topMovers = {
-    gainers: [
-      { symbol: 'NVDA', price: 875.30, change: +18.75, changePercent: +2.19 },
-      { symbol: 'AMD', price: 142.85, change: +8.42, changePercent: +6.27 },
-      { symbol: 'MSFT', price: 378.90, change: +5.20, changePercent: +1.39 },
-    ],
-    losers: [
-      { symbol: 'TSLA', price: 248.75, change: -12.45, changePercent: -4.77 },
-      { symbol: 'META', price: 325.15, change: -8.93, changePercent: -2.67 },
-      { symbol: 'NFLX', price: 445.20, change: -7.35, changePercent: -1.62 },
-    ]
-  };
-
-  const filteredMarketData = marketData.filter(stock =>
-    stock.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stock.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="space-y-8">
-      {/* Demo Disclaimer */}
-      {isDemoMode && (
-        <DemoDisclaimer feature="Market Center" />
-      )}
-
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          Market Center
-          {isDemoMode && <DemoModeIndicator variant="badge" />}
-          <DisclaimerBadge variant="minimal" component="market_search" />
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          {isDemoMode 
-            ? "Explore our market analysis tools with demonstration data"
-            : "Real-time market data, AI insights, and trading opportunities"
-          }
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center">
+            Market Center
+            <DisclaimerBadge variant="minimal" component="market_search" />
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Search and analyze market data with live pricing and fundamentals
+          </p>
+        </div>
+        <Button size="sm" variant="outline" disabled={isLoading}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh Data
+        </Button>
       </div>
 
-      {/* Show market data disclaimer for real users, demo data for demo users */}
-      {isDemoMode ? (
-        <>
-          {/* Market Indices - Demo Mode */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {indices.map((index, i) => (
-              <Card key={i} className="bg-gradient-card shadow-card">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">{index.name}</CardTitle>
-                  <CardDescription className="text-xs">{index.symbol}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold">${index.price.toLocaleString()}</p>
-                      <p className={`text-sm flex items-center ${
-                        index.change >= 0 ? 'text-accent' : 'text-destructive'
-                      }`}>
-                        {index.change >= 0 ? 
-                          <TrendingUp className="w-3 h-3 mr-1" /> : 
-                          <TrendingDown className="w-3 h-3 mr-1" />
-                        }
-                        {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)} ({index.changePercent >= 0 ? '+' : ''}{index.changePercent.toFixed(2)}%)
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      {/* Market Data Disclaimer */}
+      <MarketDataDisclaimer />
 
-          {/* Main Content with Tabs - Demo Mode */}
-          <Tabs defaultValue="overview" className="space-y-6">
-            <ScrollArea className="w-full">
-              <TabsList className="grid w-full grid-cols-3 min-w-max">
-                <TabsTrigger value="overview">Market Overview</TabsTrigger>
-                <TabsTrigger value="movers">Top Movers</TabsTrigger>
-                <TabsTrigger value="analyst" className="gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  AI Analyst
-                </TabsTrigger>
-              </TabsList>
-            </ScrollArea>
+      {/* Market Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {indices.map((index, i) => (
+          <Card key={i} className="bg-gradient-card shadow-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {index.symbol}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{index.name}</p>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-bold">${index.price}</div>
+                <div className={`text-xs flex items-center ${
+                  index.change >= 0 ? 'text-accent' : 'text-destructive'
+                }`}>
+                  {index.change >= 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                  {index.change >= 0 ? '+' : ''}{index.change} ({index.changePercent >= 0 ? '+' : ''}{index.changePercent}%)
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
 
-            <TabsContent value="overview">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Main Market Data */}
-                <Card className="lg:col-span-3 bg-gradient-card shadow-card">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>Stock Watchlist</CardTitle>
-                        <CardDescription>Monitor your favorite stocks in real-time</CardDescription>
-                      </div>
-                      <div className="relative w-64">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                        <Input
-                          placeholder="Search stocks..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {filteredMarketData.map((stock, index) => (
-                        <div 
-                          key={index}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <Button variant="ghost" size="sm" className="p-1 h-auto">
-                              <Star className="w-4 h-4" />
-                            </Button>
+      {/* Main Content */}
+      <Tabs defaultValue="search" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="search">Symbol Search</TabsTrigger>
+          <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="search" className="space-y-6">
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle>Symbol Search & Analysis</CardTitle>
+              <CardDescription>
+                Search for stocks, ETFs, and other securities to analyze
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <SymbolSearchInput 
+                  onSymbolSelect={(symbol, symbolInfo) => {
+                    console.log('Selected symbol:', symbol, symbolInfo);
+                    toast({
+                      title: "Symbol Selected",
+                      description: `Selected ${symbol} - ${symbolInfo?.name || 'Unknown'}`,
+                    });
+                  }}
+                  placeholder="Search for any symbol (e.g., AAPL, MSFT, SPY)..."
+                  className="w-full"
+                />
+                
+                {/* Search Results */}
+                {searchResults.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Search Results</h3>
+                    <ScrollArea className="h-64 border rounded-md p-2">
+                      {searchResults.map((result, index) => (
+                        <div key={index} className="p-2 hover:bg-muted rounded cursor-pointer">
+                          <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-semibold">{stock.symbol}</p>
-                              <p className="text-sm text-muted-foreground truncate max-w-[150px]">
-                                {stock.name}
-                              </p>
+                              <p className="font-medium">{result.symbol}</p>
+                              <p className="text-sm text-muted-foreground">{result.name}</p>
                             </div>
-                          </div>
-                          
-                          <div className="flex items-center space-x-6">
-                            <div className="text-right">
-                              <p className="font-semibold">${stock.price}</p>
-                              <p className={`text-sm flex items-center ${
-                                stock.change >= 0 ? 'text-accent' : 'text-destructive'
-                              }`}>
-                                {stock.change >= 0 ? 
-                                  <TrendingUp className="w-3 h-3 mr-1" /> : 
-                                  <TrendingDown className="w-3 h-3 mr-1" />
-                                }
-                                {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%)
-                              </p>
-                            </div>
-                            
-                            <div className="text-right text-sm text-muted-foreground">
-                              <p className="flex items-center">
-                                <Volume2 className="w-3 h-3 mr-1" />
-                                {stock.volume}
-                              </p>
-                              <p>Cap: {stock.marketCap}</p>
-                            </div>
-                            
-                            <Button variant="outline" size="sm">
-                              <BarChart3 className="w-4 h-4 mr-2" />
-                              Chart
-                            </Button>
+                            <Badge variant="outline">{result.type}</Badge>
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Top Movers Sidebar */}
-                <Card className="bg-gradient-card shadow-card">
-                  <CardHeader>
-                    <CardTitle>Top Movers</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Tabs defaultValue="gainers" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="gainers">Gainers</TabsTrigger>
-                        <TabsTrigger value="losers">Losers</TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="gainers" className="space-y-3 mt-4">
-                        {topMovers.gainers.map((stock, index) => (
-                          <div key={index} className="flex justify-between items-center p-2 rounded bg-muted/30">
-                            <div>
-                              <p className="font-semibold text-sm">{stock.symbol}</p>
-                              <p className="text-xs text-muted-foreground">${stock.price}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-accent">+{stock.changePercent.toFixed(2)}%</p>
-                              <p className="text-xs text-accent">+{stock.change.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </TabsContent>
-                      
-                      <TabsContent value="losers" className="space-y-3 mt-4">
-                        {topMovers.losers.map((stock, index) => (
-                          <div key={index} className="flex justify-between items-center p-2 rounded bg-muted/30">
-                            <div>
-                              <p className="font-semibold text-sm">{stock.symbol}</p>
-                              <p className="text-xs text-muted-foreground">${stock.price}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-destructive">{stock.changePercent.toFixed(2)}%</p>
-                              <p className="text-xs text-destructive">{stock.change.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="movers">
-              <Tabs defaultValue="gainers" className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="gainers">Top Gainers</TabsTrigger>
-                  <TabsTrigger value="losers">Top Losers</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="gainers">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {topMovers.gainers.map((stock) => (
-                      <Card key={stock.symbol} className="bg-gradient-card shadow-card">
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold">{stock.symbol}</h4>
-                            <Badge className="bg-accent text-accent-foreground">
-                              <TrendingUp className="w-3 h-3 mr-1" />
-                              +{stock.changePercent.toFixed(2)}%
-                            </Badge>
-                          </div>
-                          <p className="text-2xl font-bold">${stock.price}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    </ScrollArea>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="losers">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {topMovers.losers.map((stock) => (
-                      <Card key={stock.symbol} className="bg-gradient-card shadow-card">
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold">{stock.symbol}</h4>
-                            <Badge variant="destructive">
-                              <TrendingDown className="w-3 h-3 mr-1" />
-                              {stock.changePercent.toFixed(2)}%
-                            </Badge>
-                          </div>
-                          <p className="text-2xl font-bold">${stock.price}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </TabsContent>
-
-            <TabsContent value="analyst" className="space-y-6">
-              <div className="h-screen overflow-hidden">
-                <Analyst />
+                )}
               </div>
-            </TabsContent>
-          </Tabs>
-        </>
-      ) : (
-        /* Real Users - Show Market Data Disclaimer */
-        <MarketDataDisclaimer />
-      )}
+            </CardContent>
+          </Card>
 
-      {/* Legal Footer */}
-      <LegalFooter component="market_search" variant="standard" />
+          {/* Full Search Page Component */}
+          <FullSearchPage />
+        </TabsContent>
+
+        <TabsContent value="analysis" className="space-y-6">
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle>Market Analysis Tools</CardTitle>
+              <CardDescription>
+                Advanced market analysis and screening tools
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Connect your brokerage account to access advanced market analysis tools
+                </p>
+                <Button className="mt-4" variant="outline">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Enable Market Analysis
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

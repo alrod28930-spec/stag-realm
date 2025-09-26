@@ -1,62 +1,64 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
-import { useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
   BarChart3, 
   Activity,
-  Building2,
   RefreshCw,
   AlertTriangle,
-  Settings,
-  ArrowRight
+  Building2,
+  PieChart,
+  Zap
 } from 'lucide-react';
-import { ComplianceStatus } from '@/components/compliance/ComplianceStatus';
+import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
+import { useToast } from '@/hooks/use-toast';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
-import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
-import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
 import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
-import { useDemoMode } from '@/utils/demoMode';
-import { demoDataService } from '@/services/demoDataService';
-import { MiniOracleWidget } from '@/components/dashboard/MiniOracleWidget';
 import { EquityCurveChart } from '@/components/charts/EquityCurveChart';
-import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
 import { RiskMetricsChart } from '@/components/charts/RiskMetricsChart';
+import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
 
 export default function Dashboard() {
-  console.log('📊 Dashboard component rendering');
-  const { portfolio, positions, loadPortfolio, subscribeToUpdates } = useRealPortfolioStore();
-  const { isDemoMode } = useDemoMode();
+  const {
+    portfolio,
+    positions,
+    isLoading,
+    error,
+    loadPortfolio,
+    subscribeToUpdates
+  } = useRealPortfolioStore();
+  
+  const { toast } = useToast();
 
-  // Load portfolio data and subscribe to updates (only for non-demo users)
+  // Load portfolio data and subscribe to updates
   useEffect(() => {
-    if (!isDemoMode) {
-      loadPortfolio();
-      const unsubscribe = subscribeToUpdates();
-      return unsubscribe;
-    }
-  }, [loadPortfolio, subscribeToUpdates, isDemoMode]);
+    loadPortfolio();
+    const unsubscribe = subscribeToUpdates();
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove functions from deps to prevent infinite loop
 
-  // Get portfolio data - only demo account gets mock data, real accounts are empty until API connection
-  const portfolioData = isDemoMode ? demoDataService.getPortfolio() : {
+  // Get portfolio data from real brokerage connections
+  const portfolioData = {
     equity: portfolio?.equity || 0,
     cash: portfolio?.cash || 0,
     positions: positions || []
   };
-
-  // Calculate real-time stats
+  
+  // Calculate portfolio metrics
   const portfolioValue = portfolioData.equity || 0;
   const availableCash = portfolioData.cash || 0;
   const currentPositions = portfolioData.positions || [];
   const totalPositions = currentPositions.length;
   const totalUnrealizedPnL = currentPositions.reduce((sum, pos) => sum + (pos.unr_pnl || 0), 0);
+  const totalMarketValue = currentPositions.reduce((sum, pos) => sum + (pos.mv || 0), 0);
 
-  // Mock data for other stats that would come from trading bots, etc.
   const stats = [
     {
       title: 'Portfolio Value',
@@ -73,40 +75,33 @@ export default function Dashboard() {
       icon: TrendingUp,
     },
     {
-      title: 'Active Positions',
-      value: totalPositions.toString(),
-      change: `${totalPositions} holdings`,
-      trend: 'up',
+      title: 'Market Value',
+      value: `$${totalMarketValue.toLocaleString()}`,
+      change: `${totalPositions} positions`,
+      trend: totalPositions > 0 ? 'up' : 'neutral',
       icon: BarChart3,
     },
     {
-      title: 'Running Bots',
-      value: '7',
-      change: 'Stable',
-      trend: 'neutral',
+      title: 'Total P&L',
+      value: totalUnrealizedPnL >= 0 ? `+$${totalUnrealizedPnL.toFixed(2)}` : `-$${Math.abs(totalUnrealizedPnL).toFixed(2)}`,
+      change: portfolioValue > 0 ? `${((totalUnrealizedPnL / (portfolioValue - totalUnrealizedPnL)) * 100).toFixed(2)}%` : '0.00%',
+      trend: totalUnrealizedPnL >= 0 ? 'up' : 'down',
       icon: Activity,
     },
   ];
 
-  // Use real positions or demo data
-  const displayPositions = currentPositions.slice(0, 4).map(pos => ({
-    symbol: pos.symbol,
-    side: pos.qty > 0 ? 'Long' : 'Short',
-    qty: Math.abs(pos.qty),
-    price: `$${pos.avg_cost.toFixed(2)}`,
-    pnl: pos.unr_pnl >= 0 ? `+$${pos.unr_pnl.toFixed(2)}` : `-$${Math.abs(pos.unr_pnl).toFixed(2)}`,
-    pnlPercent: pos.mv > 0 ? `${((pos.unr_pnl / (pos.mv - pos.unr_pnl)) * 100).toFixed(1)}%` : '0.0%'
-  }));
+  const handleRefresh = () => {
+    loadPortfolio();
+    toast({
+      title: "Dashboard Refreshed",
+      description: "Portfolio data has been updated.",
+    });
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-8">
       {/* Risk Disclaimer Banner */}
       <RiskDisclaimerBanner />
-      
-      {/* Demo Disclaimer */}
-      {isDemoMode && (
-        <DemoDisclaimer feature="Trading Dashboard" />
-      )}
       
       {/* Floating Risk Indicator */}
       <FloatingRiskIndicator />
@@ -116,67 +111,48 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold flex items-center">
             Trading Dashboard
-            {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
           </h1>
           <p className="text-muted-foreground mt-2">
-            {isDemoMode 
-              ? "Explore our trading platform with simulated data and features"
-              : "Welcome back! Here's an overview of your trading activity."
-            }
+            Monitor your portfolio performance and trading activity
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} disabled={isLoading} size="sm" variant="outline">
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      {/* Brokerage Connection Notice - only show for real accounts */}
-      {!isDemoMode && (
-        <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-lg bg-primary/20">
-                  <Building2 className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Connect Your Brokerage Account</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Connect your API keys to see live portfolio data and enable trading
-                  </p>
-                </div>
+      {/* No Portfolio Connection Warning */}
+      {portfolioValue === 0 && (
+        <Card className="border-warning bg-warning/10">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-warning mt-0.5" />
+              <div className="space-y-2">
+                <p className="font-medium text-warning-foreground">No Portfolio Data Found</p>
+                <p className="text-sm text-warning-foreground/80">
+                  Connect your brokerage account in Settings to start tracking your portfolio and enable live trading.
+                </p>
+                <Button variant="outline" size="sm" className="mt-2">
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Connect Brokerage Account
+                </Button>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center space-x-2"
-                onClick={() => window.location.href = '/settings'}
-              >
-                <Settings className="h-4 w-4" />
-                <span>Go to Settings</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Empty State for Real Accounts Without API Connection */}
-      {!isDemoMode && portfolioValue === 0 && (
-        <Card className="bg-gradient-to-r from-orange/10 to-accent/10 border-orange/20">
-          <CardContent className="p-6 text-center">
-            <div className="p-3 rounded-lg bg-orange/20 w-fit mx-auto mb-4">
-              <AlertTriangle className="h-8 w-8 text-orange" />
+      {/* Error State */}
+      {error && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <p className="text-destructive">Failed to load portfolio data: {error}</p>
             </div>
-            <h3 className="font-semibold text-lg mb-2">No Portfolio Data Available</h3>
-            <p className="text-muted-foreground mb-4">
-              Connect your brokerage API keys in Settings to see your live portfolio data, positions, and trading history.
-            </p>
-            <Button 
-              variant="default" 
-              className="flex items-center space-x-2 mx-auto"
-              onClick={() => window.location.href = '/settings'}
-            >
-              <Settings className="h-4 w-4" />
-              <span>Connect API Keys</span>
-            </Button>
           </CardContent>
         </Card>
       )}
@@ -205,67 +181,93 @@ export default function Dashboard() {
                   {stat.trend === 'down' && <TrendingDown className="w-3 h-3 mr-1" />}
                   {stat.change}
                 </span>
-                {' '}from yesterday
               </p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <EquityCurveChart 
-            data={undefined}
-            title="30-Day Performance"
-            showBenchmark={true}
-            height={280}
-            isDemo={isDemoMode}
-          />
-          
-          <AllocationPieChart
-            title="Portfolio Allocation"
-            viewMode="symbol"
-            height={280}
-            isDemo={isDemoMode}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <RiskMetricsChart
-            title="Risk Dashboard"
-            height={250}
-            isDemo={isDemoMode}
-          />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-2 rounded border">
-                  <span className="text-sm">AAPL Signal Generated</span>
-                  <span className="text-xs text-muted-foreground">2m ago</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded border">
-                  <span className="text-sm">Portfolio Rebalanced</span>
-                  <span className="text-xs text-muted-foreground">1h ago</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded border">
-                  <span className="text-sm">Risk Check Passed</span>
-                  <span className="text-xs text-muted-foreground">3h ago</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <MiniOracleWidget />
-        </div>
-
-      {/* Compliance Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ComplianceStatus />
-        <ComplianceDashboard />
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <EquityCurveChart 
+          data={undefined}
+          title="Portfolio Equity Curve"
+          showBenchmark={true}
+          showDrawdown={false}
+          height={350}
+          isDemo={false}
+        />
+        
+        <RiskMetricsChart
+          title="Risk Analysis"
+          height={350}
+          isDemo={false}
+        />
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AllocationPieChart
+          title="Holdings Allocation"
+          viewMode="symbol"
+          height={400}
+          isDemo={false}
+        />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Position Summary</CardTitle>
+            <CardDescription>
+              Current portfolio positions and performance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-6 h-6 animate-spin" />
+                <span className="ml-2">Loading positions...</span>
+              </div>
+            ) : currentPositions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No positions found</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Your portfolio positions will appear here once you have investments
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {currentPositions.slice(0, 5).map((position, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded">
+                    <div>
+                      <div className="font-medium">{position.symbol}</div>
+                      <div className="text-sm text-muted-foreground">{Math.abs(position.qty)} shares</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold">${(position.mv || 0).toLocaleString()}</div>
+                      <div className={`text-sm ${(position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                        {(position.unr_pnl || 0) >= 0 ? '+' : ''}${(position.unr_pnl || 0).toFixed(2)} 
+                        ({position.mv > 0 ? 
+                          `${(((position.unr_pnl || 0) / (position.mv - (position.unr_pnl || 0))) * 100).toFixed(2)}%` : 
+                          '0.00%'
+                        })
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {currentPositions.length > 5 && (
+                  <div className="text-center pt-2">
+                    <p className="text-sm text-muted-foreground">
+                      And {currentPositions.length - 5} more positions...
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Compliance Dashboard */}
+      <ComplianceDashboard />
     </div>
   );
 }

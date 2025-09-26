@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { Sidebar } from './Sidebar';
+import { AppSidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import TabLockGuard from '@/components/subscription/TabLockGuard';
 import TierComplianceGuard from '@/components/compliance/TierComplianceGuard';

@@ -1,530 +1,313 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Activity, 
+  Zap, 
   TrendingUp, 
   TrendingDown, 
-  AlertTriangle,
-  Zap,
-  Clock,
-  Filter,
-  Search,
   RefreshCw,
-  BarChart3,
   Brain,
-  ArrowRight,
-  Signal,
-  Eye
+  Target,
+  AlertTriangle,
+  Eye,
+  Activity,
+  BarChart3
 } from 'lucide-react';
-import { oracle } from '@/services/oracle';
-import type { ProcessedSignal, OracleAlert, SectorHeatmap } from '@/types/oracle';
-import { eventBus } from '@/services/eventBus';
-import { DemoDisclaimer } from '@/components/demo/DemoDisclaimer';
-import { DemoModeIndicator } from '@/components/demo/DemoModeIndicator';
-import { useDemoMode } from '@/utils/demoMode';
-import { demoDataService } from '@/services/demoDataService';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { OraclePanel } from '@/components/oracle/OraclePanel';
 
-interface OracleProps {
-  onAnalyzeSignal?: (signal: ProcessedSignal) => void;
+interface Signal {
+  id: string;
+  symbol: string;
+  signal_type: string;
+  strength: number;
+  direction: number;
+  summary: string;
+  source: string;
+  ts: string;
 }
 
-export default function Oracle(props: OracleProps = {}) {
-  const { onAnalyzeSignal } = props;
-  const [signals, setSignals] = useState<ProcessedSignal[]>([]);
-  const [alerts, setAlerts] = useState<OracleAlert[]>([]);
-  const [sectorHeatmap, setSectorHeatmap] = useState<SectorHeatmap>({});
-  const [filteredSignals, setFilteredSignals] = useState<ProcessedSignal[]>([]);
-  const { isDemoMode } = useDemoMode();
-  
-  // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
-  const [selectedType, setSelectedType] = useState<string>('all');
-  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('24h');
-  
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+export default function Oracle() {
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [news, setNews] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { workspaceId } = useWorkspace();
 
+  // Load oracle signals and news
   useEffect(() => {
     loadOracleData();
+  }, [workspaceId]);
 
-    if (!isDemoMode) {
-      // Subscribe to Oracle updates only for non-demo users
-      const unsubscribeRefresh = eventBus.on('oracle.refreshed', loadOracleData);
-      const unsubscribeSignal = eventBus.on('oracle.signal.created', (signal: ProcessedSignal) => {
-        setSignals(prev => [signal, ...prev.slice(0, 99)]);
-      });
-      const unsubscribeAlert = eventBus.on('oracle.alert', (alert: OracleAlert) => {
-        setAlerts(prev => [alert, ...prev.slice(0, 49)]);
-      });
+  const loadOracleData = async () => {
+    if (!workspaceId) return;
 
-      return () => {
-        // Cleanup event listeners if needed
-      };
-    }
-  }, [isDemoMode]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [signals, searchTerm, selectedSeverity, selectedType, selectedTimeframe]);
-
-  const loadOracleData = () => {
-    if (isDemoMode) {
-      // Use demo data for demo account only
-      const demoSignals = demoDataService.getOracleSignals(100);
-      setSignals(demoSignals.map(signal => ({
-        id: signal.id,
-        signal: signal.summary || 'Demo Signal',
-        description: signal.summary || 'Demonstration signal with mock data',
-        type: (signal.signal_type === 'technical' ? 'technical_breakout' : 'news_sentiment') as any,
-        severity: (signal.strength > 0.8 ? 'high' : 'medium') as any,
-        confidence: Math.round(signal.strength * 100),
-        symbol: signal.symbol,
-        timestamp: new Date(signal.ts),
-        direction: (signal.direction > 0 ? 'bullish' : 'bearish') as any,
-        sources: [signal.source || 'Demo Source'],
-        data: { demoData: true, originalStrength: signal.strength }
-      })));
-      setIsLoading(false);
-    } else {
-      // Real accounts have empty signals until API connection
-      setSignals([]);
-      setIsLoading(false);
-    }
-  };
-  const applyFilters = () => {
-    let filtered = [...signals];
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(signal => 
-        signal.signal.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        signal.symbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        signal.sector?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Severity filter
-    if (selectedSeverity !== 'all') {
-      filtered = filtered.filter(signal => signal.severity === selectedSeverity);
-    }
-
-    // Type filter
-    if (selectedType !== 'all') {
-      filtered = filtered.filter(signal => signal.type === selectedType);
-    }
-
-    // Timeframe filter
-    const now = Date.now();
-    const timeframes = {
-      '1h': 60 * 60 * 1000,
-      '6h': 6 * 60 * 60 * 1000,
-      '24h': 24 * 60 * 60 * 1000,
-      '7d': 7 * 24 * 60 * 60 * 1000
-    };
-
-    if (selectedTimeframe !== 'all') {
-      const cutoff = timeframes[selectedTimeframe as keyof typeof timeframes];
-      filtered = filtered.filter(signal => 
-        now - signal.timestamp.getTime() <= cutoff
-      );
-    }
-
-    setFilteredSignals(filtered);
-  };
-
-  const handleRefresh = async () => {
-    if (!isDemoMode) {
+    try {
       setIsLoading(true);
-      eventBus.emit('oracle.manual_refresh', {});
-      setTimeout(() => {
-        loadOracleData();
-        setIsLoading(false);
-      }, 1000);
-    } else {
-      // For demo mode, just refresh the demo data
-      loadOracleData();
+      setError(null);
+
+      // Load signals
+      const { data: signalsData, error: signalsError } = await supabase
+        .from('oracle_signals')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('ts', { ascending: false })
+        .limit(100);
+
+      if (signalsError) throw signalsError;
+
+      // Load news
+      const { data: newsData, error: newsError } = await supabase
+        .from('oracle_news')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('ts', { ascending: false })
+        .limit(50);
+
+      if (newsError) throw newsError;
+
+      setSignals(signalsData || []);
+      setNews(newsData || []);
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load oracle data';
+      setError(errorMessage);
+      console.error('Oracle data load error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getSeverityColor = (severity: ProcessedSignal['severity']) => {
-    switch (severity) {
-      case 'critical': return 'text-destructive';
-      case 'high': return 'text-orange-500';
-      case 'medium': return 'text-yellow-500';
-      case 'low': return 'text-blue-500';
-      default: return 'text-muted-foreground';
+  const handleRefresh = () => {
+    loadOracleData();
+    toast({
+      title: "Oracle Data Refreshed",
+      description: "Latest signals and market intelligence updated.",
+    });
+  };
+
+  const getSignalTypeColor = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'buy': return 'text-accent';
+      case 'sell': return 'text-destructive';
+      case 'hold': return 'text-muted-foreground';
+      default: return 'text-primary';
     }
   };
 
-  const getSeverityBadgeVariant = (severity: ProcessedSignal['severity']) => {
-    switch (severity) {
-      case 'critical': return 'destructive' as const;
-      case 'high': return 'secondary' as const;
-      case 'medium': return 'outline' as const;
-      case 'low': return 'secondary' as const;
-      default: return 'outline' as const;
-    }
+  const getStrengthColor = (strength: number) => {
+    if (strength >= 0.8) return 'text-accent';
+    if (strength >= 0.6) return 'text-yellow-500';
+    if (strength >= 0.4) return 'text-orange-500';
+    return 'text-destructive';
   };
-
-  const getDirectionIcon = (direction: ProcessedSignal['direction']) => {
-    switch (direction) {
-      case 'bullish': return <TrendingUp className="w-4 h-4 text-accent" />;
-      case 'bearish': return <TrendingDown className="w-4 h-4 text-destructive" />;
-      default: return <Activity className="w-4 h-4 text-muted-foreground" />;
-    }
-  };
-
-  const getSectorPerformanceColor = (performance: number) => {
-    if (performance > 1) return 'text-accent';
-    if (performance < -1) return 'text-destructive';
-    return 'text-muted-foreground';
-  };
-
-  const formatTimestamp = (timestamp: Date) => {
-    const now = Date.now();
-    const diff = now - timestamp.getTime();
-    
-    if (diff < 60000) return 'Just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return timestamp.toLocaleDateString();
-  };
-
-  const signalTypes = [
-    'volatility_spike', 'volume_surge', 'sector_rotation', 'earnings_beat',
-    'news_sentiment', 'options_flow', 'technical_breakout'
-  ].filter(type => type && type.length > 0); // Filter out any empty strings just to be safe
 
   return (
-    <div className="space-y-6">
-      {/* Demo Disclaimer */}
-      {isDemoMode && (
-        <DemoDisclaimer feature="Oracle Intelligence System" />
-      )}
-
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Zap className="w-8 h-8 text-accent" />
-          <div>
-            <h1 className="text-2xl font-bold flex items-center">
-              Oracle Intelligence
-              {isDemoMode && <DemoModeIndicator variant="badge" className="ml-3" />}
-            </h1>
-            <p className="text-muted-foreground">
-              {isDemoMode 
-                ? "Explore our market scanning and signal extraction engine with demo data"
-                : "Market scanning and signal extraction engine"
-              }
-            </p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold flex items-center">
+            <Zap className="w-8 h-8 mr-3 text-primary" />
+            Oracle Intelligence
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            AI-powered market signals and trading intelligence
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>Last refresh: {formatTimestamp(lastRefresh)}</span>
-          </div>
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isLoading && !isDemoMode}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoading && !isDemoMode) ? 'animate-spin' : ''}`} />
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} disabled={isLoading} size="sm" variant="outline">
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Signals Area */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* Filters */}
-          <Card className="bg-gradient-card shadow-card">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Filter className="w-5 h-5" />
-                Signal Filters
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search signals..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                
-                <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Severity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Severities</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={selectedType} onValueChange={setSelectedType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Signal Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                     {signalTypes
-                       .filter(type => type && type.trim() !== '') // Ensure no empty types
-                       .map(type => (
-                       <SelectItem key={type} value={type}>
-                         {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                       </SelectItem>
-                     ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Timeframe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1h">Last Hour</SelectItem>
-                    <SelectItem value="6h">Last 6 Hours</SelectItem>
-                    <SelectItem value="24h">Last 24 Hours</SelectItem>
-                    <SelectItem value="7d">Last 7 Days</SelectItem>
-                    <SelectItem value="all">All Time</SelectItem>
-                  </SelectContent>
-                </Select>
+      {/* No Data Warning */}
+      {signals.length === 0 && !isLoading && (
+        <Card className="border-warning bg-warning/10">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-warning mt-0.5" />
+              <div className="space-y-2">
+                <p className="font-medium text-warning-foreground">No Oracle Signals Found</p>
+                <p className="text-sm text-warning-foreground/80">
+                  Connect your brokerage account and enable market data to start receiving AI-powered trading signals.
+                </p>
+                <Button variant="outline" size="sm" className="mt-2">
+                  <Brain className="w-4 h-4 mr-2" />
+                  Enable Oracle Intelligence
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Signals Stream */}
+      {/* Error State */}
+      {error && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <p className="text-destructive">Failed to load oracle data: {error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Oracle Panel */}
+      <OraclePanel />
+
+      {/* Main Content */}
+      <Tabs defaultValue="signals" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="signals">Trading Signals</TabsTrigger>
+          <TabsTrigger value="news">Market Intelligence</TabsTrigger>
+          <TabsTrigger value="analysis">Pattern Analysis</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="signals" className="space-y-6">
           <Card className="bg-gradient-card shadow-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Signal className="w-5 h-5" />
-                Signal Stream ({filteredSignals.length})
+              <CardTitle className="flex items-center">
+                <Target className="w-5 h-5 mr-2" />
+                Active Trading Signals
               </CardTitle>
               <CardDescription>
-                Real-time market intelligence signals
+                AI-generated signals based on technical analysis and market patterns
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[600px]">
-                <div className="space-y-3">
-                  {filteredSignals.map((signal) => (
-                    <div
-                      key={signal.id}
-                      className="p-4 rounded-lg border bg-muted/10 hover:bg-muted/20 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {getDirectionIcon(signal.direction)}
-                          <h4 className="font-semibold">{signal.signal}</h4>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={getSeverityBadgeVariant(signal.severity)}>
-                            {signal.severity}
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="w-6 h-6 animate-spin" />
+                  <span className="ml-2">Loading signals...</span>
+                </div>
+              ) : signals.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No trading signals available</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Signals will appear here once market data is connected
+                  </p>
+                </div>
+              ) : (
+                <ScrollArea className="h-96">
+                  <div className="space-y-4">
+                    {signals.map((signal) => (
+                      <div key={signal.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <Badge variant="outline" className="w-16 justify-center">
+                            {signal.symbol}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {formatTimestamp(signal.timestamp)}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-muted-foreground mb-3">
-                        {signal.description}
-                      </p>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-xs">
-                          {signal.symbol && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-muted-foreground">Symbol:</span>
-                              <span className="font-medium text-accent">{signal.symbol}</span>
-                            </div>
-                          )}
-                          {signal.sector && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-muted-foreground">Sector:</span>
-                              <span className="font-medium">{signal.sector}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            <span className="text-muted-foreground">Confidence:</span>
-                            <span className="font-medium">{Math.round(signal.confidence * 100)}%</span>
+                          <div>
+                            <p className={`font-semibold ${getSignalTypeColor(signal.signal_type)}`}>
+                              {signal.signal_type.toUpperCase()}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {signal.summary || 'No description available'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Source: {signal.source} • {new Date(signal.ts).toLocaleString()}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {signal.sources.map((source, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {source}
-                            </Badge>
-                          ))}
-                          {onAnalyzeSignal && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => onAnalyzeSignal(signal)}
-                              className="flex items-center gap-1 text-xs"
-                            >
-                              <Brain className="w-3 h-3" />
-                              Analyze
-                            </Button>
-                          )}
+                        <div className="text-right">
+                          <p className={`font-semibold text-lg ${getStrengthColor(signal.strength)}`}>
+                            {(signal.strength * 100).toFixed(0)}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">Confidence</p>
+                          <div className="flex items-center mt-1">
+                            {signal.direction > 0 ? (
+                              <TrendingUp className="w-4 h-4 text-accent" />
+                            ) : (
+                              <TrendingDown className="w-4 h-4 text-destructive" />
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  
-                  {filteredSignals.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Signal className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No signals match your current filters</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </CardContent>
           </Card>
-        </div>
+        </TabsContent>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
-          {/* Sector Heatmap */}
+        <TabsContent value="news" className="space-y-6">
           <Card className="bg-gradient-card shadow-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <BarChart3 className="w-4 h-4" />
-                Sector Heatmap
+              <CardTitle className="flex items-center">
+                <Eye className="w-5 h-5 mr-2" />
+                Market Intelligence
               </CardTitle>
+              <CardDescription>
+                Curated market news and sentiment analysis
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {Object.entries(sectorHeatmap)
-                  .sort(([,a], [,b]) => Math.abs(b.performance) - Math.abs(a.performance))
-                  .slice(0, 8)
-                  .map(([sector, data]) => (
-                    <div
-                      key={sector}
-                      className="flex items-center justify-between p-2 rounded bg-muted/10"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            data.performance > 1 
-                              ? 'bg-accent' 
-                              : data.performance < -1 
-                              ? 'bg-destructive' 
-                              : 'bg-muted-foreground'
-                          }`}
-                        />
-                        <span className="text-xs font-medium">{sector.slice(0, 12)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={getSectorPerformanceColor(data.performance)}>
-                          {data.performance > 0 ? '+' : ''}{data.performance.toFixed(1)}%
-                        </span>
-                        {data.signals > 0 && (
-                          <Badge variant="outline" className="text-xs px-1">
-                            {data.signals}
-                          </Badge>
-                        )}
-                      </div>
+              {news.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No market intelligence available</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    News and sentiment data will appear here once market feeds are connected
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {news.map((item, index) => (
+                    <div key={index} className="p-4 rounded-lg bg-muted/30">
+                      <h4 className="font-medium">{item.headline}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {item.source} • {new Date(item.ts).toLocaleString()}
+                      </p>
+                      {item.sentiment && (
+                        <Badge 
+                          variant={item.sentiment > 0 ? 'default' : 'destructive'}
+                          className="mt-2"
+                        >
+                          {item.sentiment > 0 ? 'Positive' : item.sentiment < 0 ? 'Negative' : 'Neutral'}
+                        </Badge>
+                      )}
                     </div>
                   ))}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Recent Alerts */}
+        <TabsContent value="analysis" className="space-y-6">
           <Card className="bg-gradient-card shadow-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <AlertTriangle className="w-4 h-4" />
-                Recent Alerts
+              <CardTitle className="flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2" />
+                Pattern Analysis
               </CardTitle>
+              <CardDescription>
+                Advanced technical analysis and pattern recognition
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {alerts.slice(0, 5).map((alert) => (
-                  <div
-                    key={alert.id}
-                    className={`p-3 rounded-lg border-l-2 ${
-                      alert.severity === 'critical' 
-                        ? 'border-destructive bg-destructive/5'
-                        : alert.severity === 'high'
-                        ? 'border-orange-500 bg-orange-500/5'
-                        : 'border-yellow-500 bg-yellow-500/5'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <h4 className="font-medium text-xs">{alert.title}</h4>
-                      <Badge variant="outline" className="text-xs">
-                        {alert.severity}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {alert.message}
-                    </p>
-                    <div className="text-xs text-muted-foreground">
-                      {formatTimestamp(alert.timestamp)}
-                    </div>
-                  </div>
-                ))}
-                
-                {alerts.length === 0 && (
-                  <div className="text-center py-4 text-muted-foreground text-xs">
-                    No recent alerts
-                  </div>
-                )}
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Connect your brokerage account to access advanced pattern analysis
+                </p>
+                <Button className="mt-4" variant="outline">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Enable Pattern Analysis
+                </Button>
               </div>
             </CardContent>
           </Card>
-
-          {/* Oracle Stats */}
-          <Card className="bg-gradient-card shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Eye className="w-4 h-4" />
-                Oracle Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Total Signals</span>
-                <span className="font-medium">{signals.length}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Active Alerts</span>
-                <span className="font-medium">{alerts.length}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Data Sources</span>
-                <span className="font-medium">5</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Status</span>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  <span className="font-medium text-accent">Active</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

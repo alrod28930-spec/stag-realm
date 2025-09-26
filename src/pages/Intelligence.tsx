@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import Analyst from './Analyst';
 import Oracle from './Oracle';
+import { OraclePanel } from '@/components/oracle/OraclePanel';
 import { useOracleSignals } from '@/hooks/useOracleSignals';
 import { ProcessedSignal } from '@/types/oracle';
 import { useScreenSize } from '@/hooks/use-mobile';
@@ -140,7 +141,7 @@ const Intelligence = () => {
         </TabsList>
 
         <TabsContent value="oracle" className={`${isMobile ? 'mt-4' : 'mt-6'}`}>
-          <OracleWithProps onAnalyzeSignal={handleAnalyzeSignal} />
+          <OraclePanel />
         </TabsContent>
 
         <TabsContent value="analyst" className={`${isMobile ? 'mt-4' : 'mt-6'}`}>
@@ -149,11 +150,6 @@ const Intelligence = () => {
       </Tabs>
     </div>
   );
-};
-
-// Enhanced Oracle component with analyze signal functionality
-const OracleWithProps = ({ onAnalyzeSignal }: OracleProps) => {
-  return <Oracle {...{ onAnalyzeSignal }} />;
 };
 
 // Enhanced Analyst component with signal context
