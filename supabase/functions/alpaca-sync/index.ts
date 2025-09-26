@@ -28,41 +28,55 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    // Get user's Alpaca credentials from database
+    // Resolve workspace
+    let workspaceId: string;
+    try {
+      const { data: memberships } = await supabaseClient
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1);
+      workspaceId = memberships?.[0]?.workspace_id || user.user_metadata?.workspace_id || user.id;
+    } catch (_) {
+      workspaceId = user.user_metadata?.workspace_id || user.id;
+    }
+
+    // Get user's Alpaca credentials from database via active brokerage connection
     let alpacaApiKey: string;
     let alpacaSecretKey: string;
     
     try {
-      // Try to get user's stored Alpaca credentials
-      const { data: connections } = await supabaseClient
+      const { data: connections, error: connError } = await supabaseClient
         .from('connections_brokerages')
-        .select('id, broker_type')
-        .eq('user_id', user.id)
-        .eq('broker_type', 'alpaca')
-        .eq('is_active', true)
+        .select('id, provider, status, workspace_id')
+        .eq('workspace_id', workspaceId)
+        .eq('provider', 'alpaca')
+        .eq('status', 'active')
         .limit(1);
 
-      if (connections && connections.length > 0) {
-        // Decrypt the user's credentials
-        const { data: credentialsData, error: credError } = await supabaseClient.functions.invoke('decrypt-brokerage-credentials', {
-          body: { connection_id: connections[0].id }
-        });
+      if (connError) throw connError;
+      if (!connections || connections.length === 0) {
+        throw new Error('No active Alpaca connection found for this workspace.');
+      }
 
-        if (credError || !credentialsData?.success) {
-          throw new Error('Failed to decrypt user credentials');
-        }
+      // Decrypt the user's credentials
+      const { data: credentialsData, error: credError } = await supabaseClient.functions.invoke('decrypt-brokerage-credentials', {
+        body: { connectionId: connections[0].id }
+      });
 
-        alpacaApiKey = credentialsData.credentials.api_key;
-        alpacaSecretKey = credentialsData.credentials.secret_key;
-      } else {
-        throw new Error('No Alpaca credentials found. Please connect your Alpaca account in Settings.');
+      if (credError || !credentialsData?.success || !credentialsData?.credentials) {
+        throw new Error('Failed to decrypt Alpaca credentials for this connection.');
+      }
+
+      alpacaApiKey = credentialsData.credentials.api_key || credentialsData.credentials.apiKey;
+      alpacaSecretKey = credentialsData.credentials.secret_key || credentialsData.credentials.apiSecret;
+      if (!alpacaApiKey || !alpacaSecretKey) {
+        throw new Error('Decrypted credentials are missing api key or secret.');
       }
     } catch (error) {
       console.error('Error getting user credentials:', error);
       throw new Error('Failed to retrieve Alpaca credentials. Please check your brokerage connection in Settings.');
     }
-
-    const workspaceId = user.user_metadata?.workspace_id || user.id;
 
     // Fetch Alpaca account info
     const accountResponse = await fetch('https://paper-api.alpaca.markets/v2/account', {

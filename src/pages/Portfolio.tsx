@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
@@ -45,6 +46,7 @@ export default function Portfolio() {
   
   const { toast } = useToast();
   const { isDemoMode } = useDemoMode();
+  const { workspaceId } = useWorkspace();
 
   // Load portfolio data and subscribe to updates (only for non-demo users)
   useEffect(() => {
@@ -82,7 +84,7 @@ export default function Portfolio() {
         description: "Fetching latest data from Alpaca.",
       });
 
-      const { data, error } = await supabase.functions.invoke('alpaca-sync');
+      const { data, error } = await supabase.functions.invoke('brokerage-sync', { body: { workspace_id: workspaceId } });
       
       if (error) {
         console.error('Alpaca sync error:', error);
