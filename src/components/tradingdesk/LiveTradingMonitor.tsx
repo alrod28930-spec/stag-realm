@@ -162,13 +162,7 @@ export function LiveTradingMonitor({ isSystemActive }: LiveTradingMonitorProps) 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {activeBots.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Bot className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No active bots</p>
-              <p className="text-xs">Switch to automated mode and activate bots in the Trade Bots section</p>
-            </div>
-          ) : (
+          {activeBots.length === 0 ? null : (
             <div className="space-y-3">
               {activeBots.map((bot) => (
                 <div key={bot.workspace_id} className="flex items-center justify-between p-3 border rounded-lg">
@@ -203,13 +197,7 @@ export function LiveTradingMonitor({ isSystemActive }: LiveTradingMonitorProps) 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {recentTrades.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No recent trades</p>
-              <p className="text-xs">Trades will appear here when bots execute orders</p>
-            </div>
-          ) : (
+          {recentTrades.length === 0 ? null : (
             <ScrollArea className="h-64">
               <div className="space-y-2">
                 {recentTrades.slice(0, 10).map((trade) => (
