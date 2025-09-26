@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
+import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
@@ -63,6 +64,59 @@ export default function Portfolio() {
       title: "Portfolio Refreshed",
       description: isDemoMode ? "Demo portfolio data refreshed." : "Portfolio data has been updated.",
     });
+  };
+
+  const handleSyncAlpaca = async () => {
+    if (isDemoMode) {
+      toast({
+        title: "Demo Mode",
+        description: "Alpaca sync is not available in demo mode.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Syncing Portfolio...",
+        description: "Fetching latest data from Alpaca.",
+      });
+
+      const { data, error } = await supabase.functions.invoke('alpaca-sync');
+      
+      if (error) {
+        console.error('Alpaca sync error:', error);
+        toast({
+          title: "Sync Failed",
+          description: error.message || "Failed to sync with Alpaca. Please check your connection in Settings.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (data?.success) {
+        // Refresh local data after successful sync
+        await loadPortfolio();
+        
+        toast({
+          title: "Sync Successful",
+          description: `Portfolio synced: ${data.data?.positions_count || 0} positions, $${data.data?.equity || 0} equity`,
+        });
+      } else {
+        toast({
+          title: "Sync Warning",
+          description: data?.error || "Sync completed but may have issues.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast({
+        title: "Sync Error",
+        description: "Failed to connect to Alpaca. Please check your API credentials in Settings.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Get portfolio data - only demo account gets mock data, real accounts are empty until API connection
@@ -139,10 +193,18 @@ export default function Portfolio() {
             }
           </p>
         </div>
-        <Button onClick={handleRefresh} disabled={isLoading && !isDemoMode} size="sm">
-          <RefreshCw className={`w-4 h-4 mr-2 ${(isLoading && !isDemoMode) ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} disabled={isLoading && !isDemoMode} size="sm" variant="outline">
+            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoading && !isDemoMode) ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          {!isDemoMode && (
+            <Button onClick={handleSyncAlpaca} size="sm">
+              <Building2 className="w-4 h-4 mr-2" />
+              Sync Alpaca
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Error State */}
@@ -152,6 +214,24 @@ export default function Portfolio() {
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-destructive" />
               <p className="text-destructive">Failed to load portfolio data: {error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Debug Section - Show raw data */}
+      {!isDemoMode && (
+        <Card className="border-muted bg-muted/20">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug Info</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xs space-y-2">
+              <div>Portfolio Data: {portfolio ? JSON.stringify(portfolio) : 'null'}</div>
+              <div>Positions Count: {positions.length}</div>
+              <div>Positions Data: {JSON.stringify(positions)}</div>
+              <div>Loading: {isLoading.toString()}</div>
+              <div>Error: {error || 'none'}</div>
             </div>
           </CardContent>
         </Card>
