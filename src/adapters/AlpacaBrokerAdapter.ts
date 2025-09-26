@@ -7,39 +7,44 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
   private alpacaSecretKey?: string;
   private paperBaseUrl = 'https://paper-api.alpaca.markets';
   private liveBaseUrl = 'https://api.alpaca.markets';
-  private isLiveTrading = false;
+  private accountType: 'paper' | 'live' | 'unknown' = 'unknown';
 
   async connect(apiKey?: string, secretKey?: string): Promise<boolean> {
-    // If no keys provided, try to get from Supabase secrets
+    // If no keys provided, try to get from stored connections
     if (!apiKey || !secretKey) {
       try {
         const { data: keyData, error: keyError } = await supabase.functions.invoke('get-alpaca-credentials');
         if (!keyError && keyData) {
           this.alpacaApiKey = keyData.apiKey;
           this.alpacaSecretKey = keyData.secretKey;
-          this.isLiveTrading = keyData.isLive || false;
+          this.accountType = keyData.accountType || 'paper';
         } else {
           logService.log('warn', 'Could not retrieve stored credentials, using provided keys');
           this.alpacaApiKey = apiKey;
           this.alpacaSecretKey = secretKey;
+          // Auto-detect account type when using provided keys
+          await this.detectAccountType();
         }
       } catch (error) {
         logService.log('warn', 'Failed to get stored credentials', { error });
         this.alpacaApiKey = apiKey;
         this.alpacaSecretKey = secretKey;
+        await this.detectAccountType();
       }
     } else {
       this.alpacaApiKey = apiKey;
       this.alpacaSecretKey = secretKey;
+      // Auto-detect account type for new credentials
+      await this.detectAccountType();
     }
     
     try {
-      // Test connection by fetching account info
-      const baseUrl = this.isLiveTrading ? this.liveBaseUrl : this.paperBaseUrl;
+      // Test connection using detected account type
+      const baseUrl = this.accountType === 'live' ? this.liveBaseUrl : this.paperBaseUrl;
       const response = await fetch(`${baseUrl}/v2/account`, {
         headers: {
-          'APCA-API-KEY-ID': this.alpacaApiKey,
-          'APCA-API-SECRET-KEY': this.alpacaSecretKey,
+          'APCA-API-KEY-ID': this.alpacaApiKey!,
+          'APCA-API-SECRET-KEY': this.alpacaSecretKey!,
         },
       });
 
@@ -48,8 +53,9 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
       }
 
       this.connected = true;
-      logService.log('info', 'Connected to Alpaca paper trading', { 
-        status: response.status 
+      logService.log('info', `Connected to Alpaca ${this.accountType} trading`, { 
+        status: response.status,
+        accountType: this.accountType
       });
       return true;
     } catch (error) {
@@ -57,6 +63,56 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
       this.connected = false;
       return false;
     }
+  }
+
+  private async detectAccountType(): Promise<void> {
+    if (!this.alpacaApiKey || !this.alpacaSecretKey) {
+      return;
+    }
+
+    try {
+      // Test paper trading endpoint first
+      const paperResponse = await fetch(`${this.paperBaseUrl}/v2/account`, {
+        headers: {
+          'APCA-API-KEY-ID': this.alpacaApiKey,
+          'APCA-API-SECRET-KEY': this.alpacaSecretKey,
+        },
+      });
+
+      if (paperResponse.ok) {
+        this.accountType = 'paper';
+        logService.log('info', 'Auto-detected paper trading account');
+        return;
+      }
+
+      // Test live trading endpoint
+      const liveResponse = await fetch(`${this.liveBaseUrl}/v2/account`, {
+        headers: {
+          'APCA-API-KEY-ID': this.alpacaApiKey,
+          'APCA-API-SECRET-KEY': this.alpacaSecretKey,
+        },
+      });
+
+      if (liveResponse.ok) {
+        this.accountType = 'live';
+        logService.log('info', 'Auto-detected live trading account');
+        return;
+      }
+
+      this.accountType = 'unknown';
+      logService.log('warn', 'Could not determine account type');
+    } catch (error) {
+      logService.log('error', 'Failed to detect account type', { error });
+      this.accountType = 'unknown';
+    }
+  }
+
+  getAccountType(): 'paper' | 'live' | 'unknown' {
+    return this.accountType;
+  }
+
+  isLiveTrading(): boolean {
+    return this.accountType === 'live';
   }
 
   async disconnect(): Promise<void> {
@@ -72,7 +128,7 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
     }
 
     try {
-      const baseUrl = this.isLiveTrading ? this.liveBaseUrl : this.paperBaseUrl;
+      const baseUrl = this.accountType === 'live' ? this.liveBaseUrl : this.paperBaseUrl;
       
       // Fetch account info
       const accountResponse = await fetch(`${baseUrl}/v2/account`, {
@@ -146,7 +202,7 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
     }
 
     try {
-      const baseUrl = this.isLiveTrading ? this.liveBaseUrl : this.paperBaseUrl;
+      const baseUrl = this.accountType === 'live' ? this.liveBaseUrl : this.paperBaseUrl;
       
       const alpacaOrder = {
         symbol: order.symbol,
@@ -185,7 +241,7 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
         status: this.mapOrderStatus(alpacaResult.status)
       };
 
-      logService.log('info', 'Alpaca paper trade placed', result);
+      logService.log('info', `Alpaca ${this.accountType} trade placed`, result);
       return result;
     } catch (error) {
       logService.log('error', 'Alpaca trade failed', { error, order });
@@ -198,7 +254,7 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
       throw new Error('Not connected to Alpaca');
     }
 
-    const baseUrl = this.isLiveTrading ? this.liveBaseUrl : this.paperBaseUrl;
+    const baseUrl = this.accountType === 'live' ? this.liveBaseUrl : this.paperBaseUrl;
     const response = await fetch(`${baseUrl}/v2/account`, {
       headers: {
         'APCA-API-KEY-ID': this.alpacaApiKey,

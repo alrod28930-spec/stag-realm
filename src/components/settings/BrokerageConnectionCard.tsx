@@ -25,8 +25,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
     provider: '',
     accountLabel: '',
     apiKey: '',
-    apiSecret: '',
-    accountType: 'paper'
+    apiSecret: ''
   });
   const { toast } = useToast();
   const { triggerSync, autoSyncAfterConnection } = useBrokerageSync();
@@ -34,7 +33,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const handleAddConnection = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newConnection.provider || !newConnection.apiKey || !newConnection.apiSecret || !newConnection.accountType) {
+    if (!newConnection.provider || !newConnection.apiKey || !newConnection.apiSecret) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -46,40 +45,26 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('encrypt-brokerage-credentials', {
-        body: {
-          workspace_id: workspaceId,
-          provider: newConnection.provider,
-          account_label: newConnection.accountLabel || undefined,
-          api_key: newConnection.apiKey,
-          api_secret: newConnection.apiSecret,
-          scope: { 
-            paper: newConnection.accountType === 'paper',
-            live: newConnection.accountType === 'live'
-          }
+      // Use the new detect-account-type function
+      const { data, error } = await supabase.functions.invoke('detect-account-type', {
+        body: { 
+          apiKey: newConnection.apiKey, 
+          secretKey: newConnection.apiSecret 
         }
       });
 
       if (error) throw error;
 
-      const connectionId = data?.connection_id;
-      
       toast({
-        title: "Connection Added",
-        description: `${newConnection.provider} connection has been securely stored.`,
+        title: "Connection Successful",
+        description: `Connected to ${data.accountType} trading account. Account status: ${data.accountStatus}`,
       });
-
-      // Trigger automatic sync in the background
-      if (connectionId) {
-        autoSyncAfterConnection(workspaceId, connectionId);
-      }
 
       setNewConnection({
         provider: '',
         accountLabel: '',
         apiKey: '',
-        apiSecret: '',
-        accountType: 'paper'
+        apiSecret: ''
       });
       setIsAdding(false);
       onUpdate();
@@ -144,7 +129,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
             Brokerage Connections
           </CardTitle>
           <CardDescription>
-            Securely connect your brokerage accounts for both live and paper trading
+            Securely connect your brokerage accounts. The system will automatically detect whether your API keys are for paper or live trading.
           </CardDescription>
         </div>
         <Button
@@ -177,7 +162,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
           <Card className="bg-muted/20">
             <CardContent className="pt-6">
               <form onSubmit={handleAddConnection} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <Label htmlFor="provider">Broker Provider *</Label>
                     <Select
@@ -193,22 +178,6 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
                         <SelectItem value="schwab">Charles Schwab</SelectItem>
                         <SelectItem value="td_ameritrade">TD Ameritrade</SelectItem>
                         <SelectItem value="e_trade">E*TRADE</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="account-type">Account Type *</Label>
-                    <Select
-                      value={newConnection.accountType}
-                      onValueChange={(value) => setNewConnection({ ...newConnection, accountType: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select account type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="paper">Paper Trading</SelectItem>
-                        <SelectItem value="live">Live Trading</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -248,10 +217,10 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-                  <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    Your credentials will be encrypted and stored securely. StagAlgo never holds your funds.
+                <div className="flex items-center gap-2 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <AlertTriangle className="w-4 h-4 text-blue-500" />
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    The system will automatically detect whether your API keys are for paper or live trading. Your credentials are encrypted and stored securely.
                   </p>
                 </div>
 
@@ -307,6 +276,11 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
                     >
                       {connection.status}
                     </Badge>
+                    {connection.scope?.account_type && (
+                      <Badge variant="outline">
+                        {connection.scope.account_type}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground capitalize">
                     {connection.provider.replace('_', ' ')}

@@ -3,8 +3,17 @@ import { Badge } from '@/components/ui/badge';
 import { Wifi, Clock, AlertCircle } from 'lucide-react';
 import { usePortfolioStore } from '@/stores/portfolioStore';
 
-export const ConnectionStatusBar: React.FC = () => {
-  const { isConnected } = usePortfolioStore();
+interface ConnectionStatusBarProps {
+  isConnected?: boolean;
+  accountType?: 'paper' | 'live' | 'unknown';
+}
+
+export const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({ 
+  isConnected: propIsConnected,
+  accountType = 'unknown'
+}) => {
+  const { isConnected: storeIsConnected } = usePortfolioStore();
+  const isConnected = propIsConnected ?? storeIsConnected;
 
   return (
     <div className="border-t border-border bg-card/30 p-3">
@@ -12,7 +21,7 @@ export const ConnectionStatusBar: React.FC = () => {
         <div className="flex items-center gap-4">
           <Badge variant={isConnected ? "default" : "destructive"} className="gap-1">
             <Wifi className="w-3 h-3" />
-            {isConnected ? 'Paper Trading' : 'Disconnected'}
+            {isConnected ? `${accountType?.charAt(0).toUpperCase() + accountType?.slice(1)} Trading` : 'Disconnected'}
           </Badge>
           
           <Badge variant="outline" className="gap-1">
