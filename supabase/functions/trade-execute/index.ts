@@ -72,79 +72,21 @@ serve(async (req) => {
       }
     });
 
-    // Get user's Alpaca credentials from database
-    let alpacaApiKey: string;
-    let alpacaSecretKey: string;
+    // Get Alpaca API credentials from environment
+    const alpacaApiKey = Deno.env.get('ALPACA_API_KEY');
+    const alpacaSecretKey = Deno.env.get('ALPACA_API_SECRET');
     
-    try {
-      // Try to get user's stored Alpaca credentials
-      const { data: connections } = await supabaseClient
-        .from('connections_brokerages')
-        .select('id, broker_type')
-        .eq('user_id', user.id)
-        .eq('broker_type', 'alpaca')
-        .eq('is_active', true)
-        .limit(1);
-
-      if (connections && connections.length > 0) {
-        // Decrypt the user's credentials
-        const { data: credentialsData, error: credError } = await supabaseClient.functions.invoke('decrypt-brokerage-credentials', {
-          body: { connection_id: connections[0].id }
-        });
-
-        if (credError || !credentialsData?.success) {
-          throw new Error('Failed to decrypt user credentials');
+    if (!alpacaApiKey || !alpacaSecretKey) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Alpaca API credentials not configured'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
         }
-
-        alpacaApiKey = credentialsData.credentials.api_key;
-        alpacaSecretKey = credentialsData.credentials.secret_key;
-      } else {
-        // Fallback to demo/paper trading with mock credentials for testing
-        console.log('No user credentials found, using demo mode');
-        
-        // Create a demo order response instead of calling Alpaca
-        const demoOrderId = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const demoPrice = tradeRequest.price || (100 + Math.random() * 200); // Random price between 100-300
-        
-        // Log demo trade execution
-        await supabaseClient.from('rec_events').insert({
-          workspace_id: user.user_metadata?.workspace_id || user.id,
-          user_id: user.id,
-          event_type: 'trade.manual.demo',
-          severity: 1,
-          entity_type: 'trade',
-          entity_id: tradeRequest.symbol,
-          summary: `Demo ${tradeRequest.side} executed: ${tradeRequest.quantity} shares of ${tradeRequest.symbol} @ $${demoPrice.toFixed(2)}`,
-          payload_json: {
-            order_id: demoOrderId,
-            symbol: tradeRequest.symbol,
-            side: tradeRequest.side,
-            order_type: tradeRequest.order_type,
-            quantity: tradeRequest.quantity,
-            executed_price: demoPrice,
-            status: 'filled',
-            mode: 'demo'
-          }
-        });
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            order_id: demoOrderId,
-            status: 'executed',
-            executed_price: demoPrice,
-            mode: 'demo',
-            message: `Demo ${tradeRequest.side === 'buy' ? 'bought' : 'sold'} ${tradeRequest.quantity} shares of ${tradeRequest.symbol} @ $${demoPrice.toFixed(2)} (Connect your Alpaca account in Settings for real trading)`
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200 
-          }
-        );
-      }
-    } catch (error) {
-      console.error('Error getting user credentials:', error);
-      throw new Error('Failed to retrieve trading credentials. Please check your brokerage connection in Settings.');
+      );
     }
 
     const alpacaOrder = {

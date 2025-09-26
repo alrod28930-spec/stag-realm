@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.analyst-voice-unified]
 verify_jwt = true
+
+[functions.brokerage-sync]
+verify_jwt = true
+
+[functions.alpaca-sync]
+verify_jwt = true

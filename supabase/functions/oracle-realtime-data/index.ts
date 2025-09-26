@@ -47,58 +47,21 @@ serve(async (req) => {
 
     const workspaceId = userSettings?.workspace_default || user.id
 
-    // Try to get user's brokerage connection, but don't fail if none exists
-    let alpacaApiKey: string | undefined
-    let alpacaSecretKey: string | undefined
+    // Get Alpaca API credentials from environment
+    const alpacaApiKey = Deno.env.get('ALPACA_API_KEY');
+    const alpacaSecretKey = Deno.env.get('ALPACA_API_SECRET');
 
-    try {
-      const { data: brokerageConnection, error: brokerageError } = await supabase
-        .from('connections_brokerages')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('provider', 'alpaca')
-        .eq('status', 'active')
-        .single()
-
-      if (!brokerageError && brokerageConnection) {
-        // Decrypt API credentials
-        const { data: decryptResult, error: decryptError } = await supabase.functions.invoke('decrypt-brokerage-credentials', {
-          body: { connectionId: brokerageConnection.id }
-        })
-
-        if (!decryptError && decryptResult) {
-          alpacaApiKey = decryptResult.apiKey
-          alpacaSecretKey = decryptResult.apiSecret
-        }
-      }
-    } catch (error) {
-      console.log('No brokerage connection found, using mock data')
-    }
-
-    // If no user credentials, use demo/fallback mode
     if (!alpacaApiKey || !alpacaSecretKey) {
-      console.log('Using demo mode - no user credentials available')
-      
-      // Return mock data for demo purposes
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          data: [{
-            type: 'demo',
-            data: 'Demo mode - Connect your Alpaca account in Settings to see real data',
-            timestamp: new Date().toISOString()
-          }],
-          symbols: symbols,
-          timestamp: new Date().toISOString(),
-          mode: 'demo'
+        JSON.stringify({
+          success: false,
+          error: 'Alpaca API credentials not configured'
         }),
         { 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
         }
-      )
+      );
     }
 
     const results = []
