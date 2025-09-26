@@ -28,11 +28,38 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const alpacaApiKey = Deno.env.get('ALPACA_API_KEY');
-    const alpacaSecretKey = Deno.env.get('ALPACA_SECRET_KEY');
+    // Get user's Alpaca credentials from database
+    let alpacaApiKey: string;
+    let alpacaSecretKey: string;
     
-    if (!alpacaApiKey || !alpacaSecretKey) {
-      throw new Error('Alpaca API credentials not configured');
+    try {
+      // Try to get user's stored Alpaca credentials
+      const { data: connections } = await supabaseClient
+        .from('connections_brokerages')
+        .select('id, broker_type')
+        .eq('user_id', user.id)
+        .eq('broker_type', 'alpaca')
+        .eq('is_active', true)
+        .limit(1);
+
+      if (connections && connections.length > 0) {
+        // Decrypt the user's credentials
+        const { data: credentialsData, error: credError } = await supabaseClient.functions.invoke('decrypt-brokerage-credentials', {
+          body: { connection_id: connections[0].id }
+        });
+
+        if (credError || !credentialsData?.success) {
+          throw new Error('Failed to decrypt user credentials');
+        }
+
+        alpacaApiKey = credentialsData.credentials.api_key;
+        alpacaSecretKey = credentialsData.credentials.secret_key;
+      } else {
+        throw new Error('No Alpaca credentials found. Please connect your Alpaca account in Settings.');
+      }
+    } catch (error) {
+      console.error('Error getting user credentials:', error);
+      throw new Error('Failed to retrieve Alpaca credentials. Please check your brokerage connection in Settings.');
     }
 
     const workspaceId = user.user_metadata?.workspace_id || user.id;

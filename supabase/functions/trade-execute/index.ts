@@ -198,6 +198,16 @@ serve(async (req) => {
       }
     });
 
+    // Trigger portfolio sync after successful trade
+    try {
+      const { error: syncError } = await supabaseClient.functions.invoke('alpaca-sync');
+      if (syncError) {
+        console.warn('Portfolio sync failed after trade:', syncError);
+      }
+    } catch (syncError) {
+      console.warn('Portfolio sync error after trade:', syncError);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
