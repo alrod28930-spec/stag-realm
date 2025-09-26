@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Bot, User, AlertTriangle, Shield, Activity } from 'lucide-react';
 import { ManualOrderCard } from './ManualOrderCard';
 import { BotDeploymentPanel } from './BotDeploymentPanel';
+import { LiveTradingMonitor } from './LiveTradingMonitor';
 import { useToast } from '@/hooks/use-toast';
 import { tradeBotSystem } from '@/services/tradeBots';
 import { riskEnforcement } from '@/services/riskEnforcement';
@@ -140,9 +141,8 @@ export function LiveTradingPanel({ isDemo = false }: LiveTradingPanelProps) {
       {tradingMode === 'manual' ? (
         <ManualOrderCard />
       ) : (
-        <BotDeploymentPanel 
+        <LiveTradingMonitor 
           isSystemActive={isSystemActive}
-          isDemo={isDemo}
         />
       )}
 

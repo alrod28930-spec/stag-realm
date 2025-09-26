@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ManualOrderCard } from '@/components/tradingdesk/ManualOrderCard';
 import { BotExecutionPanel } from '@/components/tradingdesk/BotExecutionPanel';
+import { BotCreationWizard } from '@/components/tradingdesk/BotCreationWizard';
 import { KpiRow } from '@/components/tradingdesk/KpiRow';
 import { AllocationsCard } from '@/components/tradingdesk/AllocationsCard';
 import { HitRateCard } from '@/components/tradingdesk/HitRateCard';
@@ -142,7 +143,13 @@ export default function TradingDesk() {
         </TabsContent>
 
         <TabsContent value="bots" className="space-y-6">
-          <LiveTradingPanel isDemo={isDemoMode} />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <BotCreationWizard onBotCreated={() => {}} />
+              <BotExecutionPanel />
+            </div>
+            <LiveTradingPanel isDemo={isDemoMode} />
+          </div>
         </TabsContent>
 
         <TabsContent value="testing" className="space-y-6">
