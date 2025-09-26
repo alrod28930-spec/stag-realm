@@ -90,11 +90,24 @@ serve(async (req) => {
       )
     }
 
+    // Resolve workspace
+    let workspaceId: string;
+    try {
+      const { data: memberships } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1);
+      workspaceId = memberships?.[0]?.workspace_id || user.user_metadata?.workspace_id || user.id;
+    } catch (_) {
+      workspaceId = user.user_metadata?.workspace_id || user.id;
+    }
+
     // Store credentials with detected account type
     const { error: storeError } = await supabase
       .from('connections_brokerages')
       .upsert({
-        workspace_id: user.user_metadata?.workspace_id,
+        workspace_id: workspaceId,
         provider: 'alpaca',
         account_label: `Alpaca ${accountType.charAt(0).toUpperCase() + accountType.slice(1)} Account`,
         api_key_cipher: new TextEncoder().encode(apiKey), // In production, this should be properly encrypted

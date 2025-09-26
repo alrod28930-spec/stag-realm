@@ -221,7 +221,7 @@ export default function Portfolio() {
         </Card>
       )}
 
-      {/* Debug Section - Show raw data */}
+      {/* Debug Section - Remove this once working */}
       {!isDemoMode && (
         <Card className="border-muted bg-muted/20">
           <CardHeader>
@@ -229,9 +229,9 @@ export default function Portfolio() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-xs space-y-2">
+              <div>Workspace ID: {workspaceId}</div>
               <div>Portfolio Data: {portfolio ? JSON.stringify(portfolio) : 'null'}</div>
               <div>Positions Count: {positions.length}</div>
-              <div>Positions Data: {JSON.stringify(positions)}</div>
               <div>Loading: {isLoading.toString()}</div>
               <div>Error: {error || 'none'}</div>
             </div>

@@ -54,15 +54,37 @@ serve(async (req) => {
       return new Response('Access denied', { status: 403, headers: corsHeaders })
     }
 
-    // For now, return mock decrypted credentials (in production, implement real decryption)
-    // This is a simplified version - in production you'd use proper encryption/decryption
-    const mockApiKey = "PKTEST12345"; // This would be decrypted from connection.api_key_cipher
-    const mockSecretKey = "abcdef123456"; // This would be decrypted from connection.api_secret_cipher
+    // Simple decryption (in production, use proper encryption like AES)
+    // For now, decode the base64-like stored values
+    let apiKey: string;
+    let secretKey: string;
+    
+    try {
+      // Decrypt the stored credentials - simplified approach
+      // In a real system, you'd use proper encryption/decryption with keys
+      apiKey = new TextDecoder().decode(connection.api_key_cipher);
+      secretKey = new TextDecoder().decode(connection.api_secret_cipher);
+    } catch (decryptError) {
+      console.error('Failed to decrypt credentials:', decryptError);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Failed to decrypt stored credentials'
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({ 
-        apiKey: mockApiKey,
-        apiSecret: mockSecretKey,
+        success: true,
+        credentials: {
+          api_key: apiKey,
+          secret_key: secretKey
+        },
         provider: connection.provider,
         accountLabel: connection.account_label
       }),
