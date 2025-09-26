@@ -47,53 +47,57 @@ serve(async (req) => {
 
     const workspaceId = userSettings?.workspace_default || user.id
 
-    // Get user's brokerage connection
-    const { data: brokerageConnection, error: brokerageError } = await supabase
-      .from('connections_brokerages')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('provider', 'alpaca')
-      .eq('status', 'active')
-      .single()
+    // Try to get user's brokerage connection, but don't fail if none exists
+    let alpacaApiKey: string | undefined
+    let alpacaSecretKey: string | undefined
 
-    if (brokerageError || !brokerageConnection) {
-      console.log('No active brokerage connection found for user:', user.id)
-      return new Response(
-        JSON.stringify({ 
-          error: 'No brokerage connection', 
-          details: 'Please connect your Alpaca account in Settings > Brokerage Dock' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    try {
+      const { data: brokerageConnection, error: brokerageError } = await supabase
+        .from('connections_brokerages')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('provider', 'alpaca')
+        .eq('status', 'active')
+        .single()
+
+      if (!brokerageError && brokerageConnection) {
+        // Decrypt API credentials
+        const { data: decryptResult, error: decryptError } = await supabase.functions.invoke('decrypt-brokerage-credentials', {
+          body: { connectionId: brokerageConnection.id }
+        })
+
+        if (!decryptError && decryptResult) {
+          alpacaApiKey = decryptResult.apiKey
+          alpacaSecretKey = decryptResult.apiSecret
+        }
+      }
+    } catch (error) {
+      console.log('No brokerage connection found, using mock data')
     }
 
-    // Decrypt API credentials
-    const { data: decryptResult, error: decryptError } = await supabase.functions.invoke('decrypt-brokerage-credentials', {
-      body: { connectionId: brokerageConnection.id }
-    })
-
-    if (decryptError || !decryptResult) {
-      console.error('Failed to decrypt brokerage credentials:', decryptError)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to decrypt credentials', 
-          details: 'Unable to access your brokerage credentials' 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const alpacaApiKey = decryptResult.apiKey
-    const alpacaSecretKey = decryptResult.apiSecret
-
+    // If no user credentials, use demo/fallback mode
     if (!alpacaApiKey || !alpacaSecretKey) {
-      console.error('Invalid decrypted credentials')
+      console.log('Using demo mode - no user credentials available')
+      
+      // Return mock data for demo purposes
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid credentials', 
-          details: 'Please reconnect your Alpaca account' 
+          success: true, 
+          data: [{
+            type: 'demo',
+            data: 'Demo mode - Connect your Alpaca account in Settings to see real data',
+            timestamp: new Date().toISOString()
+          }],
+          symbols: symbols,
+          timestamp: new Date().toISOString(),
+          mode: 'demo'
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          } 
+        }
       )
     }
 

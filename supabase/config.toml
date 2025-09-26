@@ -1,5 +1,14 @@
 project_id = "vtfpwvzufffmtnovvilx"
 
+[functions.decrypt-brokerage-credentials]
+verify_jwt = true
+
+[functions.oracle-realtime-data]
+verify_jwt = true
+
+[functions.detect-account-type]
+verify_jwt = true
+
 [functions.kb-embeddings]
 verify_jwt = false
 
