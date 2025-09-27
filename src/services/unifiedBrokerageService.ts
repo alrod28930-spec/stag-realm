@@ -218,26 +218,46 @@ export class UnifiedBrokerageService {
     if (!workspaceId) return;
 
     try {
+      console.log('[UnifiedBrokerageService] Loading portfolio for workspace:', workspaceId);
+      
       // Load portfolio summary
-      const { data: portfolioData } = await supabase
+      const { data: portfolioData, error: portfolioError } = await supabase
         .from('portfolio_current')
         .select('*')
         .eq('workspace_id', workspaceId)
         .maybeSingle();
 
+      console.log('[UnifiedBrokerageService] Portfolio data:', portfolioData, 'Error:', portfolioError);
+
       // Load positions
-      const { data: positionsData } = await supabase
+      const { data: positionsData, error: positionsError } = await supabase
         .from('positions_current')
         .select('*')
         .eq('workspace_id', workspaceId)
-        .order('mv', { ascending: false });
+        .order('symbol', { ascending: true });
 
-      this.portfolio = portfolioData ? {
-        cash: portfolioData.cash || 0,
-        equity: portfolioData.equity || 0,
-        dayTradeCount: 0, // Would need to add this field
-        positions: positionsData || []
-      } : null;
+      console.log('[UnifiedBrokerageService] Positions data:', positionsData, 'Error:', positionsError);
+
+      if (portfolioData) {
+        this.portfolio = {
+          cash: Number(portfolioData.cash) || 0,
+          equity: Number(portfolioData.equity) || 0,
+          dayTradeCount: 0, // Not tracked in current schema
+          positions: (positionsData || []).map(pos => ({
+            symbol: pos.symbol,
+            qty: Number(pos.qty) || 0,
+            avg_cost: Number(pos.avg_cost) || 0,
+            mv: Number(pos.mv) || 0,
+            unr_pnl: Number(pos.unr_pnl) || 0,
+            r_pnl: Number(pos.r_pnl) || 0
+          }))
+        };
+        
+        console.log('[UnifiedBrokerageService] Mapped portfolio:', this.portfolio);
+      } else {
+        this.portfolio = null;
+        console.log('[UnifiedBrokerageService] No portfolio data found');
+      }
 
       // Emit portfolio loaded event
       eventBus.emit('portfolio.loaded', {
@@ -246,6 +266,7 @@ export class UnifiedBrokerageService {
       });
 
     } catch (error) {
+      console.error('[UnifiedBrokerageService] Failed to load portfolio:', error);
       logService.log('error', 'Failed to load portfolio from database', { error });
     }
   }

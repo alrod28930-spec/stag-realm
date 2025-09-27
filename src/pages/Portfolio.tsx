@@ -272,73 +272,61 @@ export default function Portfolio() {
           </Card>
         </TabsContent>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <EquityCurveChart 
-            data={undefined}
-            title="Portfolio Equity Curve"
-            showBenchmark={true}
-            showDrawdown={false}
-            height={350}
-            isDemo={false}
-          />
-          
-          <RiskMetricsChart
-            title="Risk Analysis"
-            height={350}
-            isDemo={false}
-          />
-        </div>
+        <TabsContent value="performance" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <EquityCurveChart 
+              data={undefined}
+              title="Portfolio Equity Curve"
+              showBenchmark={true}
+              showDrawdown={false}
+              height={350}
+            />
+            
+            <RiskMetricsChart
+              title="Risk Analysis"
+              height={350}
+            />
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AllocationPieChart
-            title="Holdings Allocation"
-            viewMode="symbol"
-            height={400}
-            isDemo={false}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AllocationPieChart
+              title="Holdings Allocation"
+              viewMode="symbol"
+              height={400}
+            />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Position Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <div className="font-medium">AAPL</div>
-                    <div className="text-sm text-muted-foreground">100 shares</div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Position Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {portfolio?.positions && portfolio.positions.length > 0 ? (
+                  <div className="space-y-3">
+                    {portfolio.positions.slice(0, 5).map((position, index) => (
+                      <div key={`${position.symbol}-${index}`} className="flex items-center justify-between p-3 border rounded">
+                        <div>
+                          <div className="font-medium">{position.symbol}</div>
+                          <div className="text-sm text-muted-foreground">{Math.abs(position.qty)} shares</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold">${(position.mv || 0).toLocaleString()}</div>
+                          <div className={`text-sm ${(position.unr_pnl || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {(position.unr_pnl || 0) >= 0 ? '+' : ''}${(position.unr_pnl || 0).toFixed(2)} 
+                            ({position.mv > 0 ? (((position.unr_pnl || 0) / (position.mv - (position.unr_pnl || 0))) * 100).toFixed(1) : '0.0'}%)
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-right">
-                    <div className="font-semibold">$15,000</div>
-                    <div className="text-sm text-success">+$500 (3.4%)</div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No positions to display
                   </div>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <div className="font-medium">MSFT</div>
-                    <div className="text-sm text-muted-foreground">75 shares</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold">$12,500</div>
-                    <div className="text-sm text-success">+$250 (2.0%)</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <div className="font-medium">GOOGL</div>
-                    <div className="text-sm text-muted-foreground">50 shares</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold">$10,000</div>
-                    <div className="text-sm text-destructive">-$150 (-1.5%)</div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="recorder" className="space-y-6">
           <div className="h-screen overflow-hidden">
