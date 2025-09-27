@@ -4,6 +4,7 @@ import './index.css'
 
 // Initialize system coordination (nervous system)
 import './services/systemCoordinator';
+import { unifiedBrokerageService } from './services/unifiedBrokerageService';
 
 console.log('🚀 Main.tsx - Starting application...');
 
@@ -17,6 +18,9 @@ if (!rootElement) {
 console.log('✅ Root element found, rendering app directly...');
 
 try {
+  // Initialize unified brokerage service
+  unifiedBrokerageService.initialize();
+  
   const root = createRoot(rootElement);
   console.log('🚀 Rendering App component...');
   root.render(<App />);

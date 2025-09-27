@@ -20,6 +20,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useUnifiedBrokerage } from '@/hooks/useUnifiedBrokerage';
 
 interface OrderTicketProps {
   symbol?: string;
@@ -49,6 +50,7 @@ export const OrderTicket: React.FC<OrderTicketProps> = ({
   const [autoCalculate, setAutoCalculate] = useState(true);
 
   const { toast } = useToast();
+  const { executeTrade, isLoading: isExecuting } = useUnifiedBrokerage();
 
   // Auto-update price when currentPrice changes
   useEffect(() => {
@@ -106,19 +108,7 @@ export const OrderTicket: React.FC<OrderTicketProps> = ({
 
   const profitCalc = calculateProfit();
 
-  const handleSubmit = () => {
-    const order = {
-      symbol,
-      side,
-      type: orderType,
-      quantity: parseInt(quantity),
-      price: orderType === 'market' ? currentPrice : parseFloat(price),
-      stopLoss: useStops && stopLoss ? parseFloat(stopLoss) : undefined,
-      takeProfit: useStops && takeProfit ? parseFloat(takeProfit) : undefined,
-      timestamp: Date.now(),
-      riskPercent: riskCalc?.riskPercentOfAccount || 0
-    };
-
+  const handleSubmit = async () => {
     // Risk validation
     if (riskCalc && riskCalc.riskPercentOfAccount > maxRiskPercent) {
       toast({
@@ -129,11 +119,26 @@ export const OrderTicket: React.FC<OrderTicketProps> = ({
       return;
     }
 
-    onOrderSubmit?.(order);
+    const tradeRequest = {
+      symbol,
+      side,
+      orderType,
+      quantity: parseInt(quantity),
+      price: orderType === 'market' ? currentPrice : parseFloat(price),
+      stopLoss: useStops && stopLoss ? parseFloat(stopLoss) : undefined,
+      takeProfit: useStops && takeProfit ? parseFloat(takeProfit) : undefined,
+      source: 'manual' as const
+    };
+
+    // Execute through unified brokerage service
+    await executeTrade(tradeRequest);
     
-    toast({
-      title: "Order Submitted",
-      description: `${side.toUpperCase()} ${quantity} ${symbol} ${orderType === 'market' ? 'at market' : `@ $${price}`}`,
+    // Also call legacy callback if provided (for backward compatibility)
+    onOrderSubmit?.({
+      ...tradeRequest,
+      type: orderType,
+      timestamp: Date.now(),
+      riskPercent: riskCalc?.riskPercentOfAccount || 0
     });
   };
 
@@ -383,7 +388,7 @@ export const OrderTicket: React.FC<OrderTicketProps> = ({
         {/* Submit Button */}
         <Button 
           onClick={handleSubmit}
-          disabled={!isValidOrder()}
+          disabled={!isValidOrder() || isExecuting}
           className={`w-full ${
             side === 'buy' 
               ? 'bg-success hover:bg-success/90' 
@@ -391,7 +396,12 @@ export const OrderTicket: React.FC<OrderTicketProps> = ({
           }`}
           size="lg"
         >
-          {!isValidOrder() ? (
+          {isExecuting ? (
+            <>
+              <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Executing...
+            </>
+          ) : !isValidOrder() ? (
             <>
               <AlertTriangle className="w-4 h-4 mr-2" />
               Invalid Order

@@ -5,8 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
-import { supabase } from '@/integrations/supabase/client';
+import { useUnifiedBrokerage } from '@/hooks/useUnifiedBrokerage';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useState, useEffect } from 'react';
 import { 
@@ -31,99 +30,33 @@ import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
 import { PortfolioGrid } from '@/components/portfolio/PortfolioGrid';
 
 export default function Portfolio() {
-  const {
+  const { 
     portfolio,
-    positions,
-    isLoading,
-    error,
-    loadPortfolio,
-    subscribeToUpdates
-  } = useRealPortfolioStore();
+    isConnected,
+    isLoading, 
+    lastSync,
+    connections,
+    totalValue,
+    availableCash,
+    positionsCount,
+    unrealizedPnL,
+    realizedPnL,
+    refresh
+  } = useUnifiedBrokerage();
   
   const { toast } = useToast();
-  const { workspaceId } = useWorkspace();
 
-  // Load portfolio data and subscribe to updates
-  useEffect(() => {
-    loadPortfolio();
-    const unsubscribe = subscribeToUpdates();
-    return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Remove functions from deps to prevent infinite loop
-
-  const handleRefresh = () => {
-    loadPortfolio();
-    toast({
-      title: "Portfolio Refreshed",
-      description: "Portfolio data has been updated.",
-    });
+  const handleRefresh = async () => {
+    await refresh();
   };
 
-  const handleSyncAlpaca = async () => {
-    try {
-      toast({
-        title: "Syncing Portfolio...",
-        description: "Fetching latest data from Alpaca.",
-      });
-
-      const { data, error } = await supabase.functions.invoke('brokerage-sync', { body: { workspace_id: workspaceId } });
-      
-      if (error) {
-        console.error('Alpaca sync error:', error);
-        toast({
-          title: "Sync Failed",
-          description: error.message || "Failed to sync with Alpaca. Please check your connection in Settings.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (data?.success) {
-        // Refresh local data after successful sync
-        await loadPortfolio();
-        
-        toast({
-          title: "Sync Successful",
-          description: `Portfolio synced: ${data.data?.positions_count || 0} positions, $${data.data?.equity || 0} equity`,
-        });
-      } else {
-        toast({
-          title: "Sync Warning",
-          description: data?.error || "Sync completed but may have issues.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Sync error:', error);
-      toast({
-        title: "Sync Error",
-        description: "Failed to connect to Alpaca. Please check your API credentials in Settings.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Get portfolio data from real brokerage connections
-  const portfolioData = {
-    equity: portfolio?.equity || 0,
-    cash: portfolio?.cash || 0,
-    positions: positions || []
-  };
-  
-  // Calculate portfolio metrics
-  const portfolioValue = portfolioData.equity || 0;
-  const availableCash = portfolioData.cash || 0;
-  const currentPositions = portfolioData.positions || [];
-  const totalPositions = currentPositions.length;
-  const totalUnrealizedPnL = currentPositions.reduce((sum, pos) => sum + (pos.unr_pnl || 0), 0);
-  const totalMarketValue = currentPositions.reduce((sum, pos) => sum + (pos.mv || 0), 0);
-
+  // Define portfolio stats using unified data
   const stats = [
     {
       title: 'Portfolio Value',
-      value: `$${portfolioValue.toLocaleString()}`,
-      change: totalUnrealizedPnL >= 0 ? `+$${totalUnrealizedPnL.toFixed(2)}` : `-$${Math.abs(totalUnrealizedPnL).toFixed(2)}`,
-      trend: totalUnrealizedPnL >= 0 ? 'up' : 'down',
+      value: `$${totalValue.toLocaleString()}`,
+      change: unrealizedPnL >= 0 ? `+$${unrealizedPnL.toFixed(2)}` : `-$${Math.abs(unrealizedPnL).toFixed(2)}`,
+      trend: unrealizedPnL >= 0 ? 'up' : 'down',
       icon: DollarSign,
     },
     {
@@ -135,16 +68,16 @@ export default function Portfolio() {
     },
     {
       title: 'Market Value',
-      value: `$${totalMarketValue.toLocaleString()}`,
-      change: `${totalPositions} positions`,
-      trend: totalPositions > 0 ? 'up' : 'neutral',
+      value: `$${(totalValue - availableCash).toLocaleString()}`,
+      change: `${positionsCount} positions`,
+      trend: positionsCount > 0 ? 'up' : 'neutral',
       icon: BarChart3,
     },
     {
       title: 'Total P&L',
-      value: totalUnrealizedPnL >= 0 ? `+$${totalUnrealizedPnL.toFixed(2)}` : `-$${Math.abs(totalUnrealizedPnL).toFixed(2)}`,
-      change: portfolioValue > 0 ? `${((totalUnrealizedPnL / (portfolioValue - totalUnrealizedPnL)) * 100).toFixed(2)}%` : '0.00%',
-      trend: totalUnrealizedPnL >= 0 ? 'up' : 'down',
+      value: unrealizedPnL >= 0 ? `+$${unrealizedPnL.toFixed(2)}` : `-$${Math.abs(unrealizedPnL).toFixed(2)}`,
+      change: totalValue > 0 ? `${((unrealizedPnL / (totalValue - unrealizedPnL)) * 100).toFixed(2)}%` : '0.00%',
+      trend: unrealizedPnL >= 0 ? 'up' : 'down',
       icon: Activity,
     },
   ];
@@ -164,20 +97,26 @@ export default function Portfolio() {
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={handleSyncAlpaca} size="sm">
-            <Building2 className="w-4 h-4 mr-2" />
-            Sync Alpaca
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-destructive'}`} />
+            <span className="text-sm text-muted-foreground">
+              {isConnected ? `Connected (${connections.length})` : 'Disconnected'}
+            </span>
+            {lastSync && (
+              <span className="text-xs text-muted-foreground">
+                Last sync: {lastSync.toLocaleTimeString()}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Error State */}
-      {error && (
-        <Card className="border-destructive/50 bg-destructive/5">
+      {!isConnected && (
+        <Card className="border-warning/50 bg-warning/5">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              <p className="text-destructive">Failed to load portfolio data: {error}</p>
+              <AlertTriangle className="w-5 h-5 text-warning" />
+              <p className="text-warning">No active brokerage connections found. Please configure your brokerage settings.</p>
             </div>
           </CardContent>
         </Card>
@@ -190,11 +129,11 @@ export default function Portfolio() {
         </CardHeader>
         <CardContent className="pt-0">
           <div className="text-xs space-y-2">
-            <div>Workspace ID: {workspaceId}</div>
-            <div>Portfolio Data: {portfolio ? JSON.stringify(portfolio) : 'null'}</div>
-            <div>Positions Count: {positions.length}</div>
+            <div>Connection Status: {isConnected ? 'Connected' : 'Disconnected'}</div>
+            <div>Connections: {connections.length}</div>
+            <div>Portfolio: {portfolio ? JSON.stringify({ cash: portfolio.cash, equity: portfolio.equity, positions: portfolio.positions.length }) : 'null'}</div>
+            <div>Last Sync: {lastSync?.toISOString() || 'never'}</div>
             <div>Loading: {isLoading.toString()}</div>
-            <div>Error: {error || 'none'}</div>
           </div>
         </CardContent>
       </Card>
@@ -256,7 +195,7 @@ export default function Portfolio() {
                   <RefreshCw className="w-6 h-6 animate-spin" />
                   <span className="ml-2">Loading positions...</span>
                 </div>
-              ) : currentPositions.length === 0 ? (
+              ) : !portfolio?.positions || portfolio.positions.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">No positions found</p>
                   <p className="text-sm text-muted-foreground mt-2">
@@ -265,53 +204,53 @@ export default function Portfolio() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {currentPositions.map((position, index) => (
-                      <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center space-x-4">
-                          <Badge 
-                            variant={position.qty > 0 ? 'default' : 'secondary'}
-                            className="w-16 justify-center"
-                          >
-                            {position.qty > 0 ? 'Long' : 'Short'}
-                          </Badge>
-                          <div>
-                            <p className="font-semibold text-lg">{position.symbol}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {Math.abs(position.qty)} shares @ ${position.avg_cost.toFixed(2)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Market Value: ${(position.mv || 0).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <p className={`font-semibold text-lg ${
-                              (position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'
-                            }`}>
-                              {(position.unr_pnl || 0) >= 0 ? '+' : ''}${(position.unr_pnl || 0).toFixed(2)}
-                            </p>
-                            <p className={`text-sm ${
-                              (position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'
-                            }`}>
-                              {position.mv > 0 ? 
-                                `${(((position.unr_pnl || 0) / (position.mv - (position.unr_pnl || 0))) * 100).toFixed(2)}%` : 
-                                '0.00%'
-                              }
-                            </p>
-                            {position.r_pnl && position.r_pnl !== 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                Realized: ${position.r_pnl.toFixed(2)}
-                              </p>
-                            )}
-                          </div>
-                          <DividendButton
-                            symbol={position.symbol}
-                            shares={Math.abs(position.qty)}
-                            currentPrice={position.mv / Math.abs(position.qty)}
-                          />
+                  {portfolio.positions.map((position, index) => (
+                    <div key={`${position.symbol}-${index}`} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center space-x-4">
+                        <Badge 
+                          variant={position.qty > 0 ? 'default' : 'secondary'}
+                          className="w-16 justify-center"
+                        >
+                          {position.qty > 0 ? 'Long' : 'Short'}
+                        </Badge>
+                        <div>
+                          <p className="font-semibold text-lg">{position.symbol}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {Math.abs(position.qty)} shares @ ${position.avg_cost.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Market Value: ${(position.mv || 0).toLocaleString()}
+                          </p>
                         </div>
                       </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className={`font-semibold text-lg ${
+                            (position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'
+                          }`}>
+                            {(position.unr_pnl || 0) >= 0 ? '+' : ''}${(position.unr_pnl || 0).toFixed(2)}
+                          </p>
+                          <p className={`text-sm ${
+                            (position.unr_pnl || 0) >= 0 ? 'text-accent' : 'text-destructive'
+                          }`}>
+                            {position.mv > 0 ? 
+                              `${(((position.unr_pnl || 0) / (position.mv - (position.unr_pnl || 0))) * 100).toFixed(2)}%` : 
+                              '0.00%'
+                            }
+                          </p>
+                          {position.r_pnl && position.r_pnl !== 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Realized: ${position.r_pnl.toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                        <DividendButton
+                          symbol={position.symbol}
+                          shares={Math.abs(position.qty)}
+                          currentPrice={position.mv / Math.abs(position.qty)}
+                        />
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
