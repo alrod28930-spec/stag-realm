@@ -57,13 +57,60 @@ export default function Market() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Market indices data (this would come from real market data API)
-  const indices = [
+  // Load real market indices from Supabase if available
+  useEffect(() => {
+    const loadIndices = async () => {
+      const workspaceId = await getCurrentUserWorkspace();
+      if (!workspaceId) return;
+
+      const symbols = ['SPY', 'QQQ', 'IWM', 'DIA'];
+      const { data, error } = await supabase
+        .from('market_data')
+        .select('symbol, price, change, change_percent, updated_at')
+        .eq('workspace_id', workspaceId)
+        .in('symbol', symbols)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load market indices:', error);
+        return;
+      }
+
+      if (!data || data.length === 0) return;
+
+      const latestMap = new Map<string, any>();
+      for (const row of data) {
+        if (!latestMap.has(row.symbol)) {
+          latestMap.set(row.symbol, row);
+        }
+      }
+
+      const updated = symbols.map((sym) => {
+        const row = latestMap.get(sym);
+        if (!row) return defaultIndices.find((d) => d.symbol === sym)!;
+        return {
+          symbol: sym,
+          name: defaultIndices.find((d) => d.symbol === sym)?.name || sym,
+          price: Number(row.price) || 0,
+          change: Number(row.change) || 0,
+          changePercent: Number(row.change_percent) || 0,
+        };
+      });
+
+      setIndices(updated);
+    };
+
+    loadIndices();
+  }, []);
+
+  const defaultIndices = [
     { symbol: 'SPY', name: 'S&P 500 ETF', price: 415.25, change: 2.15, changePercent: 0.52 },
     { symbol: 'QQQ', name: 'Nasdaq 100 ETF', price: 348.90, change: -1.85, changePercent: -0.53 },
     { symbol: 'IWM', name: 'Russell 2000 ETF', price: 195.75, change: 0.85, changePercent: 0.44 },
     { symbol: 'DIA', name: 'Dow Jones ETF', price: 340.60, change: 1.25, changePercent: 0.37 },
   ];
+
+  const [indices, setIndices] = useState(defaultIndices);
 
   const handleSearch = (query: string) => {
     setIsLoading(true);

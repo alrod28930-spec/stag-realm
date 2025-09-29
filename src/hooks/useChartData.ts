@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSubscriptionAccess } from './useSubscriptionAccess';
+import { getCurrentUserWorkspace } from '@/utils/auth';
 
 export interface CandleData {
   time: number;
@@ -80,7 +81,6 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
       setError(null);
 
       try {
-        // ONLY the single demo account gets demo data - ALL other accounts are empty until API keys
         if (subscriptionStatus.isDemo) {
           setCandleData(DEMO_CANDLES);
           setIndicatorData(DEMO_INDICATORS);
@@ -89,14 +89,78 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           return;
         }
 
-        // ALL regular accounts have empty data until API connection
-        setCandleData([]);
-        setIndicatorData([]);  
-        setOracleSignals([]);
-        setLoading(false);
-        return;
+        const workspaceId = await getCurrentUserWorkspace();
+        if (!workspaceId) {
+          setCandleData([]);
+          setIndicatorData([]);
+          setOracleSignals([]);
+          setLoading(false);
+          throw new Error('No workspace available for chart data');
+        }
 
-        // This code below will be used when API integration is added
+        const [candlesResponse, signalsResponse] = await Promise.all([
+          supabase
+            .from('candles')
+            .select('ts,o,h,l,c,v')
+            .eq('workspace_id', workspaceId)
+            .eq('symbol', symbol)
+            .eq('tf', timeframe)
+            .order('ts', { ascending: true })
+            .limit(1000),
+          supabase
+            .from('oracle_signals')
+            .select('id, ts, direction, strength, summary')
+            .eq('workspace_id', workspaceId)
+            .eq('symbol', symbol)
+            .order('ts', { ascending: false })
+            .limit(50)
+        ]);
+
+        if (candlesResponse.error) throw candlesResponse.error;
+        if (signalsResponse.error) throw signalsResponse.error;
+
+        const candles = (candlesResponse.data || []).map((c: any) => ({
+          time: new Date(c.ts).getTime(),
+          open: Number(c.o) || 0,
+          high: Number(c.h) || 0,
+          low: Number(c.l) || 0,
+          close: Number(c.c) || 0,
+          volume: Number(c.v) || 0,
+        }));
+
+        // Simple client-side indicators (SMA20 and session VWAP)
+        const closes: number[] = [];
+        const vols: number[] = [];
+        let cumPV = 0;
+        let cumV = 0;
+        const indicators = candles.map((k) => {
+          closes.push(k.close);
+          vols.push(k.volume || 0);
+          if (k.volume && k.close) {
+            cumPV += k.close * k.volume;
+            cumV += k.volume;
+          }
+          const idx = closes.length - 1;
+          const window = 20;
+          const sma20 = idx + 1 >= window
+            ? closes.slice(idx + 1 - window, idx + 1).reduce((a, b) => a + b, 0) / window
+            : undefined;
+          const vwap = cumV > 0 ? cumPV / cumV : undefined;
+          return { time: k.time, sma20, vwap } as IndicatorData;
+        });
+
+        const signals: OracleSignal[] = (signalsResponse.data || []).map((s: any) => ({
+          id: s.id,
+          time: new Date(s.ts).getTime(),
+          type: (s.direction > 0 ? 'bullish' : s.direction < 0 ? 'bearish' : 'neutral'),
+          strength: Number(s.strength) || 0,
+          summary: s.summary || ''
+        }));
+
+        setCandleData(candles);
+        setIndicatorData(indicators);
+        setOracleSignals(signals);
+
         /*
         const [candlesResponse, indicatorsResponse, signalsResponse] = await Promise.all([
           supabase
