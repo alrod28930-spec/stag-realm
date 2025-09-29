@@ -59,24 +59,30 @@ serve(async (req) => {
         throw new Error('No active Alpaca connection found for this workspace.');
       }
 
-      // Decrypt the user's credentials
-      const { data: credentialsData, error: credError } = await supabaseClient.functions.invoke('decrypt-brokerage-credentials', {
-        body: { connectionId: connections[0].id }
-      });
+      try {
+        const { data: credentialsData, error: credError } = await supabaseClient.functions.invoke('decrypt-brokerage-credentials', {
+          body: { connectionId: connections[0].id }
+        });
 
-      if (credError || !credentialsData?.success || !credentialsData?.credentials) {
-        throw new Error('Failed to decrypt Alpaca credentials for this connection.');
+        if (!credError && credentialsData?.success && credentialsData?.credentials) {
+          alpacaApiKey = credentialsData.credentials.api_key || credentialsData.credentials.apiKey;
+          alpacaSecretKey = credentialsData.credentials.secret_key || credentialsData.credentials.apiSecret;
+        } else {
+          throw new Error('Decrypt returned no credentials');
+        }
+      } catch (decryptErr) {
+        console.error('Decrypt failed, attempting env fallback:', decryptErr);
+        const envKey = Deno.env.get('ALPACA_API_KEY');
+        const envSecret = Deno.env.get('ALPACA_SECRET_KEY');
+        if (envKey && envSecret) {
+          alpacaApiKey = envKey;
+          alpacaSecretKey = envSecret;
+          console.log('Using Alpaca credentials from environment fallback');
+        } else {
+          console.error('Environment fallback missing ALPACA_API_KEY/ALPACA_SECRET_KEY');
+          throw new Error('Failed to retrieve Alpaca credentials. Please check your brokerage connection in Settings or configure ALPACA_* secrets.');
+        }
       }
-
-      alpacaApiKey = credentialsData.credentials.api_key || credentialsData.credentials.apiKey;
-      alpacaSecretKey = credentialsData.credentials.secret_key || credentialsData.credentials.apiSecret;
-      if (!alpacaApiKey || !alpacaSecretKey) {
-        throw new Error('Decrypted credentials are missing api key or secret.');
-      }
-    } catch (error) {
-      console.error('Error getting user credentials:', error);
-      throw new Error('Failed to retrieve Alpaca credentials. Please check your brokerage connection in Settings.');
-    }
 
     // Detect correct Alpaca base URL (paper vs live)
     let baseUrl = 'https://paper-api.alpaca.markets';

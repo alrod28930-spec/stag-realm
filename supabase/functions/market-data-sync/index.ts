@@ -62,31 +62,37 @@ serve(async (req) => {
       try {
         console.log(`📊 Processing workspace: ${conn.workspace_id}`);
 
-        // Get Alpaca credentials (decrypt via edge function)
-        const { data: credData, error: credError } = await supabase.functions.invoke(
-          'decrypt-brokerage-credentials',
-          { body: { workspace_id: conn.workspace_id } }
-        );
+        // Get Alpaca credentials from environment (single-account setup)
+        const apiKey = Deno.env.get('ALPACA_API_KEY');
+        const apiSecret = Deno.env.get('ALPACA_SECRET_KEY');
 
-        if (credError || !credData?.api_key) {
-          console.error(`❌ Failed to decrypt credentials for ${conn.workspace_id}`);
+        if (!apiKey || !apiSecret) {
+          console.error(`❌ Missing Alpaca credentials in environment for workspace ${conn.workspace_id}`);
           continue;
         }
 
-        const apiKey = credData.api_key;
-        const apiSecret = credData.api_secret;
+        // Detect account type (paper vs live) by probing /v2/account
+        let baseUrl = 'https://paper-api.alpaca.markets';
+        try {
+          const testPaper = await fetch(`${baseUrl}/v2/account`, {
+            headers: {
+              'APCA-API-KEY-ID': apiKey,
+              'APCA-API-SECRET-KEY': apiSecret,
+            },
+          });
+          if (!testPaper.ok) {
+            const liveUrl = 'https://api.alpaca.markets';
+            const testLive = await fetch(`${liveUrl}/v2/account`, {
+              headers: {
+                'APCA-API-KEY-ID': apiKey,
+                'APCA-API-SECRET-KEY': apiSecret,
+              },
+            });
+            if (testLive.ok) baseUrl = liveUrl;
+          }
+        } catch (_) {}
 
-        // Detect account type (paper vs live)
-        const { data: accountType } = await supabase.functions.invoke(
-          'detect-account-type',
-          { body: { api_key: apiKey, api_secret: apiSecret } }
-        );
-
-        const baseUrl = accountType?.is_paper
-          ? 'https://paper-api.alpaca.markets'
-          : 'https://api.alpaca.markets';
-
-        console.log(`🔑 Using ${accountType?.is_paper ? 'paper' : 'live'} API`);
+        console.log(`🔑 Market data sync using ${baseUrl.includes('paper') ? 'paper' : 'live'} API`);
 
         // Get positions to fetch bars for held symbols
         const { data: positions } = await supabase
