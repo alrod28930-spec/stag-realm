@@ -2493,6 +2493,10 @@ export type Database = {
         Args: { "": unknown[] }
         Returns: number
       }
+      trigger_market_data_sync: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       validate_workspace_name: {
         Args: { p_name: string }
         Returns: boolean
