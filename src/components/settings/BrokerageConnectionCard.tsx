@@ -71,9 +71,20 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
       // Refresh connections list
       onUpdate();
       
-      // Trigger immediate portfolio sync
+      // Trigger immediate portfolio sync using alpaca-sync
       setTimeout(async () => {
-        await triggerSync(workspaceId);
+        try {
+          await supabase.functions.invoke('alpaca-sync', {
+            body: { workspace_id: workspaceId }
+          });
+          
+          toast({
+            title: "Portfolio Synced",
+            description: "Initial portfolio data has been loaded.",
+          });
+        } catch (error) {
+          console.error('Sync failed:', error);
+        }
       }, 1000);
 
     } catch (error) {

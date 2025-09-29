@@ -175,8 +175,8 @@ export class UnifiedBrokerageService {
         return { success: false, message: 'No workspace found' };
       }
 
-      // Trigger brokerage sync
-      const { data, error } = await supabase.functions.invoke('brokerage-sync', {
+      // Trigger alpaca sync (which writes both portfolio and positions)
+      const { data, error } = await supabase.functions.invoke('alpaca-sync', {
         body: { workspace_id: workspaceId }
       });
 

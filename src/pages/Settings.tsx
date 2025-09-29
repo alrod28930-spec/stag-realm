@@ -38,6 +38,7 @@ import { BrokerageDockSettings } from '@/components/settings/BrokerageDockSettin
 import { supabase } from '@/integrations/supabase/client';
 import type { BrokerageConnection } from '@/types/userSettings';
 import { useEffect } from 'react';
+import { getCurrentUserWorkspace } from '@/utils/auth';
 
 export default function Settings() {
   const { toast } = useToast();
@@ -46,7 +47,7 @@ export default function Settings() {
   
   // Brokerage connections state
   const [brokerageConnections, setBrokerageConnections] = useState<BrokerageConnection[]>([]);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('00000000-0000-0000-0000-000000000001'); // Default test workspace
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   
   // Load compliance data
   const [complianceSettings, setComplianceSettings] = useState(complianceService.getComplianceSettings());
@@ -55,6 +56,8 @@ export default function Settings() {
 
   // Load brokerage connections
   const loadBrokerageConnections = async () => {
+    if (!currentWorkspaceId) return;
+    
     try {
       const { data, error } = await supabase
         .from('connections_brokerages')
@@ -88,8 +91,19 @@ export default function Settings() {
     }
   };
 
+  // Load workspace ID on mount
   useEffect(() => {
-    loadBrokerageConnections();
+    const loadWorkspace = async () => {
+      const workspaceId = await getCurrentUserWorkspace();
+      setCurrentWorkspaceId(workspaceId);
+    };
+    loadWorkspace();
+  }, []);
+
+  useEffect(() => {
+    if (currentWorkspaceId) {
+      loadBrokerageConnections();
+    }
   }, [currentWorkspaceId]);
 
   // Subscribe to toggle service changes with error handling
@@ -262,11 +276,13 @@ export default function Settings() {
 
         {/* Broker API Keys */}
         <TabsContent value="brokers" className="space-y-6">
-          <BrokerageConnectionCard
-            workspaceId={currentWorkspaceId}
-            connections={brokerageConnections}
-            onUpdate={loadBrokerageConnections}
-          />
+          {currentWorkspaceId && (
+            <BrokerageConnectionCard
+              workspaceId={currentWorkspaceId}
+              connections={brokerageConnections}
+              onUpdate={loadBrokerageConnections}
+            />
+          )}
 
           {/* Licensing Tier */}
           <Card className="bg-gradient-card shadow-card">
