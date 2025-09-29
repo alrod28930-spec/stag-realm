@@ -78,8 +78,29 @@ serve(async (req) => {
       throw new Error('Failed to retrieve Alpaca credentials. Please check your brokerage connection in Settings.');
     }
 
+    // Detect correct Alpaca base URL (paper vs live)
+    let baseUrl = 'https://paper-api.alpaca.markets';
+    try {
+      const testPaper = await fetch(`${baseUrl}/v2/account`, {
+        headers: {
+          'APCA-API-KEY-ID': alpacaApiKey,
+          'APCA-API-SECRET-KEY': alpacaSecretKey,
+        },
+      });
+      if (!testPaper.ok) {
+        const liveUrl = 'https://api.alpaca.markets';
+        const testLive = await fetch(`${liveUrl}/v2/account`, {
+          headers: {
+            'APCA-API-KEY-ID': alpacaApiKey,
+            'APCA-API-SECRET-KEY': alpacaSecretKey,
+          },
+        });
+        if (testLive.ok) baseUrl = liveUrl;
+      }
+    } catch (_) {}
+
     // Fetch Alpaca account info
-    const accountResponse = await fetch('https://paper-api.alpaca.markets/v2/account', {
+    const accountResponse = await fetch(`${baseUrl}/v2/account`, {
       headers: {
         'APCA-API-KEY-ID': alpacaApiKey,
         'APCA-API-SECRET-KEY': alpacaSecretKey,
@@ -93,7 +114,7 @@ serve(async (req) => {
     const account = await accountResponse.json();
 
     // Fetch Alpaca positions
-    const positionsResponse = await fetch('https://paper-api.alpaca.markets/v2/positions', {
+    const positionsResponse = await fetch(`${baseUrl}/v2/positions`, {
       headers: {
         'APCA-API-KEY-ID': alpacaApiKey,
         'APCA-API-SECRET-KEY': alpacaSecretKey,

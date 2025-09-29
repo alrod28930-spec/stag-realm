@@ -34,7 +34,7 @@ serve(async (req) => {
       return new Response('Connection ID required', { status: 400, headers: corsHeaders })
     }
 
-    // Get the connection with encrypted credentials
+    // Get the connection metadata (we'll use env vars for actual credentials)
     const { data: connection, error: connectionError } = await supabase
       .from('connections_brokerages')
       .select('*')
@@ -54,33 +54,25 @@ serve(async (req) => {
       return new Response('Access denied', { status: 403, headers: corsHeaders })
     }
 
-    // Option 3: Try environment variables first (primary), fall back to database
-    let apiKey = Deno.env.get('ALPACA_API_KEY');
-    let secretKey = Deno.env.get('ALPACA_SECRET_KEY');
-
-    // If not in env vars, fall back to decrypting from database
+    // Option 2: Use environment variables as the single source of truth
+    const apiKey = Deno.env.get('ALPACA_API_KEY');
+    const secretKey = Deno.env.get('ALPACA_SECRET_KEY');
+    
     if (!apiKey || !secretKey) {
-      console.log('Environment variables not found, falling back to database credentials');
-      try {
-        apiKey = new TextDecoder().decode(connection.api_key_cipher);
-        secretKey = new TextDecoder().decode(connection.api_secret_cipher);
-        console.log('Successfully retrieved credentials from database');
-      } catch (decryptError) {
-        console.error('Failed to decrypt credentials:', decryptError);
-        return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: 'Failed to retrieve credentials from both environment and database'
-          }),
-          { 
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-    } else {
-      console.log('Using Alpaca credentials from environment variables');
+      console.error('Missing Alpaca credentials in environment variables');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Alpaca credentials not configured. Please set ALPACA_API_KEY and ALPACA_SECRET_KEY.'
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
+
+    console.log('Using Alpaca credentials from environment variables (Option 2)');
 
     return new Response(
       JSON.stringify({ 

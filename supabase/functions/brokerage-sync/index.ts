@@ -71,11 +71,13 @@ serve(async (req) => {
           body: { connection_id: connection.id }
         });
 
-        if (decryptResponse.error || !decryptResponse.data?.success) {
-          throw new Error(`Failed to decrypt credentials: ${decryptResponse.error?.message || 'Unknown error'}`);
-        }
+        const creds = (decryptResponse.data as any)?.credentials || (decryptResponse.data as any);
+        const apiKey = creds?.api_key || creds?.apiKey;
+        const apiSecret = creds?.api_secret || creds?.secret_key || creds?.apiSecret;
 
-        const { api_key: apiKey, api_secret: apiSecret } = decryptResponse.data;
+        if (!apiKey || !apiSecret) {
+          throw new Error('Decrypted Alpaca credentials missing apiKey or apiSecret');
+        }
 
         if (connection.provider.toLowerCase() === 'alpaca') {
           const isLive = connection.scope?.live === true;

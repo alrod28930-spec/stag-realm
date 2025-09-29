@@ -74,7 +74,7 @@ serve(async (req) => {
 
     // Get Alpaca API credentials from environment
     const alpacaApiKey = Deno.env.get('ALPACA_API_KEY');
-    const alpacaSecretKey = Deno.env.get('ALPACA_API_SECRET');
+    const alpacaSecretKey = Deno.env.get('ALPACA_SECRET_KEY');
     
     if (!alpacaApiKey || !alpacaSecretKey) {
       return new Response(
@@ -99,7 +99,28 @@ serve(async (req) => {
       ...(tradeRequest.stop_price && { stop_price: tradeRequest.stop_price.toString() })
     };
 
-    const alpacaResponse = await fetch('https://paper-api.alpaca.markets/v2/orders', {
+    // Detect correct Alpaca base URL (paper vs live)
+    let baseUrl = 'https://paper-api.alpaca.markets';
+    try {
+      const testPaper = await fetch(`${baseUrl}/v2/account`, {
+        headers: {
+          'APCA-API-KEY-ID': alpacaApiKey,
+          'APCA-API-SECRET-KEY': alpacaSecretKey,
+        },
+      });
+      if (!testPaper.ok) {
+        const liveUrl = 'https://api.alpaca.markets';
+        const testLive = await fetch(`${liveUrl}/v2/account`, {
+          headers: {
+            'APCA-API-KEY-ID': alpacaApiKey,
+            'APCA-API-SECRET-KEY': alpacaSecretKey,
+          },
+        });
+        if (testLive.ok) baseUrl = liveUrl;
+      }
+    } catch (_) {}
+
+    const alpacaResponse = await fetch(`${baseUrl}/v2/orders`, {
       method: 'POST',
       headers: {
         'APCA-API-KEY-ID': alpacaApiKey,

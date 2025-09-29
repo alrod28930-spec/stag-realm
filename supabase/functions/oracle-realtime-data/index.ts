@@ -49,7 +49,7 @@ serve(async (req) => {
 
     // Get Alpaca API credentials from environment
     const alpacaApiKey = Deno.env.get('ALPACA_API_KEY');
-    const alpacaSecretKey = Deno.env.get('ALPACA_API_SECRET');
+    const alpacaSecretKey = Deno.env.get('ALPACA_SECRET_KEY');
 
     if (!alpacaApiKey || !alpacaSecretKey) {
       return new Response(
@@ -154,7 +154,7 @@ serve(async (req) => {
 
 async function fetchAlpacaPrices(symbols: string[], apiKey: string, secretKey: string) {
   const symbolsParam = symbols.join(',')
-  const response = await fetch(`https://paper-api.alpaca.markets/v2/stocks/quotes/latest?symbols=${symbolsParam}`, {
+  const response = await fetch(`https://data.alpaca.markets/v2/stocks/quotes/latest?symbols=${symbolsParam}`, {
     headers: {
       'APCA-API-KEY-ID': apiKey,
       'APCA-API-SECRET-KEY': secretKey,
@@ -168,7 +168,7 @@ async function fetchAlpacaPrices(symbols: string[], apiKey: string, secretKey: s
   const data = await response.json()
   return Object.entries(data.quotes || {}).map(([symbol, quote]: [string, any]) => ({
     symbol,
-    price: quote.bp || quote.ap || 0,
+    price: (quote.bp ?? quote.ap ?? 0),
     bid: quote.bp,
     ask: quote.ap,
     bidSize: quote.bs,
@@ -186,7 +186,7 @@ async function fetchAlpacaVolume(symbols: string[], timeframe: string, apiKey: s
       const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000) // 1 day ago
       
       const response = await fetch(
-        `https://paper-api.alpaca.markets/v2/stocks/${symbol}/bars?timeframe=${timeframe}&start=${startDate.toISOString()}&end=${endDate.toISOString()}`,
+        `https://data.alpaca.markets/v2/stocks/${symbol}/bars?timeframe=${timeframe}&start=${startDate.toISOString()}&end=${endDate.toISOString()}`,
         {
           headers: {
             'APCA-API-KEY-ID': apiKey,
@@ -221,7 +221,7 @@ async function fetchAlpacaNews(symbols: string[], apiKey: string, secretKey: str
   try {
     const symbolsParam = symbols.join(',')
     const response = await fetch(
-      `https://paper-api.alpaca.markets/v1beta1/news?symbols=${symbolsParam}&limit=50`,
+      `https://data.alpaca.markets/v1beta1/news?symbols=${symbolsParam}&limit=50`,
       {
         headers: {
           'APCA-API-KEY-ID': apiKey,
