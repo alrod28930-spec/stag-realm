@@ -34,7 +34,7 @@ serve(async (req) => {
       return new Response('Connection ID required', { status: 400, headers: corsHeaders })
     }
 
-    // Get the encrypted credentials
+    // Get the connection metadata (we'll use env vars for actual credentials)
     const { data: connection, error: connectionError } = await supabase
       .from('connections_brokerages')
       .select('*')
@@ -54,22 +54,16 @@ serve(async (req) => {
       return new Response('Access denied', { status: 403, headers: corsHeaders })
     }
 
-    // Simple decryption (in production, use proper encryption like AES)
-    // For now, decode the base64-like stored values
-    let apiKey: string;
-    let secretKey: string;
+    // Use environment variables as the single source of truth
+    const apiKey = Deno.env.get('ALPACA_API_KEY');
+    const secretKey = Deno.env.get('ALPACA_SECRET_KEY');
     
-    try {
-      // Decrypt the stored credentials - simplified approach
-      // In a real system, you'd use proper encryption/decryption with keys
-      apiKey = new TextDecoder().decode(connection.api_key_cipher);
-      secretKey = new TextDecoder().decode(connection.api_secret_cipher);
-    } catch (decryptError) {
-      console.error('Failed to decrypt credentials:', decryptError);
+    if (!apiKey || !secretKey) {
+      console.error('Missing Alpaca credentials in environment variables');
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Failed to decrypt stored credentials'
+          error: 'Alpaca credentials not configured. Please set ALPACA_API_KEY and ALPACA_SECRET_KEY.'
         }),
         { 
           status: 500,
@@ -77,6 +71,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log('Successfully retrieved Alpaca credentials from environment');
 
     return new Response(
       JSON.stringify({ 
@@ -97,10 +93,10 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Decrypt credentials error:', error)
+    console.error('Get credentials error:', error)
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to decrypt credentials', 
+        error: 'Failed to get credentials', 
         details: error instanceof Error ? error.message : 'Unknown error' 
       }),
       { 
