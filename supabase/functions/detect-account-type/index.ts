@@ -106,9 +106,10 @@ serve(async (req) => {
     // Store credentials with detected account type
     const { error: storeError } = await supabase
       .from('connections_brokerages')
-      .upsert({
+      .insert({
         workspace_id: workspaceId,
         provider: 'alpaca',
+        status: 'active',
         account_label: `Alpaca ${accountType.charAt(0).toUpperCase() + accountType.slice(1)} Account`,
         api_key_cipher: new TextEncoder().encode(apiKey), // In production, this should be properly encrypted
         api_secret_cipher: new TextEncoder().encode(secretKey),

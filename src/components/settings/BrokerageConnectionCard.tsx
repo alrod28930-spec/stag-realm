@@ -57,7 +57,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
 
       toast({
         title: "Connection Successful",
-        description: `Connected to ${data.accountType} trading account. Account status: ${data.accountStatus}`,
+        description: `Connected to ${data.accountType} trading account. Syncing portfolio data...`,
       });
 
       setNewConnection({
@@ -67,7 +67,14 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
         apiSecret: ''
       });
       setIsAdding(false);
+      
+      // Refresh connections list
       onUpdate();
+      
+      // Trigger immediate portfolio sync
+      setTimeout(async () => {
+        await triggerSync(workspaceId);
+      }, 1000);
 
     } catch (error) {
       toast({
