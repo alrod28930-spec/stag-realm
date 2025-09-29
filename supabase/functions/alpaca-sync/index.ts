@@ -87,6 +87,7 @@ serve(async (req) => {
       console.error('Error getting user credentials:', error);
       throw new Error('Failed to retrieve Alpaca credentials. Please check your brokerage connection in Settings.');
     }
+
     // Detect correct Alpaca base URL (paper vs live)
     let baseUrl = 'https://paper-api.alpaca.markets';
     try {
