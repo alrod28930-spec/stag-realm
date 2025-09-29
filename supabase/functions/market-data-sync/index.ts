@@ -71,28 +71,9 @@ serve(async (req) => {
           continue;
         }
 
-        // Detect account type (paper vs live) by probing /v2/account
-        let baseUrl = 'https://paper-api.alpaca.markets';
-        try {
-          const testPaper = await fetch(`${baseUrl}/v2/account`, {
-            headers: {
-              'APCA-API-KEY-ID': apiKey,
-              'APCA-API-SECRET-KEY': apiSecret,
-            },
-          });
-          if (!testPaper.ok) {
-            const liveUrl = 'https://api.alpaca.markets';
-            const testLive = await fetch(`${liveUrl}/v2/account`, {
-              headers: {
-                'APCA-API-KEY-ID': apiKey,
-                'APCA-API-SECRET-KEY': apiSecret,
-              },
-            });
-            if (testLive.ok) baseUrl = liveUrl;
-          }
-        } catch (_) {}
-
-        console.log(`🔑 Market data sync using ${baseUrl.includes('paper') ? 'paper' : 'live'} API`);
+        // Use Alpaca's dedicated data API endpoint (same for paper and live accounts)
+        const dataUrl = 'https://data.alpaca.markets';
+        console.log(`🔑 Market data sync using data API: ${dataUrl}`);
 
         // Get positions to fetch bars for held symbols
         const { data: positions } = await supabase
@@ -117,8 +98,8 @@ serve(async (req) => {
 
         for (const symbol of allSymbols) {
           try {
-            // Fetch bars
-            const barsUrl = `${baseUrl}/v2/stocks/${symbol}/bars?` +
+            // Fetch bars from data API
+            const barsUrl = `${dataUrl}/v2/stocks/${symbol}/bars?` +
               `start=${startDate.toISOString().split('T')[0]}&` +
               `end=${endDate.toISOString().split('T')[0]}&` +
               `timeframe=1Day&limit=100`;
@@ -168,8 +149,8 @@ serve(async (req) => {
               }
             }
 
-            // Fetch latest quote for market_data
-            const quoteUrl = `${baseUrl}/v2/stocks/${symbol}/quotes/latest`;
+            // Fetch latest quote for market_data from data API
+            const quoteUrl = `${dataUrl}/v2/stocks/${symbol}/quotes/latest`;
             const quoteResponse = await fetch(quoteUrl, {
               headers: {
                 'APCA-API-KEY-ID': apiKey,
