@@ -62,7 +62,7 @@ export function AppSidebar() {
   };
 
   const navigationItems = [
-    { title: 'Dashboard', url: '/', icon: BarChart3, description: 'Overview & analytics' },
+    { title: 'Dashboard', url: '/dashboard', icon: BarChart3, description: 'Overview & analytics' },
     { title: 'Intelligence', url: '/intelligence', icon: Brain, description: 'AI analysis & Oracle signals' },
     { title: 'Market', url: '/market', icon: TrendingUp, description: 'Market data & AI insights' },
     { title: 'Portfolio', url: '/portfolio', icon: Briefcase, description: 'Positions & audit trail' },
@@ -83,7 +83,7 @@ export function AppSidebar() {
   ];
 
   const isActive = (path: string) => {
-    if (path === '/') {
+    if (path === '/dashboard') {
       return currentPath === path;
     }
     return currentPath.startsWith(path);

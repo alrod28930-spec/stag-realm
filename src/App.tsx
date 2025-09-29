@@ -13,8 +13,8 @@ import { GlobalVoiceInterface } from "@/components/voice/GlobalVoiceInterface";
 import { useEffect, lazy, Suspense } from "react";
 import Market from "@/pages/Market";
 
+const Index = lazy(() => import("@/pages/Index"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
-
 const Portfolio = lazy(() => import("@/pages/Portfolio"));
 const TradingDesk = lazy(() => import("@/pages/TradingDesk"));
 const Charts = lazy(() => import("@/pages/Charts"));
@@ -63,6 +63,7 @@ const App = () => {
             <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
               <Routes>
                 {/* Public routes (no auth required) */}
+                <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/auth/verify" element={<VerifyEmail />} />
                 <Route path="/download" element={<Download />} />
@@ -72,7 +73,7 @@ const App = () => {
                   <AuthGuard>
                     <DashboardLayout>
                       <Routes>
-                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/intelligence" element={<Intelligence />} />
                         <Route path="/market" element={<Market />} />
                         <Route path="/portfolio" element={<Portfolio />} />
