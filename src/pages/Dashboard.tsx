@@ -211,6 +211,12 @@ export default function Dashboard() {
           viewMode="symbol"
           height={400}
           isDemo={false}
+          data={currentPositions.map((pos, idx) => ({
+            name: pos.symbol,
+            value: pos.mv || 0,
+            color: `hsl(${(idx * 360) / currentPositions.length}, 70%, 50%)`,
+            percentage: totalMarketValue > 0 ? ((pos.mv || 0) / totalMarketValue) * 100 : 0
+          }))}
         />
 
         <Card>
