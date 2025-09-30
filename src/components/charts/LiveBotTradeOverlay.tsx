@@ -98,21 +98,6 @@ export function LiveBotTradeOverlay({ symbol, onTradeExecuted }: LiveBotTradeOve
     }
   };
 
-  if (!isActive) {
-    return (
-      <div className="absolute top-2 right-2 z-10">
-        <Card className="bg-background/90 backdrop-blur-sm shadow-lg">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Bot className="w-4 h-4" />
-              <span>No active bots</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="absolute top-2 right-2 z-10 space-y-2">
       {/* Bot Status Card */}
