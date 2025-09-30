@@ -110,8 +110,8 @@ export const DrawingToolsChart: React.FC<DrawingToolsChartProps> = ({
         secondsVisible: false
       },
       grid: {
-        vertLines: { color: 'hsl(var(--border) / 0.1)' },
-        horzLines: { color: 'hsl(var(--border) / 0.1)' }
+        vertLines: { color: 'rgba(34, 211, 238, 0.1)' },
+        horzLines: { color: 'rgba(34, 211, 238, 0.1)' }
       },
       crosshair: {
         mode: 1,
@@ -130,11 +130,13 @@ export const DrawingToolsChart: React.FC<DrawingToolsChartProps> = ({
 
     // Add candlestick series
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: 'hsl(var(--success))',
-      downColor: 'hsl(var(--destructive))',
-      borderVisible: false,
-      wickUpColor: 'hsl(var(--success))',
-      wickDownColor: 'hsl(var(--destructive))'
+      upColor: 'rgba(34, 211, 238, 0.8)',
+      downColor: 'rgba(34, 211, 238, 0.5)',
+      borderVisible: true,
+      borderUpColor: 'rgba(34, 211, 238, 1)',
+      borderDownColor: 'rgba(34, 211, 238, 1)',
+      wickUpColor: 'rgba(34, 211, 238, 1)',
+      wickDownColor: 'rgba(34, 211, 238, 1)'
     });
 
     // Set data
@@ -151,7 +153,7 @@ export const DrawingToolsChart: React.FC<DrawingToolsChartProps> = ({
     // Add VWAP if available
     if (indicatorData.length > 0) {
       const vwapSeries = chart.addSeries(LineSeries, {
-        color: 'hsl(var(--warning))',
+        color: 'rgba(34, 211, 238, 1)',
         lineWidth: 2,
         title: 'VWAP'
       });

@@ -65,19 +65,21 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         secondsVisible: false
       },
       grid: {
-        vertLines: { color: 'rgba(197, 203, 206, 0.5)' },
-        horzLines: { color: 'rgba(197, 203, 206, 0.5)' }
+        vertLines: { color: 'rgba(34, 211, 238, 0.1)' },
+        horzLines: { color: 'rgba(34, 211, 238, 0.1)' }
       }
     });
 
     chartRef.current = chart;
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#26a69a',
-      downColor: '#ef5350',
-      borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350'
+      upColor: 'rgba(34, 211, 238, 0.8)',
+      downColor: 'rgba(34, 211, 238, 0.5)',
+      borderVisible: true,
+      borderUpColor: 'rgba(34, 211, 238, 1)',
+      borderDownColor: 'rgba(34, 211, 238, 1)',
+      wickUpColor: 'rgba(34, 211, 238, 1)',
+      wickDownColor: 'rgba(34, 211, 238, 1)'
     });
     candleSeriesRef.current = candleSeries;
 
@@ -95,7 +97,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     // Add volume series if enabled
     if (showVolume) {
       const volumeSeries = chart.addSeries(HistogramSeries, {
-        color: 'rgba(128, 128, 128, 0.3)',
+        color: 'rgba(34, 211, 238, 0.3)',
         priceScaleId: 'volume',
       });
 
@@ -111,7 +113,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       const volumeData = candleData.map(candle => ({
         time: Math.floor(candle.time / 1000) as any,
         value: candle.volume,
-        color: candle.close >= candle.open ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)',
+        color: candle.close >= candle.open ? 'rgba(34, 211, 238, 0.6)' : 'rgba(34, 211, 238, 0.3)',
       }));
 
       volumeSeries.setData(volumeData);
@@ -122,7 +124,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       // SMA20
       if (activeIndicators.sma20) {
         const sma20Series = chart.addSeries(LineSeries, {
-          color: 'rgb(59, 130, 246)',
+          color: 'rgba(34, 211, 238, 1)',
           lineWidth: 2,
         });
 
@@ -139,7 +141,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       // VWAP
       if (activeIndicators.vwap) {
         const vwapSeries = chart.addSeries(LineSeries, {
-          color: 'rgb(168, 85, 247)',
+          color: 'rgba(34, 211, 238, 1)',
           lineWidth: 2,
         });
 
