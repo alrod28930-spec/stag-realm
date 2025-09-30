@@ -62,12 +62,41 @@ serve(async (req) => {
       try {
         console.log(`📊 Processing workspace: ${conn.workspace_id}`);
 
-        // Get Alpaca credentials from environment (single-account setup)
-        const apiKey = Deno.env.get('ALPACA_API_KEY');
-        const apiSecret = Deno.env.get('ALPACA_SECRET_KEY');
+        // Decrypt stored credentials
+        let apiKey: string | undefined;
+        let apiSecret: string | undefined;
+
+        try {
+          const { data: decrypted, error: decryptError } = await supabase.functions.invoke(
+            'decrypt-brokerage-credentials',
+            {
+              body: {
+                api_key_cipher: conn.api_key_cipher,
+                api_secret_cipher: conn.api_secret_cipher,
+                nonce: conn.nonce
+              }
+            }
+          );
+
+          if (decryptError || !decrypted) {
+            console.error(`Decrypt failed for workspace ${conn.workspace_id}, trying env fallback:`, decryptError);
+            // Fallback to environment variables
+            apiKey = Deno.env.get('ALPACA_API_KEY');
+            apiSecret = Deno.env.get('ALPACA_SECRET_KEY');
+          } else {
+            apiKey = decrypted.api_key;
+            apiSecret = decrypted.api_secret;
+            console.log(`✅ Successfully decrypted credentials for workspace ${conn.workspace_id}`);
+          }
+        } catch (err) {
+          console.error(`Error decrypting credentials for workspace ${conn.workspace_id}:`, err);
+          // Fallback to environment variables
+          apiKey = Deno.env.get('ALPACA_API_KEY');
+          apiSecret = Deno.env.get('ALPACA_SECRET_KEY');
+        }
 
         if (!apiKey || !apiSecret) {
-          console.error(`❌ Missing Alpaca credentials in environment for workspace ${conn.workspace_id}`);
+          console.error(`❌ No valid credentials found for workspace ${conn.workspace_id}`);
           continue;
         }
 
