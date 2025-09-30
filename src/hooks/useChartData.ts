@@ -111,7 +111,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           return;
         }
 
-        if (!workspaceId) return;
+        if (!workspaceId || rawCandles.length === 0) return;
 
         const signalsResponse = await supabase
           .from('oracle_signals')
@@ -155,74 +155,6 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
         setIndicatorData(indicators);
         setOracleSignals(signals);
 
-        /*
-        const [candlesResponse, indicatorsResponse, signalsResponse] = await Promise.all([
-          supabase
-            .from('candles')
-            .select('*')
-            .eq('symbol', symbol)
-            .eq('tf', timeframe)
-            .order('ts', { ascending: true })
-            .limit(100),
-          
-          supabase
-            .from('indicators')
-            .select('*')
-            .eq('symbol', symbol) 
-            .eq('tf', timeframe)
-            .order('ts', { ascending: true })
-            .limit(100),
-             
-          supabase
-            .from('oracle_signals')
-            .select('*')
-            .eq('symbol', symbol)
-            .order('ts', { ascending: false })
-            .limit(20)
-        ]);
-
-        if (candlesResponse.error) throw candlesResponse.error;
-        if (indicatorsResponse.error) throw indicatorsResponse.error;
-        if (signalsResponse.error) throw signalsResponse.error;
-
-        // Transform candle data
-        const candles = candlesResponse.data?.map(candle => ({
-          time: new Date(candle.ts).getTime(),
-          open: Number(candle.o) || 0,
-          high: Number(candle.h) || 0,
-          low: Number(candle.l) || 0,
-          close: Number(candle.c) || 0,
-          volume: Number(candle.v) || 0
-        })) || [];
-
-        // Transform indicator data
-        const indicators = indicatorsResponse.data?.map(ind => ({
-          time: new Date(ind.ts).getTime(),
-          sma20: ind.ma20 ? Number(ind.ma20) : undefined,
-          sma50: ind.ma50 ? Number(ind.ma50) : undefined,
-          ema20: ind.ma20 ? Number(ind.ma20) : undefined, // Using ma20 as proxy
-          rsi14: ind.rsi14 ? Number(ind.rsi14) : undefined,
-          macd: ind.macd ? Number(ind.macd) : undefined,
-          bb_upper: ind.bb_up ? Number(ind.bb_up) : undefined,
-          bb_lower: ind.bb_dn ? Number(ind.bb_dn) : undefined,
-          vwap: ind.vwap_sess ? Number(ind.vwap_sess) : undefined,
-          atr14: ind.atr14 ? Number(ind.atr14) : undefined
-        })) || [];
-
-        // Transform oracle signals
-        const signals: OracleSignal[] = signalsResponse.data?.map(signal => ({
-          id: signal.id,
-          time: new Date(signal.ts).getTime(),
-          type: (signal.direction > 0 ? 'bullish' : signal.direction < 0 ? 'bearish' : 'neutral') as 'bullish' | 'bearish' | 'neutral',
-          strength: Number(signal.strength) || 0,
-          summary: signal.summary || ''
-        })) || [];
-
-        setCandleData(candles);
-        setIndicatorData(indicators);
-        setOracleSignals(signals);
-        */
-
       } catch (err) {
         console.error('Additional chart data fetch error:', err);
         // Fallback to demo data for demo accounts
@@ -236,10 +168,10 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
       }
     };
 
-    if (symbol && workspaceId) {
+    if (symbol && workspaceId && rawCandles.length > 0) {
       fetchAdditionalData();
     }
-  }, [symbol, workspaceId, candleData, subscriptionStatus]);
+  }, [symbol, workspaceId, rawCandles.length, subscriptionStatus.isDemo]);
 
   return {
     candleData,
