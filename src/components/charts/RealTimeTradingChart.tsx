@@ -84,6 +84,14 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
   const { subscriptionStatus } = useSubscriptionAccess();
   const { toast } = useToast();
 
+  // Refs to avoid stale closures in event handlers
+  const snapTradingModeRef = useRef(snapTradingMode);
+  const currentPriceRef = useRef(currentPrice);
+  const orderSizeRef = useRef(orderSize);
+  useEffect(() => { snapTradingModeRef.current = snapTradingMode; }, [snapTradingMode]);
+  useEffect(() => { currentPriceRef.current = currentPrice; }, [currentPrice]);
+  useEffect(() => { orderSizeRef.current = orderSize; }, [orderSize]);
+
   // Real-time data subscription (simulated for demo)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -132,10 +140,9 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [enableHotkeys, orderSize, currentPrice]);
 
-  // Initialize chart
+  // Initialize chart once (avoid recreate on every data/timeframe change)
   useEffect(() => {
-    if (!chartContainerRef.current || !candleData.length) return;
-
+    if (!chartContainerRef.current || chartRef.current) return;
 
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
@@ -146,7 +153,6 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
       },
       rightPriceScale: {
         borderColor: 'hsl(var(--border))',
-        scaleMargins: { top: 0.1, bottom: 0.2 }
       },
       timeScale: {
         borderColor: 'hsl(var(--border))',
@@ -190,12 +196,86 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
       priceScaleId: 'volume',
     });
     volumeSeriesRef.current = volumeSeries;
-
     chart.priceScale('volume').applyOptions({
       scaleMargins: { top: 0.7, bottom: 0 },
     });
 
-    // Set data
+    // Crosshair and click handlers for snap trading using refs (no resubscribe needed)
+    let crosshairHandler: Parameters<typeof chart.subscribeCrosshairMove>[0] | null = null;
+    let clickHandler: Parameters<typeof chart.subscribeClick>[0] | null = null;
+
+    if (showSnapTrading) {
+      crosshairHandler = (param) => {
+        if (!snapTradingModeRef.current || !param.point) return;
+        const price = candleSeries.coordinateToPrice(param.point.y);
+        if (price) setCurrentPrice(price);
+      };
+      chart.subscribeCrosshairMove(crosshairHandler);
+
+      clickHandler = (param) => {
+        if (!snapTradingModeRef.current || !param.point) return;
+        const price = candleSeries.coordinateToPrice(param.point.y);
+        if (!price) return;
+        const order: OrderOverlay = {
+          id: Date.now().toString(),
+          type: price > (currentPriceRef.current || 0) ? 'buy' : 'sell',
+          price,
+          quantity: orderSizeRef.current || 100,
+          status: 'pending',
+          timestamp: Date.now()
+        };
+        setOrders(prev => [...prev, order]);
+        onOrderPlace?.(order);
+        toast({
+          title: `Snap ${order.type.toUpperCase()} Order`,
+          description: `${order.quantity} shares at $${price.toFixed(2)}`,
+        });
+      };
+      chart.subscribeClick(clickHandler);
+    }
+
+    const handleResize = () => {
+      if (chartContainerRef.current && chartRef.current) {
+        chartRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+        });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      try {
+        if (showSnapTrading) {
+          if (crosshairHandler) chart.unsubscribeCrosshairMove(crosshairHandler);
+          if (clickHandler) chart.unsubscribeClick(clickHandler);
+        }
+      } catch {}
+      try {
+        chart.remove();
+      } catch {}
+      chartRef.current = null;
+      candleSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      overlaySeriesRef.current = [];
+    };
+  }, []);
+
+  // Apply chart options on timeframe/height changes
+  useEffect(() => {
+    if (!chartRef.current) return;
+    try {
+      chartRef.current.applyOptions({
+        height,
+        timeScale: { secondsVisible: timeframe.includes('s') || timeframe.includes('m') }
+      });
+    } catch {}
+  }, [timeframe, height]);
+
+  // Update candle & volume data when it changes
+  useEffect(() => {
+    if (!candleSeriesRef.current || candleData.length === 0) return;
+
     const chartData = candleData.map(candle => ({
       time: Math.floor(candle.time / 1000) as any,
       open: candle.open,
@@ -210,74 +290,49 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
       color: candle.close >= candle.open ? 'rgba(34, 211, 238, 0.6)' : 'rgba(34, 211, 238, 0.3)',
     }));
 
-    candleSeries.setData(chartData);
-    volumeSeries.setData(volumeData);
+    try {
+      candleSeriesRef.current.setData(chartData);
+      volumeSeriesRef.current?.setData(volumeData);
+    } catch {}
 
-    // Set current price from last candle
     if (chartData.length > 0) {
       setCurrentPrice(chartData[chartData.length - 1].close);
     }
+  }, [candleData]);
 
-    // Add indicators
-    if (activeIndicators.vwap && indicatorData.length > 0) {
+  // Update indicators/overlays when indicator data or toggles change
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    // Clear existing overlay series
+    if (overlaySeriesRef.current.length) {
+      try {
+        overlaySeriesRef.current.forEach((s) => {
+          try { (chart as any).removeSeries?.(s); } catch {}
+        });
+      } catch {}
+      overlaySeriesRef.current = [];
+    }
+
+    if (!indicatorData.length) return;
+
+    if (activeIndicators.vwap) {
       const vwapSeries = chart.addSeries(LineSeries, {
         color: 'rgba(34, 211, 238, 1)',
         lineWidth: 2,
         title: 'VWAP'
       });
-
       const vwapData = indicatorData
         .filter(ind => ind.vwap !== undefined)
         .map(ind => ({
           time: Math.floor(ind.time / 1000) as any,
           value: ind.vwap!,
         }));
-
-      vwapSeries.setData(vwapData);
+      try { vwapSeries.setData(vwapData); } catch {}
       overlaySeriesRef.current.push(vwapSeries);
     }
-
-    // Crosshair and click handlers for snap trading
-    let crosshairHandler: Parameters<typeof chart.subscribeCrosshairMove>[0] | null = null;
-    let clickHandler: Parameters<typeof chart.subscribeClick>[0] | null = null;
-
-    if (showSnapTrading) {
-      crosshairHandler = (param) => {
-        if (!snapTradingMode || !param.point) return;
-        const price = candleSeries.coordinateToPrice(param.point.y);
-        if (price) setCurrentPrice(price);
-      };
-      chart.subscribeCrosshairMove(crosshairHandler);
-
-      clickHandler = (param) => {
-        if (!snapTradingMode || !param.point) return;
-        const price = candleSeries.coordinateToPrice(param.point.y);
-        if (price) handleSnapOrder(price);
-      };
-      chart.subscribeClick(clickHandler);
-    }
-
-    const handleResize = () => {
-      if (chartContainerRef.current && chart) {
-        chart.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      try {
-        if (crosshairHandler) chart.unsubscribeCrosshairMove(crosshairHandler);
-        if (clickHandler) chart.unsubscribeClick(clickHandler);
-      } catch {}
-      try {
-        chart.remove();
-      } catch {}
-    };
-  }, [candleData, indicatorData, activeIndicators, snapTradingMode, timeframe, symbol]);
+  }, [indicatorData, activeIndicators]);
 
   // Order management functions
   const handleQuickOrder = useCallback((side: 'buy' | 'sell', quantity: number) => {
