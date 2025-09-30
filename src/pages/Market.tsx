@@ -15,6 +15,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { SymbolSearchInput } from '@/components/market/SymbolSearchInput';
 import { FullSearchPage } from '@/components/market/FullSearchPage';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
@@ -26,7 +27,34 @@ import { Link } from 'react-router-dom';
 export default function Market() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasConnection, setHasConnection] = useState(false);
   const { toast } = useToast();
+  const { subscriptionStatus } = useSubscriptionAccess();
+
+  // Check for active brokerage connections
+  useEffect(() => {
+    const checkConnection = async () => {
+      // Demo accounts don't need a connection
+      if (subscriptionStatus.isDemo) {
+        setHasConnection(true);
+        return;
+      }
+
+      const workspaceId = await getCurrentUserWorkspace();
+      if (!workspaceId) return;
+
+      const { data } = await supabase
+        .from('connections_brokerages')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'active')
+        .limit(1);
+
+      setHasConnection((data?.length || 0) > 0);
+    };
+
+    checkConnection();
+  }, [subscriptionStatus]);
 
   // Simulate loading market data
   useEffect(() => {
@@ -40,6 +68,11 @@ export default function Market() {
   // Load real market indices from Supabase if available
   useEffect(() => {
     const loadIndices = async () => {
+      // Demo accounts use demo data
+      if (subscriptionStatus.isDemo) {
+        return;
+      }
+
       const workspaceId = await getCurrentUserWorkspace();
       if (!workspaceId) return;
 
@@ -81,7 +114,7 @@ export default function Market() {
     };
 
     loadIndices();
-  }, []);
+  }, [subscriptionStatus]);
 
   const defaultIndices = [
     { symbol: 'SPY', name: 'S&P 500 ETF', price: 415.25, change: 2.15, changePercent: 0.52 },
@@ -213,11 +246,25 @@ export default function Market() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Advanced market analysis tools coming soon
-                </p>
-              </div>
+              {hasConnection ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Advanced market analysis tools coming soon
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    Connect your brokerage account to access live market data and advanced analysis tools
+                  </p>
+                  <Link to="/settings">
+                    <Button variant="outline">
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      Connect Brokerage
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
