@@ -98,23 +98,36 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           throw new Error('No workspace available for chart data');
         }
 
-        const [candlesResponse, signalsResponse] = await Promise.all([
-          supabase
+        // Try to fetch data with the requested timeframe, fallback to 1D if not found
+        let candlesResponse = await supabase
+          .from('candles')
+          .select('ts,o,h,l,c,v')
+          .eq('workspace_id', workspaceId)
+          .eq('symbol', symbol)
+          .eq('tf', timeframe)
+          .order('ts', { ascending: true })
+          .limit(1000);
+
+        // Fallback: If no data for requested timeframe, try 1D
+        if (candlesResponse.data && candlesResponse.data.length === 0 && timeframe !== '1D') {
+          console.log(`No ${timeframe} data for ${symbol}, falling back to 1D`);
+          candlesResponse = await supabase
             .from('candles')
             .select('ts,o,h,l,c,v')
             .eq('workspace_id', workspaceId)
             .eq('symbol', symbol)
-            .eq('tf', timeframe)
+            .eq('tf', '1D')
             .order('ts', { ascending: true })
-            .limit(1000),
-          supabase
-            .from('oracle_signals')
-            .select('id, ts, direction, strength, summary')
-            .eq('workspace_id', workspaceId)
-            .eq('symbol', symbol)
-            .order('ts', { ascending: false })
-            .limit(50)
-        ]);
+            .limit(1000);
+        }
+
+        const signalsResponse = await supabase
+          .from('oracle_signals')
+          .select('id, ts, direction, strength, summary')
+          .eq('workspace_id', workspaceId)
+          .eq('symbol', symbol)
+          .order('ts', { ascending: false })
+          .limit(50);
 
         if (candlesResponse.error) throw candlesResponse.error;
         if (signalsResponse.error) throw signalsResponse.error;

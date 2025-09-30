@@ -57,10 +57,10 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
 }) => {
   const [chartLayout, setChartLayout] = useState<'1x1' | '2x1' | '2x2'>('2x2');
   const [charts, setCharts] = useState<ChartConfig[]>([
-    { id: '1', symbol: defaultSymbols[0], timeframe: '5m', indicators: ['vwap'], trades: [] },
-    { id: '2', symbol: defaultSymbols[1], timeframe: '1m', indicators: ['vwap', 'sma9'], trades: [] },
-    { id: '3', symbol: defaultSymbols[2], timeframe: '15m', indicators: ['sma21'], trades: [] },
-    { id: '4', symbol: defaultSymbols[3], timeframe: '5m', indicators: ['vwap'], trades: [] }
+    { id: '1', symbol: defaultSymbols[0], timeframe: '1D', indicators: ['vwap'], trades: [] },
+    { id: '2', symbol: defaultSymbols[1], timeframe: '1D', indicators: ['vwap', 'sma9'], trades: [] },
+    { id: '3', symbol: defaultSymbols[2], timeframe: '1D', indicators: ['sma21'], trades: [] },
+    { id: '4', symbol: defaultSymbols[3], timeframe: '1D', indicators: ['vwap'], trades: [] }
   ]);
   const [selectedChart, setSelectedChart] = useState('1');
   const [showOrderBook, setShowOrderBook] = useState(false);

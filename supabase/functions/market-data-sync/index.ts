@@ -91,65 +91,85 @@ serve(async (req) => {
 
         console.log(`📈 Fetching data for ${allSymbols.length} symbols...`);
 
-        // Fetch 1-day bars for the last 100 days
+        // Fetch multiple timeframes: 1Min, 5Min, 15Min, 1Hour, 1Day
+        const timeframes = [
+          { alpaca: '1Min', db: '1m', days: 1 },     // Last 1 day of 1min bars (390 bars)
+          { alpaca: '5Min', db: '5m', days: 5 },     // Last 5 days of 5min bars
+          { alpaca: '15Min', db: '15m', days: 10 },  // Last 10 days of 15min bars
+          { alpaca: '1Hour', db: '1h', days: 30 },   // Last 30 days of 1hour bars
+          { alpaca: '1Day', db: '1D', days: 100 }    // Last 100 days of daily bars
+        ];
+
         const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 100);
 
         for (const symbol of allSymbols) {
           try {
-            // Fetch bars from data API
-            const barsUrl = `${dataUrl}/v2/stocks/${symbol}/bars?` +
-              `start=${startDate.toISOString().split('T')[0]}&` +
-              `end=${endDate.toISOString().split('T')[0]}&` +
-              `timeframe=1Day&limit=100`;
+            // Fetch all timeframes for this symbol
+            for (const tf of timeframes) {
+              try {
+                const tfStartDate = new Date();
+                tfStartDate.setDate(tfStartDate.getDate() - tf.days);
 
-            const barsResponse = await fetch(barsUrl, {
-              headers: {
-                'APCA-API-KEY-ID': apiKey,
-                'APCA-API-SECRET-KEY': apiSecret,
-              }
-            });
+                // Fetch bars from data API
+                const barsUrl = `${dataUrl}/v2/stocks/${symbol}/bars?` +
+                  `start=${tfStartDate.toISOString().split('T')[0]}&` +
+                  `end=${endDate.toISOString().split('T')[0]}&` +
+                  `timeframe=${tf.alpaca}&limit=1000`;
 
-            if (!barsResponse.ok) {
-              console.error(`Failed to fetch bars for ${symbol}`);
-              continue;
-            }
-
-            const barsData = await barsResponse.json();
-            const bars: AlpacaBar[] = barsData.bars || [];
-
-            // Insert bars into candles table
-            if (bars.length > 0) {
-              const candleRecords = bars.map(bar => ({
-                workspace_id: conn.workspace_id,
-                symbol,
-                tf: '1D',
-                ts: bar.t,
-                o: bar.o,
-                h: bar.h,
-                l: bar.l,
-                c: bar.c,
-                v: bar.v,
-                vwap: bar.vw || null
-              }));
-
-              const { error: insertError } = await supabase
-                .from('candles')
-                .upsert(candleRecords, {
-                  onConflict: 'workspace_id,symbol,tf,ts',
-                  ignoreDuplicates: false
+                const barsResponse = await fetch(barsUrl, {
+                  headers: {
+                    'APCA-API-KEY-ID': apiKey,
+                    'APCA-API-SECRET-KEY': apiSecret,
+                  }
                 });
 
-              if (insertError) {
-                console.error(`Error inserting candles for ${symbol}:`, insertError);
-              } else {
-                totalBarsInserted += bars.length;
-                console.log(`✅ Inserted ${bars.length} bars for ${symbol}`);
+                if (!barsResponse.ok) {
+                  console.error(`Failed to fetch ${tf.db} bars for ${symbol}`);
+                  continue;
+                }
+
+                const barsData = await barsResponse.json();
+                const bars: AlpacaBar[] = barsData.bars || [];
+
+                // Insert bars into candles table
+                if (bars.length > 0) {
+                  const candleRecords = bars.map(bar => ({
+                    workspace_id: conn.workspace_id,
+                    symbol,
+                    tf: tf.db,
+                    ts: bar.t,
+                    o: bar.o,
+                    h: bar.h,
+                    l: bar.l,
+                    c: bar.c,
+                    v: bar.v,
+                    vwap: bar.vw || null
+                  }));
+
+                  const { error: insertError } = await supabase
+                    .from('candles')
+                    .upsert(candleRecords, {
+                      onConflict: 'workspace_id,symbol,tf,ts',
+                      ignoreDuplicates: false
+                    });
+
+                  if (insertError) {
+                    console.error(`Error inserting ${tf.db} candles for ${symbol}:`, insertError);
+                  } else {
+                    totalBarsInserted += bars.length;
+                    console.log(`✅ Inserted ${bars.length} ${tf.db} bars for ${symbol}`);
+                  }
+                }
+
+                // Rate limiting between timeframes
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+              } catch (tfError) {
+                console.error(`Error processing ${tf.db} for ${symbol}:`, tfError);
               }
             }
 
-            // Fetch latest quote for market_data from data API
+            // Fetch latest quote for market_data from data API (do this once per symbol, not per timeframe)
             const quoteUrl = `${dataUrl}/v2/stocks/${symbol}/quotes/latest`;
             const quoteResponse = await fetch(quoteUrl, {
               headers: {
@@ -162,35 +182,47 @@ serve(async (req) => {
               const quoteData = await quoteResponse.json();
               const quote = quoteData.quote as AlpacaQuote;
 
-              if (quote && bars.length > 0) {
-                const lastBar = bars[bars.length - 1];
-                const currentPrice = (quote.ap + quote.bp) / 2;
-                const prevClose = lastBar.c;
-                const change = currentPrice - prevClose;
-                const changePercent = (change / prevClose) * 100;
+              if (quote) {
+                // Get the last 1D bar for prev close calculation
+                const last1DBar = await supabase
+                  .from('candles')
+                  .select('c')
+                  .eq('workspace_id', conn.workspace_id)
+                  .eq('symbol', symbol)
+                  .eq('tf', '1D')
+                  .order('ts', { ascending: false })
+                  .limit(1)
+                  .single();
 
-                const { error: quoteError } = await supabase
-                  .from('market_data')
-                  .upsert({
-                    workspace_id: conn.workspace_id,
-                    symbol,
-                    price: currentPrice,
-                    change: change,
-                    change_percent: changePercent,
-                    volume: lastBar.v,
-                    high: lastBar.h,
-                    low: lastBar.l,
-                    open: lastBar.o,
-                    updated_at: new Date().toISOString()
-                  }, {
-                    onConflict: 'workspace_id,symbol'
-                  });
+                if (last1DBar.data) {
+                  const currentPrice = (quote.ap + quote.bp) / 2;
+                  const prevClose = last1DBar.data.c;
+                  const change = currentPrice - prevClose;
+                  const changePercent = (change / prevClose) * 100;
 
-                if (quoteError) {
-                  console.error(`Error inserting quote for ${symbol}:`, quoteError);
-                } else {
-                  totalQuotesInserted++;
-                  console.log(`✅ Updated market data for ${symbol}`);
+                  const { error: quoteError } = await supabase
+                    .from('market_data')
+                    .upsert({
+                      workspace_id: conn.workspace_id,
+                      symbol,
+                      price: currentPrice,
+                      change: change,
+                      change_percent: changePercent,
+                      volume: 0, // We'll get this from the latest 1D bar
+                      high: 0,
+                      low: 0,
+                      open: 0,
+                      updated_at: new Date().toISOString()
+                    }, {
+                      onConflict: 'workspace_id,symbol'
+                    });
+
+                  if (quoteError) {
+                    console.error(`Error inserting quote for ${symbol}:`, quoteError);
+                  } else {
+                    totalQuotesInserted++;
+                    console.log(`✅ Updated market data for ${symbol}`);
+                  }
                 }
               }
             }
