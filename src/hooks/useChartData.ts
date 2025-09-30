@@ -170,9 +170,17 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           summary: s.summary || ''
         }));
 
-        setCandleData(candles);
-        setIndicatorData(indicators);
-        setOracleSignals(signals);
+        // If no data available, fall back to demo data
+        if (candles.length === 0) {
+          console.log(`No data found for ${symbol}, using demo data`);
+          setCandleData(DEMO_CANDLES);
+          setIndicatorData(DEMO_INDICATORS);
+          setOracleSignals(DEMO_SIGNALS);
+        } else {
+          setCandleData(candles);
+          setIndicatorData(indicators);
+          setOracleSignals(signals);
+        }
 
         /*
         const [candlesResponse, indicatorsResponse, signalsResponse] = await Promise.all([
