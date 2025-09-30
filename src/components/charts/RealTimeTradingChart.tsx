@@ -136,6 +136,15 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
   useEffect(() => {
     if (!chartContainerRef.current || !candleData.length) return;
 
+    // Clean up existing chart if it exists
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+      candleSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      overlaySeriesRef.current = [];
+    }
+
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: height,
@@ -269,9 +278,11 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      chart.remove();
+      if (chart) {
+        chart.remove();
+      }
     };
-  }, [candleData, indicatorData, activeIndicators, snapTradingMode]);
+  }, [candleData, indicatorData, activeIndicators, snapTradingMode, timeframe, symbol]);
 
   // Order management functions
   const handleQuickOrder = useCallback((side: 'buy' | 'sell', quantity: number) => {
