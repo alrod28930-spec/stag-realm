@@ -543,7 +543,8 @@ class OracleService {
         source: signal.sources?.[0] || 'oracle'
       });
       
-      if (error) {
+      // Only log non-foreign-key errors (23503 means symbol not in ref_symbols)
+      if (error && error.code !== '23503') {
         console.warn('Failed to store signal in database:', error);
       }
     } catch (dbError) {
