@@ -232,4 +232,15 @@
       transform: translateX(0); 
     }
   }
+
+  /* Label Glow Utilities */
+  .label-glow-blue {
+    @apply text-cyan-400;
+    text-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+  }
+
+  .label-glow-green {
+    @apply text-green-500;
+    text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  }
 }

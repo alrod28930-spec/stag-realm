@@ -240,7 +240,7 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                   size="sm"
                   onClick={() => setChartLayout('2x2')}
                 >
-                  <BarChart3 className="w-3 h-3" />
+                  <BarChart3 className="w-3 h-3 text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                 </Button>
               </div>
 
@@ -272,7 +272,7 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
           {/* Chart Configuration Row */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">Selected:</span>
+              <span className="text-sm label-glow-blue">Selected:</span>
               <Select value={selectedChart} onValueChange={setSelectedChart}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
@@ -468,35 +468,35 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
           <Card key={`stats-${chart.id}`}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">
-                {chart.symbol} <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">Stats</span>
+                {chart.symbol} <span className="label-glow-blue">Stats</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">Volume:</span>
+                <span className="label-glow-blue">Volume:</span>
                 <span className="font-mono">1.2M</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">VWAP:</span>
+                <span className="label-glow-blue">VWAP:</span>
                 <span className="font-mono">$150.25</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">Day Range:</span>
+                <span className="label-glow-blue">Day Range:</span>
                 <span className="font-mono">$148.10 - $151.50</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">Spread:</span>
+                <span className="label-glow-blue">Spread:</span>
                 <span className="font-mono">$0.02</span>
               </div>
               {/* Bot Trading Stats */}
               {chart.trades && chart.trades.length > 0 && (
                 <>
                   <div className="flex justify-between text-xs">
-                    <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">Bot Trades:</span>
+                    <span className="label-glow-blue">Bot Trades:</span>
                     <span className="font-mono">{chart.trades.length}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">Bot P&amp;L:</span>
+                    <span className="label-glow-blue">Bot P&amp;L:</span>
                     <span className={`font-mono ${
                       (chart.trades.reduce((sum, t) => sum + (t.pnl || 0), 0)) >= 0 
                         ? 'text-green-600' 
