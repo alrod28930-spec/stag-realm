@@ -26,27 +26,7 @@ import { Link } from 'react-router-dom';
 export default function Market() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasConnection, setHasConnection] = useState(false);
   const { toast } = useToast();
-
-  // Check for active brokerage connections
-  useEffect(() => {
-    const checkConnection = async () => {
-      const workspaceId = await getCurrentUserWorkspace();
-      if (!workspaceId) return;
-
-      const { data } = await supabase
-        .from('connections_brokerages')
-        .select('id')
-        .eq('workspace_id', workspaceId)
-        .eq('status', 'active')
-        .limit(1);
-
-      setHasConnection((data?.length || 0) > 0);
-    };
-
-    checkConnection();
-  }, []);
 
   // Simulate loading market data
   useEffect(() => {
@@ -233,25 +213,11 @@ export default function Market() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {hasConnection ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    Advanced market analysis tools coming soon
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">
-                    Connect your brokerage account to access advanced market analysis tools
-                  </p>
-                  <Link to="/settings">
-                    <Button variant="outline">
-                      <BarChart3 className="w-4 h-4 mr-2" />
-                      Go to Settings
-                    </Button>
-                  </Link>
-                </div>
-              )}
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Advanced market analysis tools coming soon
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
