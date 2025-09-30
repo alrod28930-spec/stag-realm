@@ -136,14 +136,6 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
   useEffect(() => {
     if (!chartContainerRef.current || !candleData.length) return;
 
-    // Clean up existing chart if it exists
-    if (chartRef.current) {
-      chartRef.current.remove();
-      chartRef.current = null;
-      candleSeriesRef.current = null;
-      volumeSeriesRef.current = null;
-      overlaySeriesRef.current = [];
-    }
 
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
@@ -245,25 +237,24 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
       overlaySeriesRef.current.push(vwapSeries);
     }
 
-    // Click handler for snap trading
-    if (showSnapTrading) {
-      chart.subscribeCrosshairMove((param) => {
-        if (!snapTradingMode || !param.point) return;
-        
-        const price = candleSeries.coordinateToPrice(param.point.y);
-        if (price) {
-          setCurrentPrice(price);
-        }
-      });
+    // Crosshair and click handlers for snap trading
+    let crosshairHandler: Parameters<typeof chart.subscribeCrosshairMove>[0] | null = null;
+    let clickHandler: Parameters<typeof chart.subscribeClick>[0] | null = null;
 
-      chart.subscribeClick((param) => {
+    if (showSnapTrading) {
+      crosshairHandler = (param) => {
         if (!snapTradingMode || !param.point) return;
-        
         const price = candleSeries.coordinateToPrice(param.point.y);
-        if (price) {
-          handleSnapOrder(price);
-        }
-      });
+        if (price) setCurrentPrice(price);
+      };
+      chart.subscribeCrosshairMove(crosshairHandler);
+
+      clickHandler = (param) => {
+        if (!snapTradingMode || !param.point) return;
+        const price = candleSeries.coordinateToPrice(param.point.y);
+        if (price) handleSnapOrder(price);
+      };
+      chart.subscribeClick(clickHandler);
     }
 
     const handleResize = () => {
@@ -278,9 +269,13 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (chart) {
+      try {
+        if (crosshairHandler) chart.unsubscribeCrosshairMove(crosshairHandler);
+        if (clickHandler) chart.unsubscribeClick(clickHandler);
+      } catch {}
+      try {
         chart.remove();
-      }
+      } catch {}
     };
   }, [candleData, indicatorData, activeIndicators, snapTradingMode, timeframe, symbol]);
 
