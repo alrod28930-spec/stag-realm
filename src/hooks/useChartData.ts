@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCandles } from './useCandles';
 import { useSubscriptionAccess } from './useSubscriptionAccess';
 import { getCurrentUserWorkspace } from '@/utils/auth';
 
@@ -67,59 +68,50 @@ const DEMO_SIGNALS: OracleSignal[] = [
 ];
 
 export const useChartData = (symbol: string, timeframe: string = '1D') => {
-  const [candleData, setCandleData] = useState<CandleData[]>([]);
   const [indicatorData, setIndicatorData] = useState<IndicatorData[]>([]);
   const [oracleSignals, setOracleSignals] = useState<OracleSignal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string>('');
   
   const { subscriptionStatus } = useSubscriptionAccess();
+  
+  // Use resilient candles hook
+  const { state: candleState, data: rawCandles, error: candleError } = useCandles(
+    workspaceId,
+    symbol,
+    timeframe
+  );
 
+  // Transform raw candles to CandleData format
+  const candleData: CandleData[] = rawCandles.map(c => ({
+    time: new Date(c.ts).getTime(),
+    open: Number(c.o),
+    high: Number(c.h),
+    low: Number(c.l),
+    close: Number(c.c),
+    volume: Number(c.v),
+  }));
+
+  const loading = candleState === 'loading';
+  const error = candleError;
+
+  // Get workspace ID on mount
   useEffect(() => {
-    const fetchChartData = async () => {
-      setLoading(true);
-      setError(null);
+    getCurrentUserWorkspace().then(id => {
+      if (id) setWorkspaceId(id);
+    });
+  }, []);
 
+  // Fetch oracle signals and compute indicators
+  useEffect(() => {
+    const fetchAdditionalData = async () => {
       try {
         if (subscriptionStatus.isDemo) {
-          setCandleData(DEMO_CANDLES);
           setIndicatorData(DEMO_INDICATORS);
           setOracleSignals(DEMO_SIGNALS);
-          setLoading(false);
           return;
         }
 
-        const workspaceId = await getCurrentUserWorkspace();
-        if (!workspaceId) {
-          setCandleData([]);
-          setIndicatorData([]);
-          setOracleSignals([]);
-          setLoading(false);
-          throw new Error('No workspace available for chart data');
-        }
-
-        // Try to fetch data with the requested timeframe, fallback to 1D if not found
-        let candlesResponse = await supabase
-          .from('candles')
-          .select('ts,o,h,l,c,v')
-          .eq('workspace_id', workspaceId)
-          .eq('symbol', symbol)
-          .eq('tf', timeframe)
-          .order('ts', { ascending: true })
-          .limit(1000);
-
-        // Fallback: If no data for requested timeframe, try 1D
-        if (candlesResponse.data && candlesResponse.data.length === 0 && timeframe !== '1D') {
-          console.log(`No ${timeframe} data for ${symbol}, falling back to 1D`);
-          candlesResponse = await supabase
-            .from('candles')
-            .select('ts,o,h,l,c,v')
-            .eq('workspace_id', workspaceId)
-            .eq('symbol', symbol)
-            .eq('tf', '1D')
-            .order('ts', { ascending: true })
-            .limit(1000);
-        }
+        if (!workspaceId) return;
 
         const signalsResponse = await supabase
           .from('oracle_signals')
@@ -129,24 +121,14 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           .order('ts', { ascending: false })
           .limit(50);
 
-        if (candlesResponse.error) throw candlesResponse.error;
         if (signalsResponse.error) throw signalsResponse.error;
 
-        const candles = (candlesResponse.data || []).map((c: any) => ({
-          time: new Date(c.ts).getTime(),
-          open: Number(c.o) || 0,
-          high: Number(c.h) || 0,
-          low: Number(c.l) || 0,
-          close: Number(c.c) || 0,
-          volume: Number(c.v) || 0,
-        }));
-
-        // Simple client-side indicators (SMA20 and session VWAP)
+        // Compute client-side indicators from candle data
         const closes: number[] = [];
         const vols: number[] = [];
         let cumPV = 0;
         let cumV = 0;
-        const indicators = candles.map((k) => {
+        const indicators = candleData.map((k) => {
           closes.push(k.close);
           vols.push(k.volume || 0);
           if (k.volume && k.close) {
@@ -170,17 +152,8 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
           summary: s.summary || ''
         }));
 
-        // If no data available, fall back to demo data
-        if (candles.length === 0) {
-          console.log(`No data found for ${symbol}, using demo data`);
-          setCandleData(DEMO_CANDLES);
-          setIndicatorData(DEMO_INDICATORS);
-          setOracleSignals(DEMO_SIGNALS);
-        } else {
-          setCandleData(candles);
-          setIndicatorData(indicators);
-          setOracleSignals(signals);
-        }
+        setIndicatorData(indicators);
+        setOracleSignals(signals);
 
         /*
         const [candlesResponse, indicatorsResponse, signalsResponse] = await Promise.all([
@@ -251,28 +224,22 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
         */
 
       } catch (err) {
-        console.error('Chart data fetch error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch chart data');
-        // Fallback to empty data on error for ALL regular accounts (no mock data)
+        console.error('Additional chart data fetch error:', err);
+        // Fallback to demo data for demo accounts
         if (subscriptionStatus.isDemo) {
-          setCandleData(DEMO_CANDLES);
           setIndicatorData(DEMO_INDICATORS);
           setOracleSignals(DEMO_SIGNALS);
         } else {
-          // ALL regular accounts get empty data - no fallback mock data
-          setCandleData([]);
           setIndicatorData([]);
           setOracleSignals([]);
         }
-      } finally {
-        setLoading(false);
       }
     };
 
-    if (symbol) {
-      fetchChartData();
+    if (symbol && workspaceId) {
+      fetchAdditionalData();
     }
-  }, [symbol, timeframe, subscriptionStatus]);
+  }, [symbol, workspaceId, candleData, subscriptionStatus]);
 
   return {
     candleData,
@@ -280,6 +247,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
     oracleSignals,
     loading,
     error,
-    isDemo: subscriptionStatus.isDemo
+    isDemo: subscriptionStatus.isDemo,
+    isDegraded: candleState === 'degraded'
   };
 };

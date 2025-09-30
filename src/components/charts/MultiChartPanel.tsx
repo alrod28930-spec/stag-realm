@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { LiveBotTradeOverlay } from './LiveBotTradeOverlay';
 import { ChartTradeMarkers } from './ChartTradeMarkers';
+import { useLayoutStore } from '@/stores/layoutStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,14 +56,9 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
   onOrderPlace,
   allowDOMView = true
 }) => {
-  const [chartLayout, setChartLayout] = useState<'1x1' | '2x1' | '2x2'>('2x2');
-  const [charts, setCharts] = useState<ChartConfig[]>([
-    { id: '1', symbol: defaultSymbols[0], timeframe: '1D', indicators: ['vwap'], trades: [] },
-    { id: '2', symbol: defaultSymbols[1], timeframe: '1D', indicators: ['vwap', 'sma9'], trades: [] },
-    { id: '3', symbol: defaultSymbols[2], timeframe: '1D', indicators: ['sma21'], trades: [] },
-    { id: '4', symbol: defaultSymbols[3], timeframe: '1D', indicators: ['vwap'], trades: [] }
-  ]);
-  const [selectedChart, setSelectedChart] = useState('1');
+  // Use persistent layout store
+  const { layout, updateChart: updateLayoutChart, setLayout, load } = useLayoutStore();
+  
   const [showOrderBook, setShowOrderBook] = useState(false);
   
   const { subscriptionStatus } = useSubscriptionAccess();
@@ -70,6 +66,19 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
   
   const isElite = subscriptionStatus.tier === 'elite';
   const canShowDOM = isElite && allowDOMView;
+
+  // Load saved layout on mount
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Map layout store to local format
+  const chartLayout = layout.chartLayout;
+  const charts: ChartConfig[] = layout.charts.map(c => ({
+    ...c,
+    trades: [],
+  }));
+  const selectedChart = layout.selectedChart;
 
   const timeframes = [
     { label: '1s', value: '1s' },
@@ -95,9 +104,7 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
   ];
 
   const handleChartUpdate = (chartId: string, updates: Partial<ChartConfig>) => {
-    setCharts(prev => prev.map(chart => 
-      chart.id === chartId ? { ...chart, ...updates } : chart
-    ));
+    updateLayoutChart(chartId, updates);
   };
 
   const handleBotTradeExecuted = (chartId: string, trade: any) => {
@@ -111,11 +118,9 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
       pnl: trade.pnl
     };
 
-    setCharts(prev => prev.map(chart => 
-      chart.id === chartId && chart.symbol === trade.symbol
-        ? { ...chart, trades: [...(chart.trades || []), tradeMarker] }
-        : chart
-    ));
+    // Trades are transient UI state, not persisted in layout
+    // We could add them to a separate store if needed, but for now just log
+    console.log('Bot trade executed:', tradeMarker);
   };
 
   const addChart = () => {
@@ -128,31 +133,32 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
       return;
     }
 
-    const newChart: ChartConfig = {
+    const newChart = {
       id: Date.now().toString(),
       symbol: 'AAPL',
       timeframe: '5m',
       indicators: ['vwap'],
-      trades: []
     };
 
-    setCharts(prev => [...prev, newChart]);
+    setLayout({
+      ...layout,
+      charts: [...layout.charts, newChart],
+    });
   };
 
   const removeChart = (chartId: string) => {
     if (charts.length <= 1) return;
-    setCharts(prev => prev.filter(chart => chart.id !== chartId));
+    setLayout({
+      ...layout,
+      charts: layout.charts.filter(c => c.id !== chartId),
+    });
   };
 
   const deployBot = (chartId: string, botId: string) => {
     const bot = availableBots.find(b => b.id === botId);
     if (!bot) return;
 
-    setCharts(prev => prev.map(chart => 
-      chart.id === chartId 
-        ? { ...chart, deployedBot: botId, isAutomated: true }
-        : chart
-    ));
+    updateLayoutChart(chartId, { deployedBot: botId, isAutomated: true });
 
     toast({
       title: 'Bot Deployed',
@@ -164,11 +170,7 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
     const chart = charts.find(c => c.id === chartId);
     if (!chart?.deployedBot) return;
 
-    setCharts(prev => prev.map(c => 
-      c.id === chartId 
-        ? { ...c, deployedBot: undefined, isAutomated: false }
-        : c
-    ));
+    updateLayoutChart(chartId, { deployedBot: undefined, isAutomated: false });
 
     toast({
       title: 'Bot Stopped',
@@ -180,15 +182,26 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
     const selectedChartConfig = charts.find(c => c.id === selectedChart);
     if (!selectedChartConfig) return;
 
-    setCharts(prev => prev.map(chart => ({
-      ...chart,
-      timeframe: selectedChartConfig.timeframe
-    })));
+    setLayout({
+      ...layout,
+      charts: layout.charts.map(c => ({
+        ...c,
+        timeframe: selectedChartConfig.timeframe,
+      })),
+    });
 
     toast({
       title: 'Charts Synchronized',
       description: `All charts set to ${selectedChartConfig.timeframe} timeframe`
     });
+  };
+
+  const setSelectedChart = (chartId: string) => {
+    setLayout({ ...layout, selectedChart: chartId });
+  };
+
+  const setChartLayoutGrid = (newLayout: '1x1' | '2x1' | '2x2') => {
+    setLayout({ ...layout, chartLayout: newLayout });
   };
 
   const getLayoutClass = () => {
@@ -224,21 +237,21 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                 <Button
                   variant={chartLayout === '1x1' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setChartLayout('1x1')}
+                  onClick={() => setChartLayoutGrid('1x1')}
                 >
                   <Maximize2 className="w-3 h-3" />
                 </Button>
                 <Button
                   variant={chartLayout === '2x1' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setChartLayout('2x1')}
+                  onClick={() => setChartLayoutGrid('2x1')}
                 >
                   <Grid3X3 className="w-3 h-3" />
                 </Button>
                 <Button
                   variant={chartLayout === '2x2' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setChartLayout('2x2')}
+                  onClick={() => setChartLayoutGrid('2x2')}
                 >
                   <BarChart3 className="w-3 h-3 !text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                 </Button>

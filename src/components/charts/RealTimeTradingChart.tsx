@@ -17,6 +17,8 @@ import {
 import { useChartData } from '@/hooks/useChartData';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { useToast } from '@/hooks/use-toast';
+import { ChartSkeleton } from './ChartSkeleton';
+import { DegradedBanner } from './DegradedBanner';
 
 interface OrderOverlay {
   id: string;
@@ -80,7 +82,7 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
     bollingerBands: false
   });
 
-  const { candleData, indicatorData, loading, error } = useChartData(symbol, timeframe);
+  const { candleData, indicatorData, loading, error, isDegraded } = useChartData(symbol, timeframe);
   const { subscriptionStatus } = useSubscriptionAccess();
   const { toast } = useToast();
 
@@ -410,11 +412,7 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
   }, [position, currentPrice, symbol, onOrderPlace, toast]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center" style={{ height: `${height}px` }}>
-        <div className="text-muted-foreground">Loading chart data...</div>
-      </div>
-    );
+    return <ChartSkeleton height={height} />;
   }
 
   if (error || candleData.length === 0) {
@@ -429,6 +427,11 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
 
   return (
     <Card className="h-full">
+      {isDegraded && (
+        <div className="p-2 pb-0">
+          <DegradedBanner message="Using cached data - live feed reconnecting" />
+        </div>
+      )}
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

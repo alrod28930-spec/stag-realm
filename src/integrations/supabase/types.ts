@@ -438,6 +438,33 @@ export type Database = {
           },
         ]
       }
+      broker_health: {
+        Row: {
+          broker: string
+          error_message: string | null
+          last_check: string | null
+          last_ok: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          broker: string
+          error_message?: string | null
+          last_check?: string | null
+          last_ok?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          broker?: string
+          error_message?: string | null
+          last_check?: string | null
+          last_ok?: string | null
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       brokerage_dock_sites: {
         Row: {
           created_at: string | null
@@ -518,6 +545,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chart_layouts: {
+        Row: {
+          created_at: string | null
+          id: string
+          layout: Json
+          name: string
+          updated_at: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          layout: Json
+          name?: string
+          updated_at?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          layout?: Json
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       compliance_acknowledgments: {
         Row: {
@@ -1860,6 +1917,45 @@ export type Database = {
           },
         ]
       }
+      strategy_runs: {
+        Row: {
+          cfg: Json
+          error_message: string | null
+          run_id: string
+          started_at: string | null
+          status: string
+          stopped_at: string | null
+          strategy_id: string | null
+          updated_at: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          cfg?: Json
+          error_message?: string | null
+          run_id?: string
+          started_at?: string | null
+          status: string
+          stopped_at?: string | null
+          strategy_id?: string | null
+          updated_at?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          cfg?: Json
+          error_message?: string | null
+          run_id?: string
+          started_at?: string | null
+          status?: string
+          stopped_at?: string | null
+          strategy_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           billing_interval: string
@@ -2340,6 +2436,24 @@ export type Database = {
       ensure_default_entitlements: {
         Args: { p_workspace_id: string }
         Returns: undefined
+      }
+      fetch_candles: {
+        Args: {
+          _from: string
+          _symbol: string
+          _tf: string
+          _to: string
+          _ws: string
+        }
+        Returns: {
+          c: number
+          h: number
+          l: number
+          o: number
+          ts: string
+          v: number
+          vwap: number
+        }[]
       }
       gen_workspace_safe_name: {
         Args: {
