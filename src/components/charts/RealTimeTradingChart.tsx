@@ -348,11 +348,19 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
 
   if (loading) {
     return (
-      <Card className="h-full">
-        <CardContent className="flex items-center justify-center h-full">
-          <div className="text-muted-foreground">Loading chart data...</div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center" style={{ height: `${height}px` }}>
+        <div className="text-muted-foreground">Loading chart data...</div>
+      </div>
+    );
+  }
+
+  if (error || candleData.length === 0) {
+    return (
+      <div className="flex items-center justify-center" style={{ height: `${height}px` }}>
+        <div className="text-muted-foreground">
+          {error ? `Error: ${error}` : 'No data available for this symbol'}
+        </div>
+      </div>
     );
   }
 

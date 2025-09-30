@@ -29,16 +29,13 @@ export function LiveBotTradeOverlay({ symbol, onTradeExecuted, isActive = false,
   const [totalPnL, setTotalPnL] = useState<number>(0);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive) {
+      setRecentTrades([]);
+      setTotalPnL(0);
+      return;
+    }
     
     loadLiveTrades();
-    
-    // Simulate live trading activity
-    const interval = setInterval(() => {
-      simulateBotTrade();
-    }, Math.random() * 10000 + 5000); // Random interval between 5-15 seconds
-
-    return () => clearInterval(interval);
   }, [symbol, isActive]);
 
   const loadLiveTrades = () => {
@@ -60,29 +57,6 @@ export function LiveBotTradeOverlay({ symbol, onTradeExecuted, isActive = false,
     setTotalPnL(mockTrades.reduce((sum, trade) => sum + (trade.pnl || 0), 0));
   };
 
-  const simulateBotTrade = () => {
-    if (!isActive || Math.random() > 0.3) return; // 30% chance of trade
-
-    const newTrade: LiveTrade = {
-      id: `live-${Date.now()}`,
-      bot_id: `bot-active`,
-      bot_name: botName || 'Trading Bot',
-      symbol,
-      action: Math.random() > 0.5 ? 'buy' : 'sell',
-      quantity: Math.floor(Math.random() * 100) + 10,
-      price: Math.random() * 50 + 100,
-      timestamp: new Date(),
-      pnl: (Math.random() - 0.4) * 200,
-      status: 'filled'
-    };
-
-    setRecentTrades(prev => [newTrade, ...prev.slice(0, 4)]); // Keep last 5 trades
-    setTotalPnL(prev => prev + (newTrade.pnl || 0));
-
-    if (onTradeExecuted) {
-      onTradeExecuted(newTrade);
-    }
-  };
 
   if (!isActive) {
     return null;
