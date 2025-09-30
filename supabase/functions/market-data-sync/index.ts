@@ -56,6 +56,7 @@ serve(async (req) => {
 
     let totalBarsInserted = 0;
     let totalQuotesInserted = 0;
+    let allSymbolsAttempted: string[] = [];
 
     // Process each workspace
     for (const conn of connections) {
@@ -108,6 +109,7 @@ serve(async (req) => {
 
         const positionSymbols = positions?.map(p => p.symbol) || [];
         const allSymbols = [...new Set([...positionSymbols, ...marketIndices])];
+        allSymbolsAttempted = allSymbols;
 
         // Fallback: If no symbols, use a default watchlist
         if (allSymbols.length === 0) {
@@ -288,7 +290,7 @@ serve(async (req) => {
           p_summary: 'Market data sync completed with 0 bars inserted',
           p_payload: {
             workspaces_processed: connections.length,
-            symbols_attempted: allSymbols.length,
+            symbols_attempted: allSymbolsAttempted.length,
             message: 'No market data was fetched. Check API credentials and connectivity.'
           }
         });
