@@ -104,7 +104,7 @@ export function StagHero() {
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <motion.a
-              href="/app"
+              href="/dashboard"
               variants={pulseVariants}
               whileHover="hover"
               className="group rounded-xl bg-[#C8A64D] px-8 py-4 text-[#0B0D12] font-semibold text-lg shadow-lg hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#C8A64D]/60 focus:ring-offset-2 focus:ring-offset-[#0B0D12] transition-all duration-200 flex items-center gap-2"
