@@ -15,7 +15,6 @@ import {
   DollarSign
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { SymbolSearchInput } from '@/components/market/SymbolSearchInput';
 import { FullSearchPage } from '@/components/market/FullSearchPage';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
@@ -29,17 +28,10 @@ export default function Market() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasConnection, setHasConnection] = useState(false);
   const { toast } = useToast();
-  const { subscriptionStatus } = useSubscriptionAccess();
 
   // Check for active brokerage connections
   useEffect(() => {
     const checkConnection = async () => {
-      // Demo accounts don't need a connection
-      if (subscriptionStatus.isDemo) {
-        setHasConnection(true);
-        return;
-      }
-
       const workspaceId = await getCurrentUserWorkspace();
       if (!workspaceId) return;
 
@@ -54,7 +46,7 @@ export default function Market() {
     };
 
     checkConnection();
-  }, [subscriptionStatus]);
+  }, []);
 
   // Simulate loading market data
   useEffect(() => {
@@ -68,10 +60,7 @@ export default function Market() {
   // Load real market indices from Supabase if available
   useEffect(() => {
     const loadIndices = async () => {
-      // Demo accounts use demo data
-      if (subscriptionStatus.isDemo) {
-        return;
-      }
+      if (!hasConnection) return;
 
       const workspaceId = await getCurrentUserWorkspace();
       if (!workspaceId) return;
@@ -114,7 +103,7 @@ export default function Market() {
     };
 
     loadIndices();
-  }, [subscriptionStatus]);
+  }, [hasConnection]);
 
   const defaultIndices = [
     { symbol: 'SPY', name: 'S&P 500 ETF', price: 415.25, change: 2.15, changePercent: 0.52 },
