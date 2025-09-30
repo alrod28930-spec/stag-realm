@@ -124,7 +124,8 @@ serve(async (req) => {
                 });
 
                 if (!barsResponse.ok) {
-                  console.error(`Failed to fetch ${tf.db} bars for ${symbol}`);
+                  const errorText = await barsResponse.text();
+                  console.error(`Failed to fetch ${tf.db} bars for ${symbol}: ${barsResponse.status} - ${errorText}`);
                   continue;
                 }
 

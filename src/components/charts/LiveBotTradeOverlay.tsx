@@ -20,17 +20,18 @@ interface LiveTrade {
 interface LiveBotTradeOverlayProps {
   symbol: string;
   onTradeExecuted?: (trade: LiveTrade) => void;
+  isActive?: boolean;
+  botName?: string;
 }
 
-export function LiveBotTradeOverlay({ symbol, onTradeExecuted }: LiveBotTradeOverlayProps) {
+export function LiveBotTradeOverlay({ symbol, onTradeExecuted, isActive = false, botName }: LiveBotTradeOverlayProps) {
   const [recentTrades, setRecentTrades] = useState<LiveTrade[]>([]);
-  const [activeBots, setActiveBots] = useState<number>(0);
   const [totalPnL, setTotalPnL] = useState<number>(0);
-  const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
+    if (!isActive) return;
+    
     loadLiveTrades();
-    loadActiveBots();
     
     // Simulate live trading activity
     const interval = setInterval(() => {
@@ -38,29 +39,14 @@ export function LiveBotTradeOverlay({ symbol, onTradeExecuted }: LiveBotTradeOve
     }, Math.random() * 10000 + 5000); // Random interval between 5-15 seconds
 
     return () => clearInterval(interval);
-  }, [symbol]);
-
-  const loadActiveBots = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('bot_profiles')
-        .select('*')
-        .eq('active', true);
-
-      if (error) throw error;
-      setActiveBots(data?.length || 0);
-      setIsActive((data?.length || 0) > 0);
-    } catch (error) {
-      console.error('Failed to load active bots:', error);
-    }
-  };
+  }, [symbol, isActive]);
 
   const loadLiveTrades = () => {
     // Generate mock recent trades for the symbol
-    const mockTrades: LiveTrade[] = Array.from({ length: Math.floor(Math.random() * 3) + 1 }, (_, i) => ({
+    const mockTrades: LiveTrade[] = Array.from({ length: Math.floor(Math.random() * 2) + 1 }, (_, i) => ({
       id: `trade-${symbol}-${i}`,
       bot_id: `bot-${i}`,
-      bot_name: ['Momentum Pro', 'Scalping Bot', 'Breakout Hunter'][i % 3],
+      bot_name: botName || 'Trading Bot',
       symbol,
       action: Math.random() > 0.5 ? 'buy' : 'sell',
       quantity: Math.floor(Math.random() * 100) + 10,
@@ -79,8 +65,8 @@ export function LiveBotTradeOverlay({ symbol, onTradeExecuted }: LiveBotTradeOve
 
     const newTrade: LiveTrade = {
       id: `live-${Date.now()}`,
-      bot_id: `bot-${Math.floor(Math.random() * 3)}`,
-      bot_name: ['Momentum Pro', 'Scalping Bot', 'Breakout Hunter'][Math.floor(Math.random() * 3)],
+      bot_id: `bot-active`,
+      bot_name: botName || 'Trading Bot',
       symbol,
       action: Math.random() > 0.5 ? 'buy' : 'sell',
       quantity: Math.floor(Math.random() * 100) + 10,
@@ -98,6 +84,10 @@ export function LiveBotTradeOverlay({ symbol, onTradeExecuted }: LiveBotTradeOve
     }
   };
 
+  if (!isActive) {
+    return null;
+  }
+
   return (
     <div className="absolute top-2 right-2 z-10 space-y-2">
       {/* Bot Status Card */}
@@ -107,7 +97,7 @@ export function LiveBotTradeOverlay({ symbol, onTradeExecuted }: LiveBotTradeOve
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <Bot className="w-4 h-4" />
-              <span className="text-sm font-medium">{activeBots} Bots Active</span>
+              <span className="text-sm font-medium">{botName || 'Bot Active'}</span>
             </div>
             <div className="flex items-center gap-1">
               <DollarSign className="w-3 h-3" />

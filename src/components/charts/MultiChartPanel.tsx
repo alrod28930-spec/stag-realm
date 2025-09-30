@@ -413,6 +413,8 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                 <LiveBotTradeOverlay 
                   symbol={chart.symbol}
                   onTradeExecuted={(trade) => handleBotTradeExecuted(chart.id, trade)}
+                  isActive={chart.isAutomated}
+                  botName={chart.deployedBot ? availableBots.find(b => b.id === chart.deployedBot)?.name : undefined}
                 />
                 
                 {/* Chart Trade Markers */}
