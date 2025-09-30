@@ -153,8 +153,8 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
         secondsVisible: timeframe.includes('s') || timeframe.includes('m')
       },
       grid: {
-        vertLines: { color: 'hsl(var(--border) / 0.1)' },
-        horzLines: { color: 'hsl(var(--border) / 0.1)' }
+        vertLines: { color: 'rgba(34, 211, 238, 0.1)' },
+        horzLines: { color: 'rgba(34, 211, 238, 0.1)' }
       },
       crosshair: {
         mode: 1,
@@ -173,17 +173,19 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
 
     // Add candlestick series
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: 'hsl(var(--success))',
-      downColor: 'hsl(var(--destructive))',
-      borderVisible: false,
-      wickUpColor: 'hsl(var(--success))',
-      wickDownColor: 'hsl(var(--destructive))'
+      upColor: 'rgba(34, 211, 238, 0.8)',
+      downColor: 'rgba(34, 211, 238, 0.5)',
+      borderVisible: true,
+      borderUpColor: 'rgba(34, 211, 238, 1)',
+      borderDownColor: 'rgba(34, 211, 238, 1)',
+      wickUpColor: 'rgba(34, 211, 238, 1)',
+      wickDownColor: 'rgba(34, 211, 238, 1)'
     });
     candleSeriesRef.current = candleSeries;
 
     // Add volume series
     const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: 'hsl(var(--muted-foreground) / 0.3)',
+      color: 'rgba(34, 211, 238, 0.3)',
       priceScaleId: 'volume',
     });
     volumeSeriesRef.current = volumeSeries;
@@ -204,7 +206,7 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
     const volumeData = candleData.map(candle => ({
       time: Math.floor(candle.time / 1000) as any,
       value: candle.volume,
-      color: candle.close >= candle.open ? 'hsl(var(--success) / 0.7)' : 'hsl(var(--destructive) / 0.7)',
+      color: candle.close >= candle.open ? 'rgba(34, 211, 238, 0.6)' : 'rgba(34, 211, 238, 0.3)',
     }));
 
     candleSeries.setData(chartData);
@@ -218,7 +220,7 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
     // Add indicators
     if (activeIndicators.vwap && indicatorData.length > 0) {
       const vwapSeries = chart.addSeries(LineSeries, {
-        color: 'hsl(var(--warning))',
+        color: 'rgba(34, 211, 238, 1)',
         lineWidth: 2,
         title: 'VWAP'
       });
