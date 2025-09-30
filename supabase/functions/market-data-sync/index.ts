@@ -113,9 +113,10 @@ serve(async (req) => {
         const positionSymbols = positions?.map(p => p.symbol) || [];
         const allSymbols = [...new Set([...positionSymbols, ...marketIndices])];
 
+        // Fallback: If no symbols, use a default watchlist
         if (allSymbols.length === 0) {
-          console.log('⚠️ No symbols to sync for this workspace');
-          continue;
+          console.log('⚠️ No positions or indices found, using default watchlist');
+          allSymbols.push('AAPL', 'MSFT', 'GOOGL', 'TSLA', 'META');
         }
 
         console.log(`📈 Fetching data for ${allSymbols.length} symbols...`);
@@ -271,6 +272,34 @@ serve(async (req) => {
     }
 
     console.log(`✅ Market data sync complete: ${totalBarsInserted} bars, ${totalQuotesInserted} quotes`);
+
+    // Watchdog: Log if no bars were inserted
+    if (totalBarsInserted === 0) {
+      console.error('⚠️ WATCHDOG: Market data sync completed but 0 bars inserted. Possible issues:');
+      console.error('  - API credentials may be invalid');
+      console.error('  - Alpaca API may be rate-limited');
+      console.error('  - No positions found and market indices may not be available');
+      console.error('  - Network connectivity issues');
+      
+      // Log to recorder for UI visibility
+      try {
+        await supabase.rpc('recorder_log', {
+          p_workspace: connections[0]?.workspace_id,
+          p_event_type: 'market_data_sync_warning',
+          p_severity: 2,
+          p_entity_type: 'system',
+          p_entity_id: 'market-data-sync',
+          p_summary: 'Market data sync completed with 0 bars inserted',
+          p_payload: {
+            workspaces_processed: connections.length,
+            symbols_attempted: allSymbols.length,
+            message: 'No market data was fetched. Check API credentials and connectivity.'
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log watchdog event:', logError);
+      }
+    }
 
     return new Response(
       JSON.stringify({

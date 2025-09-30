@@ -21,6 +21,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingMarketData, setIsSyncingMarketData] = useState(false);
   const [newConnection, setNewConnection] = useState({
     provider: '',
     accountLabel: '',
@@ -138,6 +139,30 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
     }
   };
 
+  const handleMarketDataSync = async () => {
+    setIsSyncingMarketData(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('market-data-sync', {
+        body: { workspace_id: workspaceId }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Market Data Sync Complete",
+        description: `Synced ${data.bars_inserted || 0} bars, ${data.quotes_inserted || 0} quotes`,
+      });
+    } catch (error) {
+      toast({
+        title: "Market Data Sync Failed",
+        description: error instanceof Error ? error.message : "Failed to sync market data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingMarketData(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -158,19 +183,33 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
           Add Connection
         </Button>
         {connections.length > 0 && (
-          <Button
-            variant="outline"
-            onClick={() => handleManualSync()}
-            disabled={isSyncing}
-            className="ml-2"
-          >
-            {isSyncing ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4 mr-2" />
-            )}
-            {isSyncing ? 'Syncing...' : 'Sync All'}
-          </Button>
+          <div className="flex gap-2 ml-2">
+            <Button
+              variant="outline"
+              onClick={() => handleManualSync()}
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              {isSyncing ? 'Syncing Portfolio...' : 'Sync Portfolio'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleMarketDataSync}
+              disabled={isSyncingMarketData}
+              className="bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20"
+            >
+              {isSyncingMarketData ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              {isSyncingMarketData ? 'Syncing Charts...' : 'Sync Chart Data'}
+            </Button>
+          </div>
         )}
       </CardHeader>
       
