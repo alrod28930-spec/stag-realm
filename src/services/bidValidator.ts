@@ -335,6 +335,21 @@ export class BIDValidator {
     const portfolioValue = context.currentPortfolio?.totalEquity || 100000;
     const positionPercent = positionValue / portfolioValue;
     
+    // Graduation caps for first N trades
+    const userProfile = this.getUserTradingProfile(context.userId);
+    if (userProfile && !userProfile.graduated && userProfile.liveTradeCount < 10) {
+      const maxFirstTradeValue = 20; // $20 max for first live trades
+      if (positionValue > maxFirstTradeValue) {
+        return {
+          ruleId: 'graduation_cap',
+          severity: 'critical',
+          message: `First ${10 - userProfile.liveTradeCount} live trades limited to $${maxFirstTradeValue} (current: $${positionValue.toFixed(2)})`,
+          suggestedAction: `Reduce to 1 share or complete ${10 - userProfile.liveTradeCount} more paper trades to graduate`,
+          blockTrade: true
+        };
+      }
+    }
+    
     if (positionPercent > params.maxPositionPercent || positionValue > params.absoluteMaxDollars) {
       return {
         ruleId: rule.id,
@@ -346,6 +361,15 @@ export class BIDValidator {
     }
     
     return null;
+  }
+  
+  private getUserTradingProfile(userId: string): { graduated: boolean; liveTradeCount: number } | null {
+    // This would fetch from userProgression or database
+    // For now, return mock data
+    return {
+      graduated: false,
+      liveTradeCount: 0
+    };
   }
   
   private checkDailyLossLimit(rule: ValidationRule, params: any, context: ValidationContext): ValidationResult['violations'][0] | null {

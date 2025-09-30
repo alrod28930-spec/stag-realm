@@ -10,6 +10,7 @@ import { ComplianceProvider } from "@/components/compliance/ComplianceProvider";
 import { PWAInstall } from "@/components/PWAInstall";
 import { useAuthStore } from "@/stores/authStore";
 import { GlobalVoiceInterface } from "@/components/voice/GlobalVoiceInterface";
+import { GlobalErrorBoundary } from "@/components/common/GlobalErrorBoundary";
 import { useEffect, lazy, Suspense } from "react";
 import Market from "@/pages/Market";
 
@@ -53,53 +54,55 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ComplianceProvider>
-          <PWAInstall />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
-              <Routes>
-                {/* Public routes (no auth required) */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<AuthPage />} />
-                <Route path="/auth/verify" element={<VerifyEmail />} />
-                <Route path="/download" element={<Download />} />
-                
-                {/* Protected routes */}
-                <Route path="/*" element={
-                  <AuthGuard>
-                    <DashboardLayout>
-                      <Routes>
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/intelligence" element={<Intelligence />} />
-                        <Route path="/market" element={<Market />} />
-                        <Route path="/portfolio" element={<Portfolio />} />
-                        <Route path="/trading-desk" element={<TradingDesk />} />
-                        <Route path="/charts" element={<Charts />} />
-                        <Route path="/brokerage-dock" element={<BrokerageDock />} />
-                        <Route path="/cradle" element={<Cradle />} />
-                        <Route path="/about" element={<About />} />
-                        <Route path="/user-manual" element={<UserManual />} />
-                        <Route path="/subscription" element={<Subscription />} />
-                        <Route path="/workspace" element={<Workspace />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/system-monitor" element={<SystemMonitor />} />
-                        <Route path="/admin" element={<AdminPortal />} />
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </DashboardLayout>
-                    <GlobalVoiceInterface />
-                  </AuthGuard>
-                } />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </ComplianceProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <GlobalErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <ComplianceProvider>
+            <PWAInstall />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
+                <Routes>
+                  {/* Public routes (no auth required) */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/auth/verify" element={<VerifyEmail />} />
+                  <Route path="/download" element={<Download />} />
+                  
+                  {/* Protected routes */}
+                  <Route path="/*" element={
+                    <AuthGuard>
+                      <DashboardLayout>
+                        <Routes>
+                          <Route path="/dashboard" element={<Dashboard />} />
+                          <Route path="/intelligence" element={<Intelligence />} />
+                          <Route path="/market" element={<Market />} />
+                          <Route path="/portfolio" element={<Portfolio />} />
+                          <Route path="/trading-desk" element={<TradingDesk />} />
+                          <Route path="/charts" element={<Charts />} />
+                          <Route path="/brokerage-dock" element={<BrokerageDock />} />
+                          <Route path="/cradle" element={<Cradle />} />
+                          <Route path="/about" element={<About />} />
+                          <Route path="/user-manual" element={<UserManual />} />
+                          <Route path="/subscription" element={<Subscription />} />
+                          <Route path="/workspace" element={<Workspace />} />
+                          <Route path="/settings" element={<Settings />} />
+                          <Route path="/system-monitor" element={<SystemMonitor />} />
+                          <Route path="/admin" element={<AdminPortal />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </DashboardLayout>
+                      <GlobalVoiceInterface />
+                    </AuthGuard>
+                  } />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </ComplianceProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </GlobalErrorBoundary>
   );
 };
 

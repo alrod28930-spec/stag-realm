@@ -5,77 +5,21 @@
  */
 
 import { supabase } from './client';
-import { z } from 'zod';
 import { eventBus } from '@/services/eventBus';
 import { logService } from '@/services/logging';
-
-// ============================================================================
-// VALIDATION SCHEMAS
-// ============================================================================
-
-const SymbolSchema = z.string().regex(/^[A-Z.]{1,10}$/, 'Invalid symbol format');
-
-const OrderRecordSchema = z.object({
-  workspace_id: z.string().uuid(),
-  order_id: z.string(),
-  run_id: z.string().optional(),
-  symbol: SymbolSchema,
-  side: z.enum(['buy', 'sell']),
-  qty: z.number().positive('Quantity must be positive'),
-  price: z.number().positive().optional(),
-  stop_price: z.number().positive().optional(),
-  limits: z.object({
-    stop_loss_pct: z.number().min(0).max(0.2).optional(),
-    take_profit_pct: z.number().min(0).max(0.5).optional()
-  }).optional(),
-  validator_status: z.enum(['pass', 'fail']).optional(),
-  broker_status: z.enum(['proposed', 'placed', 'filled', 'canceled', 'rejected', 'error']).optional(),
-  ts_created: z.string().datetime().optional(),
-  ts_updated: z.string().datetime().optional(),
-});
-
-const CandleSchema = z.object({
-  workspace_id: z.string().uuid(),
-  symbol: SymbolSchema,
-  tf: z.enum(['1m', '5m', '15m', '1h', '1D']),
-  ts: z.string().datetime(),
-  o: z.number(),
-  h: z.number(),
-  l: z.number(),
-  c: z.number(),
-  v: z.number(),
-  vwap: z.number().optional(),
-});
-
-const OracleSignalSchema = z.object({
-  workspace_id: z.string().uuid(),
-  symbol: SymbolSchema.optional(),
-  signal_type: z.string(),
-  strength: z.number().min(0).max(1),
-  direction: z.number().int().min(-1).max(1),
-  source: z.string().optional(),
-  summary: z.string().optional(),
-  ts: z.string().datetime().optional(),
-});
-
-const RecorderEventSchema = z.object({
-  workspace_id: z.string().uuid(),
-  user_id: z.string().uuid().optional(),
-  event_type: z.string(),
-  severity: z.number().int().min(1).max(5).default(1),
-  entity_type: z.string().optional(),
-  entity_id: z.string().optional(),
-  summary: z.string().optional(),
-  payload_json: z.record(z.any()).optional(),
-  ts: z.string().datetime().optional(),
-});
-
-const SummarySchema = z.object({
-  workspace_id: z.string().uuid(),
-  scope: z.string(),
-  text: z.string(),
-  ts: z.string().datetime().optional(),
-});
+import {
+  OrderRecordSchema,
+  MarketSnapshotSchema,
+  OracleSignalSchema,
+  RecorderEventSchema,
+  SummarySchema,
+  validateSchema,
+  type OrderRecord,
+  type MarketSnapshot,
+  type OracleSignal,
+  type RecorderEvent,
+  type Summary,
+} from '@/schemas';
 
 // ============================================================================
 // BID ADAPTER CLASS
@@ -118,29 +62,28 @@ export class BIDAdapter {
    * Save order with validation
    */
   async saveOrder(record: unknown) {
-    const parsed = OrderRecordSchema.safeParse(record);
+    const validation = validateSchema(OrderRecordSchema, record, 'BID.saveOrder');
     
-    if (!parsed.success) {
-      const validationError = parsed.error.flatten();
+    if (!validation.success) {
       await this.recordEvent({
         workspace_id: (record as any).workspace_id || 'unknown',
         event_type: 'validation.order.failed',
         severity: 2,
         entity_type: 'order',
         summary: 'Order validation failed',
-        payload_json: { errors: validationError }
+        payload_json: { errors: validation.errors }
       });
       
-      logService.log('error', 'Order schema validation failed', validationError);
+      logService.log('error', 'Order schema validation failed', validation.errors);
       return { data: null, error: new Error('Order validation failed') };
     }
 
     try {
       // Add timestamps if not present
-      const orderData: typeof parsed.data & { ts_created: string; ts_updated: string } = {
-        ...parsed.data,
-        ts_created: parsed.data.ts_created || new Date().toISOString(),
-        ts_updated: parsed.data.ts_updated || new Date().toISOString(),
+      const orderData = {
+        ...validation.data!,
+        ts_created: validation.data!.ts_created || new Date().toISOString(),
+        ts_updated: validation.data!.ts_updated || new Date().toISOString(),
       };
 
       // Note: This would insert into an 'orders' table - currently not in schema
@@ -158,7 +101,7 @@ export class BIDAdapter {
       eventBus.emit('bid.order_saved', orderData);
       return { data: orderData, error: null };
     } catch (error) {
-      logService.log('error', 'Failed to save order', { error, record: parsed.data });
+      logService.log('error', 'Failed to save order', { error, record: validation.data });
       return { data: null, error };
     }
   }
@@ -201,26 +144,26 @@ export class BIDAdapter {
    * Store candle data
    */
   async storeCandle(candle: unknown) {
-    const parsed = CandleSchema.safeParse(candle);
+    const validation = validateSchema(MarketSnapshotSchema, candle, 'BID.storeCandle');
     
-    if (!parsed.success) {
-      logService.log('error', 'Candle validation failed', parsed.error.flatten());
+    if (!validation.success) {
+      logService.log('error', 'Candle validation failed', validation.errors);
       return { data: null, error: new Error('Candle validation failed') };
     }
 
     try {
       const { data, error } = await supabase
         .from('candles')
-        .upsert([parsed.data as any], {
+        .upsert([validation.data as any], {
           onConflict: 'workspace_id,symbol,tf,ts'
         });
 
       if (error) throw error;
 
-      eventBus.emit('bid.candle_stored', parsed.data);
+      eventBus.emit('bid.candle_stored', validation.data);
       return { data, error: null };
     } catch (error) {
-      logService.log('error', 'Failed to store candle', { error, candle: parsed.data });
+      logService.log('error', 'Failed to store candle', { error, candle: validation.data });
       return { data: null, error };
     }
   }
@@ -229,17 +172,17 @@ export class BIDAdapter {
    * Store Oracle signal
    */
   async storeOracleSignal(signal: unknown) {
-    const parsed = OracleSignalSchema.safeParse(signal);
+    const validation = validateSchema(OracleSignalSchema, signal, 'BID.storeOracleSignal');
     
-    if (!parsed.success) {
-      logService.log('error', 'Oracle signal validation failed', parsed.error.flatten());
+    if (!validation.success) {
+      logService.log('error', 'Oracle signal validation failed', validation.errors);
       return { data: null, error: new Error('Signal validation failed') };
     }
 
     try {
       const signalData = {
-        ...parsed.data,
-        ts: parsed.data.ts || new Date().toISOString(),
+        ...validation.data!,
+        ts: validation.data!.ts || new Date().toISOString(),
       };
 
       const { data, error } = await supabase
@@ -251,7 +194,7 @@ export class BIDAdapter {
       eventBus.emit('bid.oracle_signal_stored', signalData);
       return { data, error: null };
     } catch (error) {
-      logService.log('error', 'Failed to store oracle signal', { error, signal: parsed.data });
+      logService.log('error', 'Failed to store oracle signal', { error, signal: validation.data });
       return { data: null, error };
     }
   }
@@ -286,17 +229,17 @@ export class BIDAdapter {
    * Save summary
    */
   async saveSummary(summary: unknown) {
-    const parsed = SummarySchema.safeParse(summary);
+    const validation = validateSchema(SummarySchema, summary, 'BID.saveSummary');
     
-    if (!parsed.success) {
-      logService.log('error', 'Summary validation failed', parsed.error.flatten());
+    if (!validation.success) {
+      logService.log('error', 'Summary validation failed', validation.errors);
       return { data: null, error: new Error('Summary validation failed') };
     }
 
     try {
       const summaryData = {
-        ...parsed.data,
-        ts: parsed.data.ts || new Date().toISOString(),
+        ...validation.data!,
+        ts: validation.data!.ts || new Date().toISOString(),
       };
 
       // Store as recorder event for now
@@ -311,7 +254,7 @@ export class BIDAdapter {
 
       return { data: summaryData, error: null };
     } catch (error) {
-      logService.log('error', 'Failed to save summary', { error, summary: parsed.data });
+      logService.log('error', 'Failed to save summary', { error, summary: validation.data });
       return { data: null, error };
     }
   }
@@ -320,16 +263,16 @@ export class BIDAdapter {
    * Record event to rec_events (append-only log)
    */
   async recordEvent(event: unknown) {
-    const parsed = RecorderEventSchema.safeParse(event);
+    const validation = validateSchema(RecorderEventSchema, event, 'BID.recordEvent');
     
-    if (!parsed.success) {
-      logService.log('error', 'Event validation failed', parsed.error.flatten());
+    if (!validation.success) {
+      logService.log('error', 'Event validation failed', validation.errors);
       return { data: null, error: new Error('Event validation failed') };
     }
 
     try {
       const eventData = {
-        ...parsed.data,
+        ...validation.data!,
         ts: new Date().toISOString(),
       };
 
@@ -342,7 +285,7 @@ export class BIDAdapter {
       eventBus.emit('bid.event_recorded', eventData);
       return { data, error: null };
     } catch (error) {
-      logService.log('error', 'Failed to record event', { error, event: parsed.data });
+      logService.log('error', 'Failed to record event', { error, event: validation.data });
       return { data: null, error };
     }
   }
