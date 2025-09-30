@@ -246,10 +246,13 @@ export default function Market() {
                   <p className="text-muted-foreground mb-4">
                     Connect your brokerage account to access live market data and advanced analysis tools
                   </p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Go to Settings → Brokers tab to add your API credentials
+                  </p>
                   <Link to="/settings">
                     <Button variant="outline">
                       <BarChart3 className="w-4 h-4 mr-2" />
-                      Connect Brokerage
+                      Go to Brokerage Settings
                     </Button>
                   </Link>
                 </div>
