@@ -304,7 +304,7 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                   size="sm"
                   onClick={() => setChartLayoutGrid('2x2')}
                 >
-                  <BarChart3 className="w-3 h-3 !text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                  <BarChart3 className="w-3 h-3" />
                 </Button>
               </div>
 

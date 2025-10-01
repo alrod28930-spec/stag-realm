@@ -91,6 +91,8 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
           name: 'default',
           layout: layout as any,
           updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'workspace_id,user_id,name'
         });
 
       if (error) throw error;

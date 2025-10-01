@@ -536,13 +536,16 @@ class OracleService {
       const { error } = await supabase.from('oracle_signals').insert({
         workspace_id,
         symbol: signal.symbol || 'UNKNOWN',
-        tf: '1D', // default timeframe
+        signal_type: signal.type, // REQUIRED: maps to signal_type NOT NULL column
+        strength: signal.confidence, // REQUIRED: maps to strength column
+        direction: signal.direction === 'bullish' ? 1 : signal.direction === 'bearish' ? -1 : 0, // REQUIRED: -1, 0, or 1
+        source: (signal.sources && signal.sources[0]) || 'oracle', // REQUIRED: source column
+        summary: signal.signal, // summary column
+        tf: '1D',
         ts: new Date().toISOString(),
-        name: signal.type, // map signal type to name
-        value: signal.confidence, // map confidence to value
+        name: signal.type,
+        value: signal.confidence,
         payload: {
-          direction: signal.direction === 'bullish' ? 1 : signal.direction === 'bearish' ? -1 : 0,
-          summary: signal.signal,
           sources: signal.sources || ['oracle']
         }
       } as any);
