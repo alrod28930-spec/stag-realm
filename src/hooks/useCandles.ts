@@ -4,8 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { BID } from '@/integrations/supabase/bid.adapter';
-import type { Candle } from '@/integrations/supabase/candles';
+import { getCandles, type Candle } from '@/integrations/supabase/candles';
 
 type CandleState = 'loading' | 'ready' | 'degraded' | 'error';
 
@@ -42,28 +41,24 @@ export function useCandles(
       const now = new Date();
       const from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days back
       
-      // Use BID adapter (backend-first)
-      const response = await BID.getMarketSnapshots(
+      const candles = await getCandles(
         workspaceId,
         symbol,
-        tf as '1m' | '5m' | '15m' | '1h' | '1D',
+        tf,
         from.toISOString(),
         now.toISOString()
       );
 
-      if (response.error) {
-        throw response.error;
-      }
-
-      if (response.data && response.data.length > 0) {
-        setData(response.data as Candle[]);
+      if (candles.length > 0) {
+        setData(candles);
         setState('ready');
       } else {
         setData([]);
-        setState('error');
-        setError('No data available');
+        setState('degraded');
+        setError('No data available - try running market sync');
       }
     } catch (err) {
+      console.error('useCandles error:', err);
       setData([]);
       setState('error');
       setError(err instanceof Error ? err.message : 'Failed to load chart data');
