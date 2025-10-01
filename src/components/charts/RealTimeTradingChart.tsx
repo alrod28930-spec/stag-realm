@@ -14,11 +14,14 @@ import {
   MousePointer2,
   Settings
 } from 'lucide-react';
-import { useChartData } from '@/hooks/useChartData';
+import { useEnhancedCandles } from '@/hooks/useEnhancedCandles';
+import { useOracleIndicators } from '@/hooks/useOracleIndicators';
+import { useTimeSync } from '@/hooks/useTimeSync';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { useToast } from '@/hooks/use-toast';
 import { ChartSkeleton } from './ChartSkeleton';
-import { DegradedBanner } from './DegradedBanner';
+import { format } from 'date-fns';
+import { getCurrentUserWorkspace } from '@/utils/auth';
 
 interface OrderOverlay {
   id: string;
@@ -66,6 +69,7 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
   const candleSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
   const overlaySeriesRef = useRef<any[]>([]);
+  const [workspaceId, setWorkspaceId] = useState<string>('');
   
   const [orders, setOrders] = useState<OrderOverlay[]>([]);
   const [position, setPosition] = useState<Position | null>(null);
@@ -82,9 +86,18 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
     bollingerBands: false
   });
 
-  const { candleData, indicatorData, loading, error, isDegraded } = useChartData(symbol, timeframe);
+  const { state, data: candleData, error, lastUpdated } = useEnhancedCandles(workspaceId, symbol, timeframe);
+  const { indicators: oracleIndicators } = useOracleIndicators(workspaceId, symbol, timeframe, true);
+  const { linked, range, setRange } = useTimeSync();
   const { subscriptionStatus } = useSubscriptionAccess();
   const { toast } = useToast();
+
+  const loading = state === 'loading';
+  const isDegraded = state === 'degraded';
+
+  useEffect(() => {
+    getCurrentUserWorkspace().then(id => id && setWorkspaceId(id));
+  }, []);
 
   // Refs to avoid stale closures in event handlers
   const snapTradingModeRef = useRef(snapTradingMode);
@@ -99,7 +112,7 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
     const interval = setInterval(() => {
       if (candleData.length > 0) {
         const lastCandle = candleData[candleData.length - 1];
-        const newPrice = lastCandle.close + (Math.random() - 0.5) * 0.5;
+        const newPrice = Number(lastCandle.c) + (Math.random() - 0.5) * 0.5;
         setCurrentPrice(newPrice);
         
         // Update position P&L if we have a position
@@ -279,17 +292,17 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
     if (!candleSeriesRef.current || candleData.length === 0) return;
 
     const chartData = candleData.map(candle => ({
-      time: Math.floor(candle.time / 1000) as any,
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
+      time: Math.floor(new Date(candle.ts).getTime() / 1000) as any,
+      open: Number(candle.o),
+      high: Number(candle.h),
+      low: Number(candle.l),
+      close: Number(candle.c),
     }));
 
     const volumeData = candleData.map(candle => ({
-      time: Math.floor(candle.time / 1000) as any,
-      value: candle.volume,
-      color: candle.close >= candle.open ? 'rgba(34, 211, 238, 0.6)' : 'rgba(34, 211, 238, 0.3)',
+      time: Math.floor(new Date(candle.ts).getTime() / 1000) as any,
+      value: Number(candle.v || 0),
+      color: Number(candle.c) >= Number(candle.o) ? 'rgba(34, 211, 238, 0.6)' : 'rgba(34, 211, 238, 0.3)',
     }));
 
     try {
@@ -302,7 +315,7 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
     }
   }, [candleData]);
 
-  // Update indicators/overlays when indicator data or toggles change
+  // Update indicators/overlays from oracle signals
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -317,24 +330,40 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
       overlaySeriesRef.current = [];
     }
 
-    if (!indicatorData.length) return;
+    if (!oracleIndicators.length) return;
 
-    if (activeIndicators.vwap) {
+    // Group indicators by name
+    const indicatorsByName = oracleIndicators.reduce((acc, ind) => {
+      if (!acc[ind.name]) acc[ind.name] = [];
+      acc[ind.name].push(ind);
+      return acc;
+    }, {} as Record<string, typeof oracleIndicators>);
+
+    // Add VWAP if active
+    if (activeIndicators.vwap && indicatorsByName['vwap']) {
       const vwapSeries = chart.addSeries(LineSeries, {
         color: 'rgba(34, 211, 238, 1)',
         lineWidth: 2,
-        title: 'VWAP'
       });
-      const vwapData = indicatorData
-        .filter(ind => ind.vwap !== undefined)
+      const vwapData = indicatorsByName['vwap']
+        .filter(ind => ind.value !== null)
         .map(ind => ({
-          time: Math.floor(ind.time / 1000) as any,
-          value: ind.vwap!,
+          time: Math.floor(new Date(ind.ts).getTime() / 1000) as any,
+          value: ind.value!,
         }));
       try { vwapSeries.setData(vwapData); } catch {}
       overlaySeriesRef.current.push(vwapSeries);
     }
-  }, [indicatorData, activeIndicators]);
+  }, [oracleIndicators, activeIndicators]);
+
+  // Apply linked time range
+  useEffect(() => {
+    if (!chartRef.current || !linked || !range) return;
+    chartRef.current.timeScale().setVisibleRange({
+      from: range.from as any,
+      to: range.to as any,
+    });
+  }, [linked, range]);
 
   // Order management functions
   const handleQuickOrder = useCallback((side: 'buy' | 'sell', quantity: number) => {
@@ -427,9 +456,9 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
 
   return (
     <Card className="h-full">
-      {isDegraded && (
-        <div className="p-2 pb-0">
-          <DegradedBanner message="Using cached data - live feed reconnecting" />
+      {isDegraded && lastUpdated && (
+        <div className="absolute top-2 right-2 z-10 text-xs px-2 py-1 bg-amber-500/15 border border-amber-400/30 rounded">
+          Degraded: {format(lastUpdated, 'HH:mm:ss')}
         </div>
       )}
       <CardHeader className="pb-2">

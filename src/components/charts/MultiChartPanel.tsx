@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { LiveBotTradeOverlay } from './LiveBotTradeOverlay';
 import { ChartTradeMarkers } from './ChartTradeMarkers';
 import { useLayoutStore } from '@/stores/layoutStore';
+import { useChartPresets } from '@/hooks/useChartPresets';
+import { useTimeSync } from '@/hooks/useTimeSync';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +20,10 @@ import {
   BarChart3,
   Target,
   Plus,
-  X
+  X,
+  Link,
+  RotateCcw,
+  Save
 } from 'lucide-react';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { useToast } from '@/hooks/use-toast';
@@ -58,8 +63,11 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
 }) => {
   // Use persistent layout store
   const { layout, updateChart: updateLayoutChart, setLayout, load } = useLayoutStore();
+  const { presets, applyPreset, addPreset, removePreset } = useChartPresets();
+  const { linked, setLinked } = useTimeSync();
   
   const [showOrderBook, setShowOrderBook] = useState(false);
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
   
   const { subscriptionStatus } = useSubscriptionAccess();
   const { toast } = useToast();
@@ -196,6 +204,49 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
     });
   };
 
+  const resetLayout = () => {
+    const defaultCharts = [
+      { id: '1', symbol: 'SPY', timeframe: '5m', indicators: ['vwap'] },
+      { id: '2', symbol: 'QQQ', timeframe: '5m', indicators: ['vwap'] },
+      { id: '3', symbol: 'AAPL', timeframe: '1m', indicators: ['vwap'] },
+      { id: '4', symbol: 'TSLA', timeframe: '1m', indicators: ['vwap'] },
+    ];
+
+    setLayout({
+      ...layout,
+      charts: defaultCharts,
+      chartLayout: '2x2',
+      selectedChart: '1',
+    });
+
+    toast({
+      title: 'Layout Reset',
+      description: 'Chart layout restored to default'
+    });
+  };
+
+  const applyChartPreset = (presetId: string) => {
+    const preset = applyPreset(presetId);
+    if (!preset) return;
+
+    const newCharts = preset.charts.map((c, idx) => ({
+      id: `${Date.now()}-${idx}`,
+      ...c,
+    }));
+
+    setLayout({
+      ...layout,
+      charts: newCharts,
+      chartLayout: preset.layout,
+      selectedChart: newCharts[0]?.id || null,
+    });
+
+    toast({
+      title: 'Preset Applied',
+      description: `Layout set to ${preset.name}`
+    });
+  };
+
   const setSelectedChart = (chartId: string) => {
     setLayout({ ...layout, selectedChart: chartId });
   };
@@ -258,9 +309,42 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
               </div>
 
               {/* Chart Management */}
+              <Button
+                variant={linked ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setLinked(!linked);
+                  toast({
+                    title: linked ? 'Charts Unlinked' : 'Charts Linked',
+                    description: linked ? 'Charts will scroll independently' : 'Charts will sync zoom/pan'
+                  });
+                }}
+              >
+                <Link className="w-4 h-4 mr-1" />
+                {linked ? 'Linked' : 'Link'}
+              </Button>
+
               <Button variant="outline" size="sm" onClick={syncCharts}>
                 <Copy className="w-4 h-4 mr-1" />
                 Sync Time
+              </Button>
+
+              <Select onValueChange={applyChartPreset}>
+                <SelectTrigger className="w-32 h-8">
+                  <SelectValue placeholder="Presets" />
+                </SelectTrigger>
+                <SelectContent>
+                  {presets.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" size="sm" onClick={resetLayout}>
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Reset
               </Button>
 
               <Button variant="outline" size="sm" onClick={addChart}>
