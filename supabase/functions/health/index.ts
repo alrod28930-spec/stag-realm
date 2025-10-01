@@ -43,13 +43,11 @@ Deno.serve(async (req: Request) => {
         .select('symbol, tf, ts')
         .eq('workspace_id', ws)
         .order('ts', { ascending: false })
-        .limit(100);
+        .limit(200);
         
       for (const r of (rows ?? [])) {
         const key = `${r.symbol}:${r.tf}`;
-        if (!res.candles[key]) {
-          res.candles[key] = r.ts;
-        }
+        res.candles[key] = res.candles[key] ?? r.ts;
       }
     }
 
@@ -61,7 +59,7 @@ Deno.serve(async (req: Request) => {
       .in('event_type', ['sync.error', 'order.error']);
       
     res.errors_24h = count ?? 0;
-    res.status = res.errors_24h > 10 ? 'degraded' : 'ok';
+    res.status = res.errors_24h > 0 ? 'degraded' : 'ok';
 
     return new Response(
       JSON.stringify(res), 

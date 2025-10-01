@@ -5,29 +5,45 @@ type Bar = { t: string; o: number; h: number; l: number; c: number; v?: number; 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const DEFAULT_SYMBOLS = ['AAPL','QQQ','META','SPY'];
-const TIMEFRAMES = ['1D','1h','5m'];
+// Align with your UI's timeframe strings
+const TIMEFRAMES = ["1D", "1h", "5m", "1m"] as const;
+const DEFAULT_SYMBOLS = ["AAPL", "QQQ", "META", "SPY"];
 
 function sleep(ms: number){ return new Promise(r=>setTimeout(r,ms)); }
 
-async function fetchAlpacaBars(apiKey: string, apiSecret: string, symbol: string, tf: string, limit = 1000): Promise<Bar[]> {
-  const tfMap: Record<string,string> = { '1m':'1Min','5m':'5Min','15m':'15Min','1h':'1Hour','1D':'1Day' };
-  const timeframe = tfMap[tf] ?? '1Day';
+const tfMap: Record<string, string> = {
+  "1m": "1Min",
+  "5m": "5Min",
+  "15m": "15Min",
+  "1h": "1Hour",
+  "1D": "1Day",
+};
+
+async function fetchAlpacaBars(
+  apiKey: string,
+  apiSecret: string,
+  symbol: string,
+  tf: string,
+  lookbackDays = 14,
+): Promise<Bar[]> {
+  const timeframe = tfMap[tf] ?? "1Day";
   const end = new Date();
-  const start = new Date(end.getTime() - (tf === '1D' ? 1000*60*60*24*365 : 1000*60*60*24*14));
+  const start = new Date(
+    end.getTime() -
+      (tf === "1D" ? 1000 * 60 * 60 * 24 * 365 : 1000 * 60 * 60 * 24 * lookbackDays),
+  );
   const url = new URL(`https://data.alpaca.markets/v2/stocks/${encodeURIComponent(symbol)}/bars`);
-  url.searchParams.set('timeframe', timeframe);
-  url.searchParams.set('limit', String(limit));
-  url.searchParams.set('start', start.toISOString());
-  url.searchParams.set('end', end.toISOString());
+  url.searchParams.set("timeframe", timeframe);
+  url.searchParams.set("limit", "10000");
+  url.searchParams.set("start", start.toISOString());
+  url.searchParams.set("end", end.toISOString());
 
   const res = await fetch(url.toString(), {
-    headers: { 'APCA-API-KEY-ID': apiKey, 'APCA-API-SECRET-KEY': apiSecret }
+    headers: { "APCA-API-KEY-ID": apiKey, "APCA-API-SECRET-KEY": apiSecret },
   });
   if (!res.ok) throw new Error(`Alpaca bars ${symbol} ${tf}: ${res.status} ${await res.text()}`);
   const json = await res.json();
-  const bars: Bar[] = json?.bars ?? [];
-  return bars;
+  return json?.bars ?? [];
 }
 
 async function upsertCandles(supabase: any, wsId: string, symbol: string, tf: string, bars: Bar[]) {
@@ -77,58 +93,67 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   const { searchParams } = new URL(req.url);
-  const wsId = searchParams.get('ws');
-  let workspaces: { id: string }[] = [];
+  const wsId = searchParams.get("ws"); // optional: run for a single workspace
 
+  // Determine target workspaces
+  let workspaces: string[] = [];
   if (wsId) {
-    workspaces = [{ id: wsId }];
+    workspaces = [wsId];
   } else {
-    const { data } = await supabase
-      .from('feature_flags')
-      .select('workspace_id')
-      .limit(1000);
-    workspaces = (data ?? []).map((r: any) => ({ id: r.workspace_id }));
+    const { data } = await supabase.from("feature_flags").select("workspace_id").limit(1000);
+    workspaces = (data ?? []).map((r: any) => r.workspace_id);
   }
+  if (!workspaces.length) return new Response(JSON.stringify({ ok: true, workspaces: 0 }), { headers: { "content-type": "application/json" } });
 
   for (const ws of workspaces) {
     try {
-      const { data: have } = await supabase.from('ref_symbols').select('symbol');
-      const haveSet = new Set((have ?? []).map((r: any) => r.symbol));
-      const symbols = DEFAULT_SYMBOLS.filter(s => haveSet.has(s));
-      if (!symbols.length) {
-        await supabase.from('ref_symbols').upsert(DEFAULT_SYMBOLS.map(s => ({ symbol: s, exchange: 'NASDAQ', active: true })));
-      }
+      // Ensure baseline symbols exist in ref_symbols
+      const { data: existing } = await supabase.from("ref_symbols").select("symbol");
+      const have = new Set((existing ?? []).map((r: any) => r.symbol));
+      const baseline = DEFAULT_SYMBOLS.filter((s) => !have.has(s)).map((s) => ({
+        symbol: s,
+        exchange: "NASDAQ",
+        active: true,
+      }));
+      if (baseline.length) await supabase.from("ref_symbols").upsert(baseline);
 
-      const { apiKey, apiSecret } = await getStoredAlpacaCreds(supabase, ws.id);
+      const { apiKey, apiSecret } = await getStoredAlpacaCreds(supabase, ws);
       if (!apiKey || !apiSecret) {
-        await record(supabase, ws.id, 'oracle', 'sync.error', { reason: 'no_credentials' });
+        await record(supabase, ws, "oracle", "sync.error", { reason: "no_credentials" });
         continue;
       }
 
-      for (const sym of (symbols.length ? symbols : DEFAULT_SYMBOLS)) {
-        const { data: ok } = await supabase.from('ref_symbols').select('symbol').eq('symbol', sym).maybeSingle();
+      // Choose symbols (positions/watchlist could be added; start with defaults)
+      const symbols = DEFAULT_SYMBOLS;
+
+      for (const sym of symbols) {
+        // Skip unknown symbols just in case
+        const { data: ok } = await supabase.from("ref_symbols").select("symbol").eq("symbol", sym).maybeSingle();
         if (!ok) {
-          await record(supabase, ws.id, 'oracle', 'sync.warn', { reason: 'unknown_symbol', symbol: sym });
+          await record(supabase, ws, "oracle", "sync.warn", { symbol: sym, reason: "unknown_symbol" });
           continue;
         }
 
         for (const tf of TIMEFRAMES) {
           try {
             const bars = await fetchAlpacaBars(apiKey, apiSecret, sym, tf);
-            await upsertCandles(supabase, ws.id, sym, tf, bars);
-            await record(supabase, ws.id, 'oracle', 'sync.heartbeat', {
-              symbol: sym, tf, count: bars.length, last_ts: bars.at(-1)?.t
+            await upsertCandles(supabase, ws, sym, tf, bars);
+            await record(supabase, ws, "oracle", "sync.heartbeat", {
+              symbol: sym,
+              tf,
+              count: bars.length,
+              last_ts: bars.at(-1)?.t ?? null,
             });
-            await sleep(150);
+            await sleep(150); // gentle rate limit
           } catch (e) {
-            await record(supabase, ws.id, 'oracle', 'sync.error', { symbol: sym, tf, error: String(e) });
+            await record(supabase, ws, "oracle", "sync.error", { symbol: sym, tf, error: String(e) });
           }
         }
       }
     } catch (e) {
-      await record(supabase, ws.id, 'oracle', 'sync.error', { error: String(e) });
+      await record(supabase, ws, "oracle", "sync.error", { error: String(e) });
     }
   }
 
-  return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
+  return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
 });
