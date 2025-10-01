@@ -37,11 +37,11 @@ const OrderWrite = z.object({
 const OracleSignalWrite = z.object({
   workspace_id: z.string().uuid(),
   symbol: z.string().regex(/^[A-Z.]{1,10}$/),
-  signal_type: z.string(),
-  strength: z.number().min(0).max(1),
-  direction: z.number().int().min(-1).max(1),
-  source: z.string().optional(),
-  summary: z.string().optional(),
+  tf: z.enum(['1m', '5m', '15m', '1h', '1D']),
+  ts: z.string(), // ISO timestamp
+  name: z.string(), // 'ema_cross', 'rsi', 'breakout', etc.
+  value: z.number().optional(), // numeric strength/value
+  payload: z.record(z.unknown()).optional(), // extra fields
 });
 
 const EventRecord = z.object({
@@ -146,14 +146,25 @@ export const BID = {
   // ========== ORACLE SIGNALS (READ/WRITE) ==========
 
   /**
-   * Store oracle signal
+   * Store oracle signal (new schema: workspace_id, symbol, tf, ts, name, value, payload)
    */
   async storeOracleSignal(signal: unknown) {
     const validated = OracleSignalWrite.parse(signal);
     
-    const { data, error } = await supabase
-      .from('oracle_signals')
-      .insert([validated as any])
+    const { data, error } = await (supabase
+      .from('oracle_signals') as any)
+      .upsert([{
+        workspace_id: validated.workspace_id,
+        symbol: validated.symbol,
+        tf: validated.tf,
+        ts: validated.ts,
+        name: validated.name,
+        value: validated.value ?? null,
+        payload: (validated.payload ?? {}) as any,
+      }], {
+        onConflict: 'workspace_id,symbol,tf,ts,name',
+        ignoreDuplicates: false
+      })
       .select()
       .single();
     

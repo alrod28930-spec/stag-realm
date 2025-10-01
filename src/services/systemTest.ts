@@ -232,13 +232,17 @@ export class SystemTestService {
           .from('oracle_signals')
           .insert({
             workspace_id: workspace,
-            signal_type: 'test',
             symbol: 'TEST',
-            direction: 0,
-            strength: 0.5,
-            summary: 'Test signal',
-            source: 'test'
-          });
+            tf: '1D',
+            ts: new Date().toISOString(),
+            name: 'test',
+            value: 0.5,
+            payload: {
+              direction: 0,
+              summary: 'Test signal',
+              sources: ['test']
+            }
+          } as any);
           
         results.push({
           category: 'Security',

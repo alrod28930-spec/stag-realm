@@ -535,13 +535,17 @@ class OracleService {
 
       const { error } = await supabase.from('oracle_signals').insert({
         workspace_id,
-        signal_type: signal.type,
-        symbol: signal.symbol,
-        direction: signal.direction === 'bullish' ? 1 : signal.direction === 'bearish' ? -1 : 0,
-        strength: signal.confidence,
-        summary: signal.signal,
-        source: signal.sources?.[0] || 'oracle'
-      });
+        symbol: signal.symbol || 'UNKNOWN',
+        tf: '1D', // default timeframe
+        ts: new Date().toISOString(),
+        name: signal.type, // map signal type to name
+        value: signal.confidence, // map confidence to value
+        payload: {
+          direction: signal.direction === 'bullish' ? 1 : signal.direction === 'bearish' ? -1 : 0,
+          summary: signal.signal,
+          sources: signal.sources || ['oracle']
+        }
+      } as any);
       
       // Only log non-foreign-key errors (23503 means symbol not in ref_symbols)
       if (error && error.code !== '23503') {

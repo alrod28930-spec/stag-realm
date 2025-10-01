@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.risk-governor]
 verify_jwt = false
+
+[functions.oracle-health]
+verify_jwt = false

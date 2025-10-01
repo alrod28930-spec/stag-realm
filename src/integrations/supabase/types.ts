@@ -1246,34 +1246,46 @@ export type Database = {
         Row: {
           direction: number
           id: string
+          name: string
+          payload: Json | null
           signal_type: string
           source: string | null
           strength: number
           summary: string | null
-          symbol: string | null
+          symbol: string
+          tf: string
           ts: string
+          value: number | null
           workspace_id: string
         }
         Insert: {
           direction: number
           id?: string
+          name: string
+          payload?: Json | null
           signal_type: string
           source?: string | null
           strength: number
           summary?: string | null
-          symbol?: string | null
+          symbol: string
+          tf?: string
           ts?: string
+          value?: number | null
           workspace_id: string
         }
         Update: {
           direction?: number
           id?: string
+          name?: string
+          payload?: Json | null
           signal_type?: string
           source?: string | null
           strength?: number
           summary?: string | null
-          symbol?: string | null
+          symbol?: string
+          tf?: string
           ts?: string
+          value?: number | null
           workspace_id?: string
         }
         Relationships: [
@@ -1626,6 +1638,7 @@ export type Database = {
       }
       ref_symbols: {
         Row: {
+          active: boolean | null
           asset_class: string | null
           exchange: string | null
           industry: string | null
@@ -1634,6 +1647,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean | null
           asset_class?: string | null
           exchange?: string | null
           industry?: string | null
@@ -1642,6 +1656,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean | null
           asset_class?: string | null
           exchange?: string | null
           industry?: string | null
