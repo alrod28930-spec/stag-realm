@@ -909,6 +909,21 @@ export type Database = {
         }
         Relationships: []
       }
+      idempotency_keys: {
+        Row: {
+          created_at: string | null
+          key: string
+        }
+        Insert: {
+          created_at?: string | null
+          key: string
+        }
+        Update: {
+          created_at?: string | null
+          key?: string
+        }
+        Relationships: []
+      }
       indicators: {
         Row: {
           atr14: number | null
@@ -1635,6 +1650,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      recorder_mirror: {
+        Row: {
+          actor: string
+          event_type: string
+          id: number
+          payload: Json | null
+          ref: string | null
+          ts: string | null
+          workspace_id: string
+        }
+        Insert: {
+          actor: string
+          event_type: string
+          id?: number
+          payload?: Json | null
+          ref?: string | null
+          ts?: string | null
+          workspace_id: string
+        }
+        Update: {
+          actor?: string
+          event_type?: string
+          id?: number
+          payload?: Json | null
+          ref?: string | null
+          ts?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
       }
       ref_symbols: {
         Row: {
@@ -2602,6 +2647,19 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      create_order_record: {
+        Args: {
+          _broker_status: string
+          _limits: Json
+          _qty: number
+          _run: string
+          _side: string
+          _symbol: string
+          _validator_status: string
+          _ws: string
+        }
+        Returns: string
       }
       create_workspace_safely: {
         Args: {
