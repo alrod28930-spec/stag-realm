@@ -53,6 +53,33 @@ serve(async (req) => {
 
     const workspaceId = user.user_metadata?.workspace_id || user.id;
 
+    // Idempotency check (prevent duplicate orders within 60s)
+    const { data: recentOrder } = await supabaseClient
+      .from('rec_events')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('event_type', 'trade.manual.executed')
+      .eq('entity_id', tradeRequest.symbol)
+      .gte('ts', new Date(Date.now() - 60000).toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (recentOrder) {
+      console.log('🔁 Duplicate order suppressed');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          duplicate: true,
+          reason: 'duplicate_order_within_60s',
+          error: 'Order already placed within the last 60 seconds'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 429 
+        }
+      );
+    }
+
     // Get current price for notional calculation
     const { data: marketData } = await supabaseClient
       .from('market_data')
@@ -68,6 +95,49 @@ serve(async (req) => {
     // RISK GOVERNOR CHECK (server-side enforcement)
     // ============================================================================
     console.log('🛡️ Calling risk governor...');
+    
+    // Minimal risk checks
+    if (!tradeRequest.stop_loss) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          blocked: true,
+          reason: 'stop_loss_required',
+          error: 'Stop loss is required for all trades'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403 
+        }
+      );
+    }
+
+    // Get account equity for notional check
+    const { data: accountData } = await supabaseClient
+      .from('connections_brokerages')
+      .select('scope')
+      .eq('workspace_id', workspaceId)
+      .eq('provider', 'alpaca')
+      .eq('status', 'active')
+      .maybeSingle();
+
+    const equity = accountData?.scope?.equity || 100000; // Default to 100k if unknown
+    const maxNotional = Math.min(10000, equity * 0.02); // Max 2% of equity or $10k
+
+    if (notional > maxNotional) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          blocked: true,
+          reason: 'exceeds_max_notional',
+          error: `Order exceeds maximum notional value of $${maxNotional.toFixed(2)}`
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403 
+        }
+      );
+    }
     
     const { data: gateResult, error: gateError } = await supabaseClient.functions.invoke('risk-governor', {
       body: {
