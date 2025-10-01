@@ -846,6 +846,24 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          flags: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          flags?: Json
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          flags?: Json
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       features: {
         Row: {
           code: string

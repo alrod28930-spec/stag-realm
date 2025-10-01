@@ -41,3 +41,9 @@ verify_jwt = true
 
 [functions.market-data-sync]
 verify_jwt = false
+
+[functions.bot-worker]
+verify_jwt = false
+
+[functions.risk-governor]
+verify_jwt = false
