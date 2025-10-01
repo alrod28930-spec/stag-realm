@@ -35,6 +35,7 @@ import { toggleService } from '@/services/toggleService';
 import { UserSettingsPanel } from '@/components/settings/UserSettingsPanel';
 import { BrokerageConnectionCard } from '@/components/settings/BrokerageConnectionCard';
 import { BrokerageDockSettings } from '@/components/settings/BrokerageDockSettings';
+import { BrokerHealthCard } from '@/components/system/BrokerHealthCard';
 import { supabase } from '@/integrations/supabase/client';
 import type { BrokerageConnection } from '@/types/userSettings';
 import { useEffect } from 'react';
@@ -277,11 +278,15 @@ export default function Settings() {
         {/* Broker API Keys */}
         <TabsContent value="brokers" className="space-y-6">
           {currentWorkspaceId && (
-            <BrokerageConnectionCard
-              workspaceId={currentWorkspaceId}
-              connections={brokerageConnections}
-              onUpdate={loadBrokerageConnections}
-            />
+            <>
+              <BrokerageConnectionCard
+                workspaceId={currentWorkspaceId}
+                connections={brokerageConnections}
+                onUpdate={loadBrokerageConnections}
+              />
+              
+              <BrokerHealthCard workspaceId={currentWorkspaceId} />
+            </>
           )}
 
           {/* Licensing Tier */}

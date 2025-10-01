@@ -266,6 +266,21 @@ serve(async (req) => {
 
       } catch (workspaceError) {
         console.error(`Error processing workspace ${conn.workspace_id}:`, workspaceError);
+        
+        // Log broker health as down
+        try {
+          await supabase.from('broker_health').upsert({
+            workspace_id: conn.workspace_id,
+            broker: 'alpaca',
+            last_check: new Date().toISOString(),
+            status: 'down',
+            error_message: workspaceError instanceof Error ? workspaceError.message : 'Sync failed'
+          }, {
+            onConflict: 'workspace_id,broker'
+          });
+        } catch (healthError) {
+          console.error('Failed to update broker_health:', healthError);
+        }
       }
     }
 

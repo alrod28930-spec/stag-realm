@@ -2555,6 +2555,15 @@ export type Database = {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: string
       }
+      log_sync_event: {
+        Args: {
+          _actor: string
+          _event_type: string
+          _payload: Json
+          _workspace_id: string
+        }
+        Returns: string
+      }
       match_kb_chunks: {
         Args: {
           match_count?: number

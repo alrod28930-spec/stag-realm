@@ -5,6 +5,7 @@
  */
 
 import { supabase } from './client';
+import { getCandles, type Candle } from './candles';
 import { eventBus } from '@/services/eventBus';
 import { logService } from '@/services/logging';
 import {
@@ -27,7 +28,7 @@ import {
 
 export class BIDAdapter {
   /**
-   * Get market snapshots (candles) for a symbol
+   * Get market snapshots (candles) for a symbol using canonical fetch_candles RPC
    */
   async getMarketSnapshots(
     workspaceId: string,
@@ -35,22 +36,19 @@ export class BIDAdapter {
     tf: string,
     from?: string,
     to?: string
-  ) {
+  ): Promise<{ data: Candle[] | null; error: any }> {
     try {
-      let query = supabase
-        .from('candles')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('symbol', symbol)
-        .eq('tf', tf)
-        .order('ts', { ascending: false });
+      // Default to last 7 days if no range specified
+      const now = new Date();
+      const defaultFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      const fromISO = from || defaultFrom.toISOString();
+      const toISO = to || now.toISOString();
 
-      if (from) query = query.gte('ts', from);
-      if (to) query = query.lte('ts', to);
-
-      const { data, error } = await query.limit(1000);
-
-      if (error) throw error;
+      // Use the canonical getCandles function which calls fetch_candles RPC
+      // This has built-in retry, timeout, and cache fallback
+      const data = await getCandles(workspaceId, symbol, tf, fromISO, toISO);
+      
       return { data, error: null };
     } catch (error) {
       logService.log('error', 'Failed to fetch market snapshots', { error, symbol, tf });
