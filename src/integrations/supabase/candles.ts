@@ -52,6 +52,7 @@ export async function getCandles(
         _from: fromISO,
         _to: toISO,
       })
+      // @ts-ignore: supabase-js supports abortSignal
       .abortSignal(controller.signal);
 
     if (error) throw error;
