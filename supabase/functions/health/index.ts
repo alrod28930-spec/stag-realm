@@ -1,4 +1,4 @@
-// Health check endpoint for system status
+// deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -26,7 +26,6 @@ Deno.serve(async (req: Request) => {
       errors_24h: 0 
     };
 
-    // Get last sync heartbeat
     const { data: hb } = await supabase
       .from('recorder_mirror')
       .select('ts, payload')
@@ -38,7 +37,6 @@ Deno.serve(async (req: Request) => {
       
     res.last_sync = hb?.ts ?? null;
 
-    // Get candle summary for workspace
     if (ws) {
       const { data: rows } = await supabase
         .from('candles')
@@ -55,7 +53,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Count errors in last 24h
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count } = await supabase
       .from('recorder_mirror')
