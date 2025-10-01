@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,9 +27,18 @@ import { MultiChartPanel } from '@/components/charts/MultiChartPanel';
 import { OrderTicket } from '@/components/tradingdesk/OrderTicket';
 import { IntradayEquityCurve } from '@/components/charts/IntradayEquityCurve';
 import { SymbolSearchInput } from '@/components/market/SymbolSearchInput';
+import { RiskCounterDisplay } from '@/components/trading/RiskCounterDisplay';
+import { getCurrentUserWorkspace } from '@/utils/auth';
 
 export default function TradingDesk() {
   const [selectedChartSymbol, setSelectedChartSymbol] = useState('AAPL');
+  const [workspaceId, setWorkspaceId] = useState<string>('');
+
+  useEffect(() => {
+    getCurrentUserWorkspace().then(ws => {
+      if (ws) setWorkspaceId(ws);
+    });
+  }, []);
 
   return (
     <TierComplianceGuard requiresLiveTrading={true}>
@@ -111,10 +120,11 @@ export default function TradingDesk() {
           
           {/* Trading Metrics */}
           <DailyTradesCard />
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <MarketTracker />
             <AllocationsCard />
             <HitRateCard />
+            {workspaceId && <RiskCounterDisplay workspaceId={workspaceId} />}
             <ManualOrderCard />
           </div>
         </TabsContent>

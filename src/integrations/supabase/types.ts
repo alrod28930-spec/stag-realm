@@ -1677,6 +1677,106 @@ export type Database = {
           },
         ]
       }
+      risk_counters: {
+        Row: {
+          day: string
+          last_loss_at: string | null
+          last_trade_at: string | null
+          losses: number
+          total_pnl: number
+          trades: number
+          wins: number
+          workspace_id: string
+        }
+        Insert: {
+          day: string
+          last_loss_at?: string | null
+          last_trade_at?: string | null
+          losses?: number
+          total_pnl?: number
+          trades?: number
+          wins?: number
+          workspace_id: string
+        }
+        Update: {
+          day?: string
+          last_loss_at?: string | null
+          last_trade_at?: string | null
+          losses?: number
+          total_pnl?: number
+          trades?: number
+          wins?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_counters_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risk_policies: {
+        Row: {
+          allow_postmarket: boolean
+          allow_premarket: boolean
+          cooldown_after_loss_secs: number
+          created_at: string
+          market_data_freshness_ms: number
+          max_daily_loss_pct: number
+          max_notional_per_trade: number
+          max_positions: number
+          max_spread_pct: number
+          max_trades_per_day: number
+          min_liquidity_volume: number
+          require_stop_loss: boolean
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          allow_postmarket?: boolean
+          allow_premarket?: boolean
+          cooldown_after_loss_secs?: number
+          created_at?: string
+          market_data_freshness_ms?: number
+          max_daily_loss_pct?: number
+          max_notional_per_trade?: number
+          max_positions?: number
+          max_spread_pct?: number
+          max_trades_per_day?: number
+          min_liquidity_volume?: number
+          require_stop_loss?: boolean
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          allow_postmarket?: boolean
+          allow_premarket?: boolean
+          cooldown_after_loss_secs?: number
+          created_at?: string
+          market_data_freshness_ms?: number
+          max_daily_loss_pct?: number
+          max_notional_per_trade?: number
+          max_positions?: number
+          max_spread_pct?: number
+          max_trades_per_day?: number
+          min_liquidity_volume?: number
+          require_stop_loss?: boolean
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_policies_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       risk_portfolio: {
         Row: {
           beta: number | null
@@ -2463,6 +2563,19 @@ export type Database = {
         }
         Returns: string
       }
+      get_risk_counter: {
+        Args: { _day: string; _workspace_id: string }
+        Returns: {
+          day: string
+          last_loss_at: string | null
+          last_trade_at: string | null
+          losses: number
+          total_pnl: number
+          trades: number
+          wins: number
+          workspace_id: string
+        }
+      }
       get_user_subscription_tier: {
         Args: { p_workspace_id: string }
         Returns: string
@@ -2526,6 +2639,10 @@ export type Database = {
       hnswhandler: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      increment_trade_counter: {
+        Args: { _is_loss: boolean; _pnl: number; _workspace_id: string }
+        Returns: undefined
       }
       is_member_of_workspace: {
         Args: { w_id: string }

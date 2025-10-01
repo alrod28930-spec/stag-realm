@@ -51,9 +51,63 @@ serve(async (req) => {
       throw new Error('Quantity must be greater than 0');
     }
 
+    const workspaceId = user.user_metadata?.workspace_id || user.id;
+
+    // Get current price for notional calculation
+    const { data: marketData } = await supabaseClient
+      .from('market_data')
+      .select('price')
+      .eq('workspace_id', workspaceId)
+      .eq('symbol', tradeRequest.symbol)
+      .maybeSingle();
+
+    const price = tradeRequest.price || marketData?.price || 0;
+    const notional = tradeRequest.quantity * price;
+
+    // ============================================================================
+    // RISK GOVERNOR CHECK (server-side enforcement)
+    // ============================================================================
+    console.log('🛡️ Calling risk governor...');
+    
+    const { data: gateResult, error: gateError } = await supabaseClient.functions.invoke('risk-governor', {
+      body: {
+        order: {
+          workspace_id: workspaceId,
+          symbol: tradeRequest.symbol,
+          side: tradeRequest.side,
+          qty: tradeRequest.quantity,
+          notional,
+          stop_loss_pct: tradeRequest.stop_loss,
+          take_profit_pct: tradeRequest.take_profit,
+          price
+        }
+      }
+    });
+
+    if (gateError || !gateResult?.pass) {
+      const reason = gateResult?.reason || gateError?.message || 'risk_gate_blocked';
+      console.log('🚫 Risk governor blocked order:', reason);
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          blocked: true,
+          reason: reason,
+          error: `Order blocked by risk governor: ${reason}`
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403 
+        }
+      );
+    }
+
+    console.log('✅ Risk governor approved order');
+    // ============================================================================
+
     // Log trade intent
     await supabaseClient.from('rec_events').insert({
-      workspace_id: user.user_metadata?.workspace_id || user.id,
+      workspace_id: workspaceId,
       user_id: user.id,
       event_type: 'trade.manual.intent',
       severity: 1,

@@ -36,6 +36,7 @@ import { UserSettingsPanel } from '@/components/settings/UserSettingsPanel';
 import { BrokerageConnectionCard } from '@/components/settings/BrokerageConnectionCard';
 import { BrokerageDockSettings } from '@/components/settings/BrokerageDockSettings';
 import { BrokerHealthCard } from '@/components/system/BrokerHealthCard';
+import { RiskPolicyCard } from '@/components/trading/RiskPolicyCard';
 import { supabase } from '@/integrations/supabase/client';
 import type { BrokerageConnection } from '@/types/userSettings';
 import { useEffect } from 'react';
@@ -286,6 +287,8 @@ export default function Settings() {
               />
               
               <BrokerHealthCard workspaceId={currentWorkspaceId} />
+              
+              <RiskPolicyCard workspaceId={currentWorkspaceId} />
             </>
           )}
 
