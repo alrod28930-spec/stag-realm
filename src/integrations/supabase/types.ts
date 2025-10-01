@@ -2017,6 +2017,50 @@ export type Database = {
           },
         ]
       }
+      strategies: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          owner_user_id: string | null
+          params: Json
+          updated_at: string
+          version: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          owner_user_id?: string | null
+          params?: Json
+          updated_at?: string
+          version?: number
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          owner_user_id?: string | null
+          params?: Json
+          updated_at?: string
+          version?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategies_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       strategy_runs: {
         Row: {
           cfg: Json
