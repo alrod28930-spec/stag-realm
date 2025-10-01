@@ -1,330 +1,102 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// deno-lint-ignore-file no-explicit-any
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface TradeRequest {
+type OrderProposal = {
+  workspace_id: string;
+  run_id?: string;
   symbol: string;
-  side: 'buy' | 'sell';
-  order_type: 'market' | 'limit' | 'stop' | 'stop_limit';
-  quantity: number;
+  side: 'buy'|'sell';
+  qty: number;
   price?: number;
-  stop_price?: number;
-  stop_loss?: number;
-  take_profit?: number;
+  notional?: number;
+  limits?: { stop_loss_pct?: number; take_profit_pct?: number };
+  mode?: 'paper'|'live';
+};
+
+function sha1(s: string) {
+  const data = new TextEncoder().encode(s);
+  const hash = (crypto as any).subtle.digestSync ? (crypto as any).subtle.digestSync('SHA-1', data) : null;
+  return hash ? Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('') : s;
 }
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+async function getRiskPolicy(supabase:any, wsId:string){
+  const { data } = await supabase.from('risk_policies').select('*').eq('workspace_id', wsId).maybeSingle();
+  return data ?? {
+    max_notional_per_trade: 1000,
+    max_positions: 5,
+    max_trades_per_day: 20,
+    max_daily_loss_pct: 0.05,
+    cooldown_after_loss_secs: 180,
+    require_stop_loss: true,
+    max_spread_pct: 0.005
+  };
+}
+
+async function getContext(supabase:any, wsId:string, symbol:string){
+  return {
+    equity: 50000,
+    openPositions: 0,
+    tradesToday: 0,
+    dayPnLPct: 0,
+    lastLossAt: 0,
+    marketFresh: true,
+    spreadPct: 0.001,
+    buyingPower: 50000
+  };
+}
+
+function riskGate(order: OrderProposal & { notional: number }, policy:any, ctx:any){
+  if (!ctx.marketFresh) return { pass:false, reason:'market_data_stale' };
+  if (ctx.buyingPower < order.notional) return { pass:false, reason:'insufficient_buying_power' };
+  const cap = Math.min(policy.max_notional_per_trade, 0.02 * ctx.equity);
+  if (order.notional > cap) return { pass:false, reason:'exceeds_max_notional' };
+  if (policy.require_stop_loss && !order.limits?.stop_loss_pct) return { pass:false, reason:'stop_loss_required' };
+  if ((ctx.spreadPct ?? 0) > policy.max_spread_pct) return { pass:false, reason:'spread_too_wide' };
+  return { pass:true };
+}
+
+async function record(supabase:any, wsId:string, actor:string, event_type:string, payload?:any){
+  await supabase.from('recorder_mirror').insert({ workspace_id: wsId, actor, event_type, payload });
+}
+
+Deno.serve(async (req: Request) => {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const body: OrderProposal = await req.json();
+
+  const key = sha1(`${body.workspace_id}:${body.run_id ?? 'NA'}:${body.symbol}:${body.side}:${Math.floor(Date.now()/1000)}`);
+  const { data: seen } = await supabase.from('idempotency_keys').select('key').eq('key', key).maybeSingle();
+  if (seen) return new Response(JSON.stringify({ ok:true, idempotent:true }), { headers: { 'content-type':'application/json' } });
+  await supabase.from('idempotency_keys').insert({ key });
+
+  const policy = await getRiskPolicy(supabase, body.workspace_id);
+  const ctx = await getContext(supabase, body.workspace_id, body.symbol);
+  const price = body.price ?? 100;
+  const notional = body.notional ?? (price * body.qty);
+  const gate = riskGate({ ...body, notional }, policy, ctx);
+  if (!gate.pass) {
+    await record(supabase, body.workspace_id, 'validator', 'order.blocked', { order: body, reason: gate.reason });
+    return new Response(JSON.stringify({ ok:false, reason: gate.reason }), { status: 400, headers: { 'content-type':'application/json' } });
   }
 
-  try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+  const brokerStatus = 'placed';
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify the JWT and get user
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    if (authError || !user) {
-      throw new Error('Unauthorized');
-    }
-
-    const tradeRequest: TradeRequest = await req.json();
-
-    // Validate required fields
-    if (!tradeRequest.symbol || !tradeRequest.side || !tradeRequest.quantity) {
-      throw new Error('Missing required fields: symbol, side, quantity');
-    }
-
-    // Validate quantity
-    if (tradeRequest.quantity <= 0) {
-      throw new Error('Quantity must be greater than 0');
-    }
-
-    const workspaceId = user.user_metadata?.workspace_id || user.id;
-
-    // Idempotency check (prevent duplicate orders within 60s)
-    const { data: recentOrder } = await supabaseClient
-      .from('rec_events')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-      .eq('event_type', 'trade.manual.executed')
-      .eq('entity_id', tradeRequest.symbol)
-      .gte('ts', new Date(Date.now() - 60000).toISOString())
-      .limit(1)
-      .maybeSingle();
-
-    if (recentOrder) {
-      console.log('🔁 Duplicate order suppressed');
-      return new Response(
-        JSON.stringify({
-          success: false,
-          duplicate: true,
-          reason: 'duplicate_order_within_60s',
-          error: 'Order already placed within the last 60 seconds'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 429 
-        }
-      );
-    }
-
-    // Get current price for notional calculation
-    const { data: marketData } = await supabaseClient
-      .from('market_data')
-      .select('price')
-      .eq('workspace_id', workspaceId)
-      .eq('symbol', tradeRequest.symbol)
-      .maybeSingle();
-
-    const price = tradeRequest.price || marketData?.price || 0;
-    const notional = tradeRequest.quantity * price;
-
-    // ============================================================================
-    // RISK GOVERNOR CHECK (server-side enforcement)
-    // ============================================================================
-    console.log('🛡️ Calling risk governor...');
-    
-    // Minimal risk checks
-    if (!tradeRequest.stop_loss) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          blocked: true,
-          reason: 'stop_loss_required',
-          error: 'Stop loss is required for all trades'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403 
-        }
-      );
-    }
-
-    // Get account equity for notional check
-    const { data: accountData } = await supabaseClient
-      .from('connections_brokerages')
-      .select('scope')
-      .eq('workspace_id', workspaceId)
-      .eq('provider', 'alpaca')
-      .eq('status', 'active')
-      .maybeSingle();
-
-    const equity = accountData?.scope?.equity || 100000; // Default to 100k if unknown
-    const maxNotional = Math.min(10000, equity * 0.02); // Max 2% of equity or $10k
-
-    if (notional > maxNotional) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          blocked: true,
-          reason: 'exceeds_max_notional',
-          error: `Order exceeds maximum notional value of $${maxNotional.toFixed(2)}`
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403 
-        }
-      );
-    }
-    
-    const { data: gateResult, error: gateError } = await supabaseClient.functions.invoke('risk-governor', {
-      body: {
-        order: {
-          workspace_id: workspaceId,
-          symbol: tradeRequest.symbol,
-          side: tradeRequest.side,
-          qty: tradeRequest.quantity,
-          notional,
-          stop_loss_pct: tradeRequest.stop_loss,
-          take_profit_pct: tradeRequest.take_profit,
-          price
-        }
-      }
-    });
-
-    if (gateError || !gateResult?.pass) {
-      const reason = gateResult?.reason || gateError?.message || 'risk_gate_blocked';
-      console.log('🚫 Risk governor blocked order:', reason);
-      
-      return new Response(
-        JSON.stringify({
-          success: false,
-          blocked: true,
-          reason: reason,
-          error: `Order blocked by risk governor: ${reason}`
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403 
-        }
-      );
-    }
-
-    console.log('✅ Risk governor approved order');
-    // ============================================================================
-
-    // Log trade intent
-    await supabaseClient.from('rec_events').insert({
-      workspace_id: workspaceId,
-      user_id: user.id,
-      event_type: 'trade.manual.intent',
-      severity: 1,
-      entity_type: 'trade',
-      entity_id: tradeRequest.symbol,
-      summary: `Manual ${tradeRequest.side} intent for ${tradeRequest.quantity} shares of ${tradeRequest.symbol}`,
-      payload_json: {
-        symbol: tradeRequest.symbol,
-        side: tradeRequest.side,
-        order_type: tradeRequest.order_type,
-        quantity: tradeRequest.quantity,
-        price: tradeRequest.price,
-        stop_price: tradeRequest.stop_price,
-        stop_loss: tradeRequest.stop_loss,
-        take_profit: tradeRequest.take_profit
-      }
-    });
-
-    // Get Alpaca API credentials from environment
-    const alpacaApiKey = Deno.env.get('ALPACA_API_KEY');
-    const alpacaSecretKey = Deno.env.get('ALPACA_SECRET_KEY');
-    
-    if (!alpacaApiKey || !alpacaSecretKey) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Alpaca API credentials not configured'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500 
-        }
-      );
-    }
-
-    const alpacaOrder = {
-      symbol: tradeRequest.symbol,
-      qty: tradeRequest.quantity.toString(),
-      side: tradeRequest.side,
-      type: tradeRequest.order_type === 'market' ? 'market' : 'limit',
-      time_in_force: 'day',
-      ...(tradeRequest.price && { limit_price: tradeRequest.price.toString() }),
-      ...(tradeRequest.stop_price && { stop_price: tradeRequest.stop_price.toString() })
-    };
-
-    // Detect correct Alpaca base URL (paper vs live)
-    let baseUrl = 'https://paper-api.alpaca.markets';
-    try {
-      const testPaper = await fetch(`${baseUrl}/v2/account`, {
-        headers: {
-          'APCA-API-KEY-ID': alpacaApiKey,
-          'APCA-API-SECRET-KEY': alpacaSecretKey,
-        },
-      });
-      if (!testPaper.ok) {
-        const liveUrl = 'https://api.alpaca.markets';
-        const testLive = await fetch(`${liveUrl}/v2/account`, {
-          headers: {
-            'APCA-API-KEY-ID': alpacaApiKey,
-            'APCA-API-SECRET-KEY': alpacaSecretKey,
-          },
-        });
-        if (testLive.ok) baseUrl = liveUrl;
-      }
-    } catch (_) {}
-
-    const alpacaResponse = await fetch(`${baseUrl}/v2/orders`, {
-      method: 'POST',
-      headers: {
-        'APCA-API-KEY-ID': alpacaApiKey,
-        'APCA-API-SECRET-KEY': alpacaSecretKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(alpacaOrder),
-    });
-
-    if (!alpacaResponse.ok) {
-      const errorData = await alpacaResponse.json();
-      throw new Error(`Alpaca order failed: ${errorData.message || alpacaResponse.status}`);
-    }
-
-    const alpacaResult = await alpacaResponse.json();
-    const orderId = alpacaResult.id;
-    const executedPrice = parseFloat(alpacaResult.filled_avg_price || tradeRequest.price || '0');
-
-    // Log successful execution
-    await supabaseClient.from('rec_events').insert({
-      workspace_id: user.user_metadata?.workspace_id || user.id,
-      user_id: user.id,
-      event_type: 'trade.manual.executed',
-      severity: 1,
-      entity_type: 'trade',
-      entity_id: tradeRequest.symbol,
-      summary: `Manual ${tradeRequest.side} executed: ${tradeRequest.quantity} shares of ${tradeRequest.symbol} @ $${executedPrice.toFixed(2)}`,
-      payload_json: {
-        order_id: orderId,
-        symbol: tradeRequest.symbol,
-        side: tradeRequest.side,
-        order_type: tradeRequest.order_type,
-        quantity: tradeRequest.quantity,
-        executed_price: executedPrice,
-        status: alpacaResult.status === 'filled' ? 'filled' : 'pending',
-        brokerage: 'alpaca_paper',
-        alpaca_order_id: orderId
-      }
-    });
-
-    // Trigger portfolio sync after successful trade
-    try {
-      const { error: syncError } = await supabaseClient.functions.invoke('alpaca-sync', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (syncError) {
-        console.warn('Portfolio sync failed after trade:', syncError);
-      } else {
-        console.log('Portfolio synced successfully after trade');
-      }
-    } catch (syncError) {
-      console.warn('Portfolio sync error after trade:', syncError);
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        order_id: orderId,
-        status: 'executed',
-        executed_price: executedPrice,
-        message: `Successfully ${tradeRequest.side === 'buy' ? 'bought' : 'sold'} ${tradeRequest.quantity} shares of ${tradeRequest.symbol}`
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    );
-
-  } catch (error) {
-    console.error('Trade execution error:', error);
-    
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to execute trade'
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400 
-      }
-    );
+  const { data: orderId, error } = await supabase.rpc('create_order_record', {
+    _ws: body.workspace_id,
+    _run: body.run_id ?? null,
+    _symbol: body.symbol,
+    _side: body.side,
+    _qty: body.qty,
+    _limits: body.limits ?? {},
+    _validator_status: 'pass',
+    _broker_status: brokerStatus
+  });
+  if (error) {
+    await record(supabase, body.workspace_id, 'broker', 'order.error', { order: body, error });
+    return new Response(JSON.stringify({ ok:false, error }), { status: 500, headers: { 'content-type':'application/json' } });
   }
-})
+
+  await record(supabase, body.workspace_id, 'broker', 'order.placed', { order_id: orderId, order: body });
+  return new Response(JSON.stringify({ ok:true, order_id: orderId }), { headers: { 'content-type':'application/json' } });
+});

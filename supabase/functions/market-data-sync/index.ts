@@ -1,368 +1,134 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+// deno-lint-ignore-file no-explicit-any
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+type Bar = { t: string; o: number; h: number; l: number; c: number; v?: number; vw?: number };
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-interface AlpacaBar {
-  t: string;
-  o: number;
-  h: number;
-  l: number;
-  c: number;
-  v: number;
-  vw?: number;
+const DEFAULT_SYMBOLS = ['AAPL','QQQ','META','SPY'];
+const TIMEFRAMES = ['1D','1h','5m'];
+
+function sleep(ms: number){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function fetchAlpacaBars(apiKey: string, apiSecret: string, symbol: string, tf: string, limit = 1000): Promise<Bar[]> {
+  const tfMap: Record<string,string> = { '1m':'1Min','5m':'5Min','15m':'15Min','1h':'1Hour','1D':'1Day' };
+  const timeframe = tfMap[tf] ?? '1Day';
+  const end = new Date();
+  const start = new Date(end.getTime() - (tf === '1D' ? 1000*60*60*24*365 : 1000*60*60*24*14));
+  const url = new URL(`https://data.alpaca.markets/v2/stocks/${encodeURIComponent(symbol)}/bars`);
+  url.searchParams.set('timeframe', timeframe);
+  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('start', start.toISOString());
+  url.searchParams.set('end', end.toISOString());
+
+  const res = await fetch(url.toString(), {
+    headers: { 'APCA-API-KEY-ID': apiKey, 'APCA-API-SECRET-KEY': apiSecret }
+  });
+  if (!res.ok) throw new Error(`Alpaca bars ${symbol} ${tf}: ${res.status} ${await res.text()}`);
+  const json = await res.json();
+  const bars: Bar[] = json?.bars ?? [];
+  return bars;
 }
 
-interface AlpacaQuote {
-  ap: number;
-  bp: number;
+async function upsertCandles(supabase: any, wsId: string, symbol: string, tf: string, bars: Bar[]) {
+  if (!bars?.length) return;
+  const rows = bars.map(b => ({
+    workspace_id: wsId,
+    symbol,
+    tf,
+    ts: b.t,
+    o: b.o, h: b.h, l: b.l, c: b.c,
+    v: b.v ?? null,
+    vwap: b.vw ?? null
+  }));
+  const { error } = await supabase.from('candles').upsert(rows, { onConflict: 'workspace_id,symbol,tf,ts' });
+  if (error) throw error;
 }
 
-// Circuit breaker state per workspace
-const circuitBreakers = new Map<string, { failures: number; lastFailure: Date; isOpen: boolean }>();
+async function record(supabase: any, wsId: string, actor: string, event_type: string, payload?: any) {
+  await supabase.from('recorder_mirror').insert({ workspace_id: wsId, actor, event_type, payload });
+}
 
-function getCircuitBreaker(key: string) {
-  if (!circuitBreakers.has(key)) {
-    circuitBreakers.set(key, { failures: 0, lastFailure: new Date(0), isOpen: false });
+async function getStoredAlpacaCreds(supabase: any, wsId: string) {
+  const { data: link } = await supabase
+    .from('connections_brokerages')
+    .select('api_key_cipher, api_secret_cipher, nonce')
+    .eq('workspace_id', wsId)
+    .eq('provider', 'alpaca')
+    .eq('status','active')
+    .maybeSingle();
+
+  if (link?.api_key_cipher && link?.api_secret_cipher) {
+    const dec = await supabase.functions.invoke('decrypt-brokerage-credentials', {
+      body: { encrypted: { api_key_cipher: link.api_key_cipher, api_secret_cipher: link.api_secret_cipher, nonce: link.nonce } }
+    });
+    const cred = dec.data?.credentials ?? {};
+    const apiKey = cred.api_key ?? cred.apiKey;
+    const apiSecret = cred.secret_key ?? cred.apiSecret;
+    if (apiKey && apiSecret) return { apiKey, apiSecret };
   }
-  return circuitBreakers.get(key)!;
-}
-
-function recordSuccess(key: string) {
-  const cb = getCircuitBreaker(key);
-  cb.failures = 0;
-  cb.isOpen = false;
-}
-
-function recordFailure(key: string) {
-  const cb = getCircuitBreaker(key);
-  cb.failures++;
-  cb.lastFailure = new Date();
-  if (cb.failures >= 3) {
-    cb.isOpen = true;
-    console.warn(`🔴 Circuit breaker OPEN for ${key} (${cb.failures} failures)`);
-  }
-}
-
-function isCircuitOpen(key: string): boolean {
-  const cb = getCircuitBreaker(key);
-  if (!cb.isOpen) return false;
   
-  // Auto-reset after 5 minutes
-  const elapsed = Date.now() - cb.lastFailure.getTime();
-  if (elapsed > 5 * 60 * 1000) {
-    console.log(`🟢 Circuit breaker RESET for ${key}`);
-    cb.isOpen = false;
-    cb.failures = 0;
-    return false;
-  }
-  return true;
+  const apiKey = Deno.env.get('ALPACA_API_KEY') ?? '';
+  const apiSecret = Deno.env.get('ALPACA_SECRET_KEY') ?? '';
+  return { apiKey, apiSecret };
 }
 
-async function fetchWithRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelay: number = 200
-): Promise<T | null> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+Deno.serve(async (req: Request) => {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  const { searchParams } = new URL(req.url);
+  const wsId = searchParams.get('ws');
+  let workspaces: { id: string }[] = [];
+
+  if (wsId) {
+    workspaces = [{ id: wsId }];
+  } else {
+    const { data } = await supabase
+      .from('feature_flags')
+      .select('workspace_id')
+      .limit(1000);
+    workspaces = (data ?? []).map((r: any) => ({ id: r.workspace_id }));
+  }
+
+  for (const ws of workspaces) {
     try {
-      return await fn();
-    } catch (error) {
-      if (attempt === maxRetries) {
-        console.error(`❌ Failed after ${maxRetries} attempts:`, error);
-        return null;
+      const { data: have } = await supabase.from('ref_symbols').select('symbol');
+      const haveSet = new Set((have ?? []).map((r: any) => r.symbol));
+      const symbols = DEFAULT_SYMBOLS.filter(s => haveSet.has(s));
+      if (!symbols.length) {
+        await supabase.from('ref_symbols').upsert(DEFAULT_SYMBOLS.map(s => ({ symbol: s, exchange: 'NASDAQ', active: true })));
       }
-      const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 100; // jitter
-      console.log(`⏳ Retry ${attempt}/${maxRetries} after ${delay.toFixed(0)}ms`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  return null;
-}
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    console.log('🔄 Starting Oracle market data sync...');
-
-    // Get active brokerage connections
-    const { data: connections, error: connError } = await supabase
-      .from('connections_brokerages')
-      .select('id, workspace_id, provider, status')
-      .eq('provider', 'alpaca')
-      .eq('status', 'active');
-
-    if (connError) throw connError;
-    if (!connections || connections.length === 0) {
-      console.log('⚠️ No active Alpaca connections');
-      return new Response(JSON.stringify({ message: 'No active connections' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      });
-    }
-
-    console.log(`✅ Found ${connections.length} active workspace(s)`);
-
-    // Get whitelisted symbols from ref_symbols
-    const { data: refSymbols, error: symbolsError } = await supabase
-      .from('ref_symbols')
-      .select('symbol')
-      .eq('active', true);
-
-    if (symbolsError) throw symbolsError;
-    const whitelist = new Set(refSymbols?.map(s => s.symbol) || []);
-    console.log(`📋 Symbol whitelist: ${whitelist.size} active symbols`);
-
-    const timeframes = [
-      { alpaca: '1Day', db: '1D', days: 100 },
-      { alpaca: '1Hour', db: '1h', days: 30 },
-      { alpaca: '5Min', db: '5m', days: 5 },
-    ];
-
-    let totalBarsInserted = 0;
-    const healthReport: any[] = [];
-
-    // Process each workspace
-    for (const conn of connections) {
-      const wsKey = `ws:${conn.workspace_id}`;
-      if (isCircuitOpen(wsKey)) {
-        console.log(`⏭️ Skipping ${conn.workspace_id} (circuit breaker open)`);
+      const { apiKey, apiSecret } = await getStoredAlpacaCreds(supabase, ws.id);
+      if (!apiKey || !apiSecret) {
+        await record(supabase, ws.id, 'oracle', 'sync.error', { reason: 'no_credentials' });
         continue;
       }
 
-      try {
-        console.log(`\n📊 Processing workspace: ${conn.workspace_id}`);
-
-        // Get credentials (encrypted first, env fallback)
-        let apiKey: string | undefined;
-        let apiSecret: string | undefined;
-
-        try {
-          const { data: credData, error: credError } = await supabase.functions.invoke(
-            'decrypt-brokerage-credentials',
-            { body: { connectionId: conn.id } }
-          );
-
-          if (!credError && credData?.success && credData?.credentials) {
-            apiKey = credData.credentials.api_key || credData.credentials.apiKey;
-            apiSecret = credData.credentials.secret_key || credData.credentials.apiSecret;
-            console.log(`🔑 Using encrypted credentials`);
-          } else {
-            throw new Error('Decrypt returned no credentials');
-          }
-        } catch (decryptErr) {
-          console.warn(`⚠️ Decrypt failed, trying env fallback`);
-          apiKey = Deno.env.get('ALPACA_API_KEY');
-          apiSecret = Deno.env.get('ALPACA_SECRET_KEY');
-          if (apiKey && apiSecret) {
-            console.log(`🔑 Using environment fallback credentials`);
-          }
-        }
-
-        if (!apiKey || !apiSecret) {
-          console.error(`❌ No valid credentials for workspace ${conn.workspace_id}`);
-          recordFailure(wsKey);
+      for (const sym of (symbols.length ? symbols : DEFAULT_SYMBOLS)) {
+        const { data: ok } = await supabase.from('ref_symbols').select('symbol').eq('symbol', sym).maybeSingle();
+        if (!ok) {
+          await record(supabase, ws.id, 'oracle', 'sync.warn', { reason: 'unknown_symbol', symbol: sym });
           continue;
         }
 
-        // Get position symbols + filter by whitelist
-        const { data: positions } = await supabase
-          .from('positions_current')
-          .select('symbol')
-          .eq('workspace_id', conn.workspace_id);
-
-        const posSymbols = positions?.map(p => p.symbol).filter(s => whitelist.has(s)) || [];
-        const allSymbols = [...new Set([...posSymbols, ...Array.from(whitelist).slice(0, 12)])];
-
-        console.log(`📈 Fetching data for ${allSymbols.length} symbols (${posSymbols.length} positions + market indices)`);
-
-        const dataUrl = 'https://data.alpaca.markets';
-        const endDate = new Date();
-        let barsInserted = 0;
-        const lastBarPerSymbol = new Map<string, { tf: string; ts: string }>();
-
-        // Fetch bars per symbol
-        for (const symbol of allSymbols) {
-          if (!whitelist.has(symbol)) {
-            console.log(`⏭️ Skipping ${symbol} (not in whitelist)`);
-            continue;
-          }
-
+        for (const tf of TIMEFRAMES) {
           try {
-            for (const tf of timeframes) {
-              const startDate = new Date();
-              startDate.setDate(startDate.getDate() - tf.days);
-
-              const barsUrl = `${dataUrl}/v2/stocks/${symbol}/bars?` +
-                `start=${startDate.toISOString().split('T')[0]}&` +
-                `end=${endDate.toISOString().split('T')[0]}&` +
-                `timeframe=${tf.alpaca}&limit=1000`;
-
-              const bars = await fetchWithRetry<AlpacaBar[]>(async () => {
-                const resp = await fetch(barsUrl, {
-                  headers: {
-                    'APCA-API-KEY-ID': apiKey!,
-                    'APCA-API-SECRET-KEY': apiSecret!,
-                  }
-                });
-
-                if (!resp.ok) {
-                  const errText = await resp.text();
-                  throw new Error(`${resp.status}: ${errText}`);
-                }
-
-                const data = await resp.json();
-                return data.bars || [];
-              });
-
-              if (!bars || bars.length === 0) {
-                console.log(`⚠️ No ${tf.db} bars for ${symbol}`);
-                continue;
-              }
-
-              // Upsert candles
-              const candleRecords = bars.map(bar => ({
-                workspace_id: conn.workspace_id,
-                symbol,
-                tf: tf.db,
-                ts: bar.t,
-                o: bar.o,
-                h: bar.h,
-                l: bar.l,
-                c: bar.c,
-                v: bar.v,
-                vwap: bar.vw || null
-              }));
-
-              const { error: insertError } = await supabase
-                .from('candles')
-                .upsert(candleRecords, {
-                  onConflict: 'workspace_id,symbol,tf,ts',
-                  ignoreDuplicates: false
-                });
-
-              if (insertError) {
-                console.error(`❌ Insert error (${symbol}, ${tf.db}):`, insertError.message);
-              } else {
-                barsInserted += bars.length;
-                const lastBar = bars[bars.length - 1];
-                lastBarPerSymbol.set(`${symbol}:${tf.db}`, { tf: tf.db, ts: lastBar.t });
-                console.log(`✅ ${bars.length} ${tf.db} bars for ${symbol}`);
-              }
-
-              // Rate limit between timeframes
-              await new Promise(resolve => setTimeout(resolve, 150));
-            }
-
-            // Rate limit between symbols
-            await new Promise(resolve => setTimeout(resolve, 250));
-
-          } catch (symbolError) {
-            console.error(`❌ Error processing ${symbol}:`, symbolError);
+            const bars = await fetchAlpacaBars(apiKey, apiSecret, sym, tf);
+            await upsertCandles(supabase, ws.id, sym, tf, bars);
+            await record(supabase, ws.id, 'oracle', 'sync.heartbeat', {
+              symbol: sym, tf, count: bars.length, last_ts: bars.at(-1)?.t
+            });
+            await sleep(150);
+          } catch (e) {
+            await record(supabase, ws.id, 'oracle', 'sync.error', { symbol: sym, tf, error: String(e) });
           }
         }
-
-        totalBarsInserted += barsInserted;
-        recordSuccess(wsKey);
-
-        // Emit heartbeat event
-        await supabase.rpc('recorder_log', {
-          p_workspace: conn.workspace_id,
-          p_event_type: 'sync.heartbeat',
-          p_severity: 1,
-          p_entity_type: 'oracle',
-          p_entity_id: 'market-data-sync',
-          p_summary: `Synced ${barsInserted} bars for ${allSymbols.length} symbols`,
-          p_payload: {
-            bars_inserted: barsInserted,
-            symbols_processed: allSymbols.length,
-            last_bars: Object.fromEntries(lastBarPerSymbol),
-          }
-        });
-
-        healthReport.push({
-          workspace_id: conn.workspace_id,
-          status: barsInserted > 0 ? 'ok' : 'degraded',
-          bars_inserted: barsInserted,
-          symbols: allSymbols.length,
-        });
-
-        // Watchdog: if 0 bars for this workspace → emit warning
-        if (barsInserted === 0) {
-          console.warn(`⚠️ WATCHDOG: 0 bars inserted for workspace ${conn.workspace_id}`);
-          await supabase.rpc('recorder_log', {
-            p_workspace: conn.workspace_id,
-            p_event_type: 'sync.warn',
-            p_severity: 2,
-            p_entity_type: 'oracle',
-            p_entity_id: 'market-data-sync',
-            p_summary: 'No bars fetched',
-            p_payload: {
-              reason: 'API returned 0 bars',
-              symbols_attempted: allSymbols,
-            }
-          });
-        }
-
-      } catch (workspaceError) {
-        console.error(`❌ Workspace ${conn.workspace_id} error:`, workspaceError);
-        recordFailure(wsKey);
-
-        await supabase.rpc('recorder_log', {
-          p_workspace: conn.workspace_id,
-          p_event_type: 'sync.error',
-          p_severity: 3,
-          p_entity_type: 'oracle',
-          p_entity_id: 'market-data-sync',
-          p_summary: 'Sync failed',
-          p_payload: {
-            error: workspaceError instanceof Error ? workspaceError.message : 'Unknown error'
-          }
-        });
-
-        healthReport.push({
-          workspace_id: conn.workspace_id,
-          status: 'down',
-          error: workspaceError instanceof Error ? workspaceError.message : 'Unknown',
-        });
       }
+    } catch (e) {
+      await record(supabase, ws.id, 'oracle', 'sync.error', { error: String(e) });
     }
-
-    console.log(`\n✅ Oracle sync complete: ${totalBarsInserted} bars across ${connections.length} workspace(s)`);
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        workspaces: connections.length,
-        bars_inserted: totalBarsInserted,
-        health: healthReport,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
-    );
-
-  } catch (error) {
-    console.error('❌ Oracle sync error:', error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : 'Oracle sync failed',
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
-    );
   }
+
+  return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
 });
