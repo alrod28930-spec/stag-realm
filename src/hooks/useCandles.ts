@@ -4,9 +4,19 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getCandles, type Candle } from '@/integrations/supabase/candles';
+import { getCandles } from '@/integrations/supabase/candles';
 
 type CandleState = 'loading' | 'ready' | 'degraded' | 'error';
+
+export interface Candle {
+  ts: string;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v: number;
+  vwap?: number;
+}
 
 export interface UseCandlesReturn {
   state: CandleState;
