@@ -60,7 +60,7 @@ export const BID = {
   // ========== MARKET DATA (READ) ==========
   
   /**
-   * Fetch candles via RPC (canonical read for all charts)
+   * Fetch candles via RPC (canonical read for all charts) - backend-first
    */
   async getMarketSnapshots(
     workspaceId: string,
@@ -69,16 +69,23 @@ export const BID = {
     from?: string,
     to?: string
   ) {
-    const fromISO = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const fromISO = from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const toISO = to || new Date().toISOString();
-    
-    return supabase.rpc('fetch_candles', {
+
+    const { data, error } = await supabase.rpc('fetch_candles', {
       _ws: workspaceId,
       _symbol: symbol,
       _tf: tf,
       _from: fromISO,
       _to: toISO,
     });
+
+    if (error) {
+      console.error('❌ [BID] getMarketSnapshots error:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
   },
 
   /**
