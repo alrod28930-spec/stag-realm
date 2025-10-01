@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getCandles, getCachedCandles } from '@/integrations/supabase/candles';
+import { BID } from '@/integrations/supabase/bid.adapter';
 import type { Candle } from '@/integrations/supabase/candles';
 
 type CandleState = 'loading' | 'ready' | 'degraded' | 'error';
@@ -42,42 +42,31 @@ export function useCandles(
       const now = new Date();
       const from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days back
       
-      const candles = await getCandles(
+      // Use BID adapter (backend-first)
+      const response = await BID.getMarketSnapshots(
         workspaceId,
         symbol,
-        tf,
+        tf as '1m' | '5m' | '15m' | '1h' | '1D',
         from.toISOString(),
         now.toISOString()
       );
 
-      if (candles && candles.length > 0) {
-        setData(candles);
-        setState('ready');
-      } else {
-        // No data from server, check cache
-        const cached = getCachedCandles(workspaceId, symbol, tf);
-        if (cached.length > 0) {
-          setData(cached);
-          setState('degraded');
-          setError('Using cached data');
-        } else {
-          setData([]);
-          setState('error');
-          setError('No data available');
-        }
+      if (response.error) {
+        throw response.error;
       }
-    } catch (err) {
-      // Fetch failed, use cache
-      const cached = getCachedCandles(workspaceId, symbol, tf);
-      if (cached.length > 0) {
-        setData(cached);
-        setState('degraded');
-        setError('Network error - using cached data');
+
+      if (response.data && response.data.length > 0) {
+        setData(response.data as Candle[]);
+        setState('ready');
       } else {
         setData([]);
         setState('error');
-        setError(err instanceof Error ? err.message : 'Failed to load chart data');
+        setError('No data available');
       }
+    } catch (err) {
+      setData([]);
+      setState('error');
+      setError(err instanceof Error ? err.message : 'Failed to load chart data');
     }
   };
 

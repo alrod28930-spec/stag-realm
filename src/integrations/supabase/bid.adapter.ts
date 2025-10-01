@@ -1,435 +1,295 @@
-/**
- * BID Adapter - Base Intelligence Database
- * Backend-first adapter ensuring Supabase is the single source of truth
- * All writes go through validation before reaching the database
- */
-
+import { z } from 'zod';
 import { supabase } from './client';
-import { getCandles, type Candle } from './candles';
-import { eventBus } from '@/services/eventBus';
-import { logService } from '@/services/logging';
-import {
-  OrderRecordSchema,
-  MarketSnapshotSchema,
-  OracleSignalSchema,
-  RecorderEventSchema,
-  SummarySchema,
-  validateSchema,
-  type OrderRecord,
-  type MarketSnapshot,
-  type OracleSignal,
-  type RecorderEvent,
-  type Summary,
-} from '@/schemas';
 
 // ============================================================================
-// BID ADAPTER CLASS
+// BID Adapter - Backend-first data layer (single source of truth)
 // ============================================================================
 
-export class BIDAdapter {
+const CandleRecord = z.object({
+  workspace_id: z.string().uuid(),
+  symbol: z.string().regex(/^[A-Z.]{1,10}$/),
+  tf: z.enum(['1m', '5m', '15m', '1h', '1D']),
+  ts: z.string(), // ISO timestamp
+  o: z.number(),
+  h: z.number(),
+  l: z.number(),
+  c: z.number(),
+  v: z.number().optional(),
+  vwap: z.number().optional(),
+});
+
+const OrderWrite = z.object({
+  workspace_id: z.string().uuid(),
+  run_id: z.string().uuid().optional().nullable(),
+  symbol: z.string().regex(/^[A-Z.]{1,10}$/),
+  side: z.enum(['buy', 'sell']),
+  qty: z.number().positive(),
+  price: z.number().positive().optional().nullable(),
+  limits: z.object({
+    stop_loss_pct: z.number().min(0).max(0.2).optional(),
+    take_profit_pct: z.number().min(0).max(0.5).optional(),
+  }).optional(),
+  validator_status: z.enum(['pass', 'fail']),
+  validator_reason: z.string().optional().nullable(),
+  broker_status: z.enum(['proposed', 'placed', 'filled', 'canceled', 'rejected', 'error']),
+});
+
+const OracleSignalWrite = z.object({
+  workspace_id: z.string().uuid(),
+  symbol: z.string().regex(/^[A-Z.]{1,10}$/),
+  signal_type: z.string(),
+  strength: z.number().min(0).max(1),
+  direction: z.number().int().min(-1).max(1),
+  source: z.string().optional(),
+  summary: z.string().optional(),
+});
+
+const EventRecord = z.object({
+  workspace_id: z.string().uuid(),
+  actor: z.string(),
+  event_type: z.string(),
+  payload: z.unknown().optional(),
+  ref: z.string().optional(),
+});
+
+/**
+ * BID Adapter - Single source of truth for all backend data operations.
+ * All writes go through validated RPCs; reads use optimized queries.
+ */
+export const BID = {
+  // ========== MARKET DATA (READ) ==========
+  
   /**
-   * Get market snapshots (candles) for a symbol using canonical fetch_candles RPC
+   * Fetch candles via RPC (canonical read for all charts)
    */
   async getMarketSnapshots(
     workspaceId: string,
     symbol: string,
-    tf: string,
+    tf: '1m' | '5m' | '15m' | '1h' | '1D',
     from?: string,
     to?: string
-  ): Promise<{ data: Candle[] | null; error: any }> {
-    try {
-      // Default to last 7 days if no range specified
-      const now = new Date();
-      const defaultFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      
-      const fromISO = from || defaultFrom.toISOString();
-      const toISO = to || now.toISOString();
-
-      // Use the canonical getCandles function which calls fetch_candles RPC
-      // This has built-in retry, timeout, and cache fallback
-      const data = await getCandles(workspaceId, symbol, tf, fromISO, toISO);
-      
-      return { data, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to fetch market snapshots', { error, symbol, tf });
-      return { data: null, error };
-    }
-  }
-
-  /**
-   * Save order with validation
-   */
-  async saveOrder(record: unknown) {
-    const validation = validateSchema(OrderRecordSchema, record, 'BID.saveOrder');
+  ) {
+    const fromISO = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const toISO = to || new Date().toISOString();
     
-    if (!validation.success) {
-      await this.recordEvent({
-        workspace_id: (record as any).workspace_id || 'unknown',
-        event_type: 'validation.order.failed',
-        severity: 2,
-        entity_type: 'order',
-        summary: 'Order validation failed',
-        payload_json: { errors: validation.errors }
-      });
-      
-      logService.log('error', 'Order schema validation failed', validation.errors);
-      return { data: null, error: new Error('Order validation failed') };
-    }
-
-    try {
-      // Add timestamps if not present
-      const orderData = {
-        ...validation.data!,
-        ts_created: validation.data!.ts_created || new Date().toISOString(),
-        ts_updated: validation.data!.ts_updated || new Date().toISOString(),
-      };
-
-      // Note: This would insert into an 'orders' table - currently not in schema
-      // For now, we'll record as an event
-      await this.recordEvent({
-        workspace_id: orderData.workspace_id,
-        event_type: 'order.recorded',
-        severity: 1,
-        entity_type: 'order',
-        entity_id: orderData.order_id,
-        summary: `${orderData.side} ${orderData.qty} ${orderData.symbol}`,
-        payload_json: orderData as any
-      });
-
-      eventBus.emit('bid.order_saved', orderData);
-      return { data: orderData, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to save order', { error, record: validation.data });
-      return { data: null, error };
-    }
-  }
+    return supabase.rpc('fetch_candles', {
+      _ws: workspaceId,
+      _symbol: symbol,
+      _tf: tf,
+      _from: fromISO,
+      _to: toISO,
+    });
+  },
 
   /**
-   * Get orders for workspace
-   */
-  async getOrders(workspaceId: string, runId?: string) {
-    try {
-      // Fetch from rec_events where entity_type = 'order'
-      let query = supabase
-        .from('rec_events')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('entity_type', 'order')
-        .order('ts', { ascending: false });
-
-      const { data, error } = await query.limit(100);
-
-      if (error) throw error;
-
-      // Transform events back to order format
-      const orders = data?.map(event => {
-        const payload = event.payload_json && typeof event.payload_json === 'object' ? event.payload_json : {};
-        return {
-          ...(payload as Record<string, any>),
-          event_id: event.id,
-          ts: event.ts
-        };
-      }) || [];
-
-      return { data: orders, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to fetch orders', { error, workspaceId });
-      return { data: null, error };
-    }
-  }
-
-  /**
-   * Store candle data
+   * Store candle data (for market-data-sync edge function)
    */
   async storeCandle(candle: unknown) {
-    const validation = validateSchema(MarketSnapshotSchema, candle, 'BID.storeCandle');
+    const validated = CandleRecord.parse(candle);
     
-    if (!validation.success) {
-      logService.log('error', 'Candle validation failed', validation.errors);
-      return { data: null, error: new Error('Candle validation failed') };
-    }
+    const { error } = await supabase
+      .from('candles')
+      .upsert([validated as any]);
+    
+    if (error) throw error;
+    return { data: validated, error: null };
+  },
 
-    try {
-      const { data, error } = await supabase
-        .from('candles')
-        .upsert([validation.data as any], {
-          onConflict: 'workspace_id,symbol,tf,ts'
-        });
-
-      if (error) throw error;
-
-      eventBus.emit('bid.candle_stored', validation.data);
-      return { data, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to store candle', { error, candle: validation.data });
-      return { data: null, error };
-    }
-  }
+  // ========== ORDERS (READ/WRITE) ==========
 
   /**
-   * Store Oracle signal
+   * Get orders for a workspace/run
+   */
+  async getOrders(workspaceId: string, runId?: string) {
+    let query = supabase
+      .from('orders')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('ts_created', { ascending: false })
+      .limit(100) as any;
+    
+    if (runId) {
+      query = query.eq('run_id', runId);
+    }
+    
+    return query;
+  },
+
+  /**
+   * Create order record (validated write)
+   */
+  async saveOrder(record: unknown) {
+    const validated = OrderWrite.parse(record);
+    
+    // Direct insert (types will be generated after migration completes)
+    const { data, error } = await (supabase
+      .from('orders') as any)
+      .insert([{
+        workspace_id: validated.workspace_id,
+        run_id: validated.run_id ?? null,
+        symbol: validated.symbol,
+        side: validated.side,
+        qty: validated.qty,
+        price: validated.price ?? null,
+        limits: validated.limits ?? {},
+        validator_status: validated.validator_status,
+        validator_reason: validated.validator_reason ?? null,
+        broker_status: validated.broker_status,
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { data, error: null };
+  },
+
+  // ========== ORACLE SIGNALS (READ/WRITE) ==========
+
+  /**
+   * Store oracle signal
    */
   async storeOracleSignal(signal: unknown) {
-    const validation = validateSchema(OracleSignalSchema, signal, 'BID.storeOracleSignal');
+    const validated = OracleSignalWrite.parse(signal);
     
-    if (!validation.success) {
-      logService.log('error', 'Oracle signal validation failed', validation.errors);
-      return { data: null, error: new Error('Signal validation failed') };
-    }
-
-    try {
-      const signalData = {
-        ...validation.data!,
-        ts: validation.data!.ts || new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase
-        .from('oracle_signals')
-        .insert([signalData as any]);
-
-      if (error) throw error;
-
-      eventBus.emit('bid.oracle_signal_stored', signalData);
-      return { data, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to store oracle signal', { error, signal: validation.data });
-      return { data: null, error };
-    }
-  }
+    const { data, error } = await supabase
+      .from('oracle_signals')
+      .insert([validated as any])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { data, error: null };
+  },
 
   /**
-   * Get Oracle signals
+   * Get oracle signals
    */
-  async getOracleSignals(workspaceId: string, symbol?: string, limit = 50) {
-    try {
-      let query = supabase
-        .from('oracle_signals')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('ts', { ascending: false })
-        .limit(limit);
-
-      if (symbol) {
-        query = query.eq('symbol', symbol);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to fetch oracle signals', { error, workspaceId });
-      return { data: null, error };
+  async getOracleSignals(workspaceId: string, symbol?: string, limit: number = 50) {
+    let query = supabase
+      .from('oracle_signals')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('ts', { ascending: false })
+      .limit(limit);
+    
+    if (symbol) {
+      query = query.eq('symbol', symbol);
     }
-  }
+    
+    return query;
+  },
+
+  // ========== SUMMARIES / METADATA (READ/WRITE) ==========
 
   /**
-   * Save summary
+   * Save summary/metadata (generic write for various data types)
    */
   async saveSummary(summary: unknown) {
-    const validation = validateSchema(SummarySchema, summary, 'BID.saveSummary');
-    
-    if (!validation.success) {
-      logService.log('error', 'Summary validation failed', validation.errors);
-      return { data: null, error: new Error('Summary validation failed') };
-    }
+    // Implementation depends on what summaries you need
+    // For now, log to recorder
+    return this.recordEvent({
+      workspace_id: (summary as any).workspace_id,
+      actor: 'system',
+      event_type: 'summary.saved',
+      payload: summary,
+    });
+  },
 
-    try {
-      const summaryData = {
-        ...validation.data!,
-        ts: validation.data!.ts || new Date().toISOString(),
-      };
-
-      // Store as recorder event for now
-      await this.recordEvent({
-        workspace_id: summaryData.workspace_id,
-        event_type: 'summary.created',
-        severity: 1,
-        entity_type: 'summary',
-        summary: summaryData.text,
-        payload_json: summaryData as any
-      });
-
-      return { data: summaryData, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to save summary', { error, summary: validation.data });
-      return { data: null, error };
-    }
-  }
+  // ========== EVENT LOG (WRITE) ==========
 
   /**
-   * Record event to rec_events (append-only log)
+   * Record event to event log (mirrors to rec_events -> recorder_mirror view)
    */
   async recordEvent(event: unknown) {
-    const validation = validateSchema(RecorderEventSchema, event, 'BID.recordEvent');
+    const validated = EventRecord.parse(event);
     
-    if (!validation.success) {
-      logService.log('error', 'Event validation failed', validation.errors);
-      return { data: null, error: new Error('Event validation failed') };
-    }
+    const { data, error } = await supabase
+      .from('rec_events')
+      .insert([{
+        workspace_id: validated.workspace_id,
+        entity_type: validated.actor,
+        event_type: validated.event_type,
+        entity_id: validated.ref,
+        payload_json: validated.payload as any,
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { data, error: null };
+  },
 
-    try {
-      const eventData = {
-        ...validation.data!,
-        ts: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase
-        .from('rec_events')
-        .insert([eventData as any]);
-
-      if (error) throw error;
-
-      eventBus.emit('bid.event_recorded', eventData);
-      return { data, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to record event', { error, event: validation.data });
-      return { data: null, error };
-    }
-  }
+  // ========== PORTFOLIO & POSITIONS (READ) ==========
 
   /**
-   * Get portfolio snapshot
+   * Get current portfolio snapshot
    */
   async getPortfolioSnapshot(workspaceId: string) {
-    try {
-      // Get portfolio summary
-      const { data: portfolio, error: portfolioError } = await supabase
-        .from('positions_current')
-        .select('workspace_id, equity, cash, updated_at')
+    const [portfolio, positions] = await Promise.all([
+      supabase
+        .from('portfolio_current')
+        .select('*')
         .eq('workspace_id', workspaceId)
-        .single();
-
-      if (portfolioError && portfolioError.code !== 'PGRST116') {
-        throw portfolioError;
-      }
-
-      // Get positions
-      const { data: positions, error: positionsError } = await supabase
+        .maybeSingle(),
+      supabase
         .from('positions_current')
         .select('*')
-        .eq('workspace_id', workspaceId);
+        .eq('workspace_id', workspaceId)
+    ]);
+    
+    return {
+      data: {
+        portfolio: portfolio.data,
+        positions: positions.data || []
+      },
+      error: portfolio.error || positions.error
+    };
+  },
 
-      if (positionsError) throw positionsError;
-
-      return {
-        data: {
-          portfolio: portfolio || null,
-          positions: positions || []
-        },
-        error: null
-      };
-    } catch (error) {
-      logService.log('error', 'Failed to fetch portfolio snapshot', { error, workspaceId });
-      return { data: null, error };
-    }
-  }
+  // ========== RISK METRICS (READ) ==========
 
   /**
-   * Get risk metrics
+   * Get risk metrics history
    */
-  async getRiskMetrics(workspaceId: string, limit = 30) {
-    try {
-      const { data, error } = await supabase
-        .from('risk_portfolio')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('ts', { ascending: false })
-        .limit(limit);
+  async getRiskMetrics(workspaceId: string, limit: number = 30) {
+    return supabase
+      .from('risk_counters')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('day', { ascending: false })
+      .limit(limit);
+  },
 
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      logService.log('error', 'Failed to fetch risk metrics', { error, workspaceId });
-      return { data: null, error };
-    }
-  }
+  // ========== TRADE VALIDATION (SERVER-SIDE) ==========
 
   /**
-   * Validate trade before execution (risk checks)
+   * Validate trade via risk governor (server-side check)
    */
   async validateTrade(
     workspaceId: string,
-    trade: { symbol: string; side: 'buy' | 'sell'; qty: number; price?: number }
+    trade: {
+      symbol: string;
+      side: 'buy' | 'sell';
+      qty: number;
+      price?: number;
+    }
   ) {
-    try {
-      // Get current portfolio
-      const { data: portfolioData } = await this.getPortfolioSnapshot(workspaceId);
-      
-      if (!portfolioData?.portfolio) {
-        return {
-          valid: false,
-          reason: 'No portfolio data available',
-          modifications: null
-        };
-      }
-
-      // Get bot profile risk settings
-      const { data: botProfile } = await supabase
-        .from('bot_profiles')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .single();
-
-      if (!botProfile) {
-        return {
-          valid: false,
-          reason: 'No bot profile configured',
-          modifications: null
-        };
-      }
-
-      const equity = portfolioData.portfolio.equity || 0;
-      const maxRisk = (botProfile.risk_per_trade_pct || 0.01) * equity;
-      const tradeValue = trade.qty * (trade.price || 0);
-
-      // Check if trade exceeds risk limits
-      if (tradeValue > maxRisk) {
-        const suggestedQty = Math.floor(maxRisk / (trade.price || 1));
-        return {
-          valid: false,
-          reason: `Trade size ${tradeValue.toFixed(2)} exceeds max risk ${maxRisk.toFixed(2)}`,
-          modifications: {
-            suggested_qty: suggestedQty,
-            reason: 'Reduced to comply with risk limits'
-          }
-        };
-      }
-
-      // Check blacklist
-      const { data: blacklist } = await supabase
-        .from('blacklists')
-        .select('symbol, reason')
-        .eq('workspace_id', workspaceId)
-        .eq('symbol', trade.symbol)
-        .single();
-
-      if (blacklist) {
-        return {
-          valid: false,
-          reason: `Symbol ${trade.symbol} is blacklisted: ${blacklist.reason}`,
-          modifications: null
-        };
-      }
-
-      return {
-        valid: true,
-        reason: 'Trade passed all validation checks',
-        modifications: null
-      };
-    } catch (error) {
-      logService.log('error', 'Trade validation failed', { error, trade });
+    // Call risk-governor edge function
+    const { data, error } = await supabase.functions.invoke('risk-governor', {
+      body: {
+        workspace_id: workspaceId,
+        order: trade,
+      },
+    });
+    
+    if (error) {
       return {
         valid: false,
-        reason: 'Validation error occurred',
-        modifications: null
+        reason: error.message || 'Validation failed',
+        modifications: null,
       };
     }
-  }
-}
-
-// ============================================================================
-// SINGLETON EXPORT
-// ============================================================================
-
-export const BID = new BIDAdapter();
+    
+    return data;
+  },
+};
