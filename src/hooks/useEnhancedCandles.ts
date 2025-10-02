@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { BID } from '@/integrations/supabase/bid.adapter';
+import { getCandles } from '@/integrations/supabase/candles';
 import type { Candle } from '@/integrations/supabase/candles';
 
 type CandleState = 'loading' | 'ready' | 'degraded' | 'error';
@@ -99,10 +99,10 @@ export function useEnhancedCandles(
       const now = new Date();
       const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-      const response = await BID.getMarketSnapshots(
+      const candles = await getCandles(
         workspaceId,
         symbol,
-        tf as '1m' | '5m' | '15m' | '1h' | '1D',
+        tf,
         from.toISOString(),
         now.toISOString()
       );
@@ -110,12 +110,7 @@ export function useEnhancedCandles(
       // Check if request was aborted
       if (abortControllerRef.current?.signal.aborted) return;
 
-      if (response.error) {
-        throw response.error;
-      }
-
-      if (response.data && response.data.length > 0) {
-        const candles = response.data as Candle[];
+      if (candles && candles.length > 0) {
         const hash = computeHash(candles);
 
         // Only update if data changed
