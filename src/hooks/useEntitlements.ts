@@ -65,12 +65,22 @@ export function useEntitlements(workspaceId: string | undefined) {
       return true;
     }
     
+    // Elite tier testing account - full access
+    if (user?.email === 'alrod28930@gmail.com') {
+      return true;
+    }
+    
     return entitlements.some(e => e.feature_code === featureCode && e.enabled);
   };
 
   const checkFeature = async (featureCode: string): Promise<boolean> => {
     // Demo users have access to all features only if they are the SINGLE demo account
     if (isLandingPageDemo()) {
+      return true;
+    }
+    
+    // Elite tier testing account - full access
+    if (user?.email === 'alrod28930@gmail.com') {
       return true;
     }
     
