@@ -2672,6 +2672,10 @@ export type Database = {
         Args: { p_workspace_id: string }
         Returns: undefined
       }
+      ensure_workspace_for_user: {
+        Args: { _user: string }
+        Returns: string
+      }
       fetch_candles: {
         Args: {
           _from: string

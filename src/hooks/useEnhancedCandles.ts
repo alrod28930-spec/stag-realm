@@ -4,6 +4,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getCandles } from '@/integrations/supabase/candles';
+import { resolveWorkspaceId } from '@/lib/workspace';
+import { normalizeTf } from '@/lib/timeframes';
 import type { Candle } from '@/integrations/supabase/candles';
 
 type CandleState = 'loading' | 'ready' | 'degraded' | 'error';
@@ -96,13 +98,20 @@ export function useEnhancedCandles(
 
     try {
       const { days } = getWindowedRange(tf);
+      // Ensure valid workspace ID and normalized timeframe
+      const validWsId = resolveWorkspaceId(workspaceId);
+      if (!validWsId) {
+        throw new Error('No valid workspace ID');
+      }
+      
+      const normalizedTf = normalizeTf(tf);
       const now = new Date();
       const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
       const candles = await getCandles(
-        workspaceId,
+        validWsId,
         symbol,
-        tf,
+        normalizedTf,
         from.toISOString(),
         now.toISOString()
       );
