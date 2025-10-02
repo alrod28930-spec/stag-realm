@@ -1,5 +1,15 @@
 import { supabase } from "./client";
 
+export interface Candle {
+  ts: string;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v: number | null;
+  vwap: number | null;
+}
+
 export async function getCandles(wsId: string, symbol: string, tf: string, fromISO: string, toISO: string) {
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
   try {

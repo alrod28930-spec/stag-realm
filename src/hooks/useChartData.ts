@@ -75,7 +75,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
   const { subscriptionStatus } = useSubscriptionAccess();
   
   // Use resilient candles hook
-  const { state: candleState, data: rawCandles, error: candleError } = useCandles(
+  const { state: candleState, rows: rawCandles } = useCandles(
     workspaceId,
     symbol,
     timeframe
@@ -92,7 +92,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
   }));
 
   const loading = candleState === 'loading';
-  const error = candleError;
+  const error = candleState === 'degraded' ? 'Using cached data' : null;
 
   // Get workspace ID on mount
   useEffect(() => {
