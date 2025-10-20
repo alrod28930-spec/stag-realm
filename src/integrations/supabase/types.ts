@@ -2795,6 +2795,10 @@ export type Database = {
         Args: { w_id: string }
         Returns: boolean
       }
+      is_subscription_enforcement_enabled: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       ivfflat_bit_support: {
         Args: { "": unknown }
         Returns: unknown
