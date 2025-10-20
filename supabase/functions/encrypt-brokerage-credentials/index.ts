@@ -1,130 +1,49 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface CredentialRequest {
-  workspace_id: string;
-  provider: string;
-  account_label?: string;
-  api_key: string;
-  api_secret: string;
-  scope?: Record<string, any>;
-}
-
+/**
+ * Encryption stub for development mode
+ * Returns a reference indicating credentials are stored in server env
+ * TODO: Migrate to Supabase Vault or KMS for production
+ */
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: { 
-          autoRefreshToken: false, 
-          persistSession: false,
-          detectSessionInUrl: false
-        }
-      }
-    );
-
-    // Verify the JWT token from the authorization header
-    const jwt = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    const { broker, mode } = await req.json().catch(() => ({}));
     
-    if (authError || !user) {
-      throw new Error('Invalid authentication');
+    if (!broker) {
+      return json({ ok: false, error: "missing_broker" }, 400);
     }
 
-    const { workspace_id, provider, account_label, api_key, api_secret, scope }: CredentialRequest = await req.json();
+    console.log(`🔐 Dev mode: Using env-based credentials for ${broker}:${mode || 'paper'}`);
 
-    if (!workspace_id || !provider || !api_key || !api_secret) {
-      throw new Error('Missing required fields');
-    }
-
-    // Generate a random key for encryption (in production, use a proper key derivation)
-    const key = await crypto.subtle.generateKey(
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt', 'decrypt']
-    );
-
-    // Encrypt API key
-    const apiKeyEncoder = new TextEncoder();
-    const apiKeyData = apiKeyEncoder.encode(api_key);
-    const apiKeyNonce = crypto.getRandomValues(new Uint8Array(12));
-    const encryptedApiKey = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: apiKeyNonce },
-      key,
-      apiKeyData
-    );
-
-    // Encrypt secret key
-    const secretData = apiKeyEncoder.encode(api_secret);
-    const secretNonce = crypto.getRandomValues(new Uint8Array(12));
-    const encryptedSecret = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: secretNonce },
-      key,
-      secretData
-    );
-
-    // For demo purposes, we'll use a simple combined nonce
-    // In production, store the encryption key securely (e.g., in Vault)
-    const combinedNonce = new Uint8Array([...apiKeyNonce, ...secretNonce]);
-
-    // Store encrypted credentials in database
-    const { data, error } = await supabase
-      .from('connections_brokerages')
-      .insert({
-        workspace_id,
-        provider,
-        account_label,
-        api_key_cipher: new Uint8Array(encryptedApiKey),
-        api_secret_cipher: new Uint8Array(encryptedSecret),
-        nonce: combinedNonce,
-        scope,
-        status: 'active'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    console.log('Brokerage credentials encrypted and stored', { 
-      workspace_id, 
-      provider,
-      connection_id: data.id 
-    });
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      connection_id: data.id,
-      message: 'Credentials encrypted and stored successfully'
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // For dev: we DO NOT store secrets. We return a reference describing env source.
+    return json({
+      ok: true,
+      provider: "env",
+      refId: `env:${broker}:${mode ?? "paper"}`,
+      note: "Dev mode: credentials are taken from server env. Upgrade to Vault later."
     });
 
   } catch (error) {
-    console.error('Error encrypting credentials:', error);
-    return new Response(JSON.stringify({ 
-      error: (error as Error).message || 'Failed to encrypt credentials'
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Encrypt stub error:', error);
+    return json({ 
+      ok: false, 
+      error: (error as Error).message || 'Failed to process request'
+    }, 400);
   }
 });
+
+function json(body: any, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}

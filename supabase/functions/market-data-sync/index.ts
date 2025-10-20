@@ -67,26 +67,35 @@ async function record(supabase: any, wsId: string, actor: string, event_type: st
 }
 
 async function getStoredAlpacaCreds(supabase: any, wsId: string) {
-  const { data: link } = await supabase
-    .from('connections_brokerages')
-    .select('api_key_cipher, api_secret_cipher, nonce')
-    .eq('workspace_id', wsId)
-    .eq('provider', 'alpaca')
-    .eq('status','active')
-    .maybeSingle();
-
-  if (link?.api_key_cipher && link?.api_secret_cipher) {
+  // Try to get credentials from decrypt function (which uses env)
+  try {
     const dec = await supabase.functions.invoke('decrypt-brokerage-credentials', {
-      body: { encrypted: { api_key_cipher: link.api_key_cipher, api_secret_cipher: link.api_secret_cipher, nonce: link.nonce } }
+      body: { broker: 'alpaca', mode: 'paper' }
     });
-    const cred = dec.data?.credentials ?? {};
-    const apiKey = cred.api_key ?? cred.apiKey;
-    const apiSecret = cred.secret_key ?? cred.apiSecret;
-    if (apiKey && apiSecret) return { apiKey, apiSecret };
+    
+    if (dec.data?.ok && dec.data?.credentials) {
+      const cred = dec.data.credentials;
+      const apiKey = cred.api_key ?? cred.apiKey;
+      const apiSecret = cred.secret_key ?? cred.apiSecret ?? cred.secretKey;
+      if (apiKey && apiSecret) {
+        console.log('✅ Retrieved Alpaca credentials via decrypt function');
+        return { apiKey, apiSecret };
+      }
+    }
+  } catch (e) {
+    console.warn('Decrypt function failed, trying direct env access:', e);
   }
   
+  // Fallback to direct env access
   const apiKey = Deno.env.get('ALPACA_API_KEY') ?? '';
   const apiSecret = Deno.env.get('ALPACA_SECRET_KEY') ?? '';
+  
+  if (!apiKey || !apiSecret) {
+    console.error('❌ No Alpaca credentials found in decrypt function or environment');
+  } else {
+    console.log('✅ Using Alpaca credentials from direct env access');
+  }
+  
   return { apiKey, apiSecret };
 }
 

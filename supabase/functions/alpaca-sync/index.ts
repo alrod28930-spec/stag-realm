@@ -28,18 +28,18 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    // Resolve workspace
-    let workspaceId: string;
-    try {
-      const { data: memberships } = await supabaseClient
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .limit(1);
-      workspaceId = memberships?.[0]?.workspace_id || user.user_metadata?.workspace_id || user.id;
-    } catch (_) {
-      workspaceId = user.user_metadata?.workspace_id || user.id;
+    // Resolve workspace using ensure_default_workspace RPC
+    const { data: wsId, error: wsErr } = await supabaseClient.rpc('ensure_default_workspace');
+    if (wsErr) {
+      throw new Error(`Failed to resolve workspace: ${wsErr.message}`);
     }
+    const workspaceId = wsId as string;
+    
+    if (!workspaceId) {
+      throw new Error('Could not resolve workspace ID');
+    }
+    
+    console.log(`✅ Resolved workspace: ${workspaceId}`);
 
     // Get user's Alpaca credentials from database via active brokerage connection
     let alpacaApiKey: string;

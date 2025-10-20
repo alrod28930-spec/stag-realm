@@ -15,15 +15,21 @@ export interface SubscriptionStatus {
 
 /**
  * Check if subscription enforcement is enabled
+ * When disabled, all users are treated as Elite tier (default: disabled)
  */
 export function isSubscriptionEnforcementEnabled(): boolean {
-  // Check environment variable first
+  // Check environment variable first - default to false for dev
   const envFlag = import.meta.env.VITE_SUBSCRIPTION_ENFORCEMENT;
-  if (envFlag === 'false' || envFlag === false) {
+  if (envFlag === 'false' || envFlag === false || envFlag === undefined) {
     return false;
   }
   
-  // Then check feature flags
+  // Only enforce if explicitly enabled
+  if (envFlag === 'true' || envFlag === true) {
+    return true;
+  }
+  
+  // Fallback to feature flags
   return featureFlags.isEnabled('subscription_enforcement');
 }
 

@@ -1,165 +1,148 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
+/**
+ * Detect Alpaca account type (paper vs live) using provided or env credentials
+ * Returns account type and basic account info
+ */
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Initialize Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    );
 
-    // Authenticate user
-    const authHeader = req.headers.get('Authorization')!
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const authHeader = req.headers.get('Authorization')!;
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+      return json({ ok: false, error: 'Unauthorized' }, 401);
     }
 
-    const { apiKey, secretKey } = await req.json()
-
-    if (!apiKey || !secretKey) {
-      return new Response(
-        JSON.stringify({ error: 'API key and secret key are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Test against paper trading endpoint first
-    let accountType = 'unknown'
-    let accountInfo = null
+    const { broker = 'alpaca', apiKey, secretKey } = await req.json().catch(() => ({}));
     
-    try {
-      console.log('Testing paper trading endpoint...')
-      const paperResponse = await fetch('https://paper-api.alpaca.markets/v2/account', {
-        headers: {
-          'APCA-API-KEY-ID': apiKey,
-          'APCA-API-SECRET-KEY': secretKey,
-        },
-      })
-
-      if (paperResponse.ok) {
-        accountInfo = await paperResponse.json()
-        accountType = 'paper'
-        console.log('Successfully connected to paper trading account')
-      }
-    } catch (error) {
-      console.log('Paper trading test failed:', error)
+    if (broker !== "alpaca") {
+      return json({ ok: false, error: "unsupported_broker" }, 400);
     }
 
-    // If paper failed, test live trading endpoint
-    if (accountType === 'unknown') {
-      try {
-        console.log('Testing live trading endpoint...')
-        const liveResponse = await fetch('https://api.alpaca.markets/v2/account', {
-          headers: {
-            'APCA-API-KEY-ID': apiKey,
-            'APCA-API-SECRET-KEY': secretKey,
-          },
-        })
+    // Use provided credentials or fall back to env
+    const testApiKey = apiKey || Deno.env.get('ALPACA_API_KEY');
+    const testSecretKey = secretKey || Deno.env.get('ALPACA_SECRET_KEY');
 
-        if (liveResponse.ok) {
-          accountInfo = await liveResponse.json()
-          accountType = 'live'
-          console.log('Successfully connected to live trading account')
-        }
-      } catch (error) {
-        console.log('Live trading test failed:', error)
-      }
+    if (!testApiKey || !testSecretKey) {
+      return json({ 
+        ok: false, 
+        error: "missing_credentials",
+        message: "Please provide apiKey and secretKey or configure ALPACA_API_KEY/ALPACA_SECRET_KEY"
+      }, 400);
     }
 
-    if (accountType === 'unknown') {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid API credentials',
-          message: 'Could not connect to either paper or live trading accounts'
-        }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    // Try paper first, then live
+    const paperResult = await tryAlpaca("paper", testApiKey, testSecretKey);
+    if (paperResult.ok) {
+      // Store connection metadata
+      await storeConnection(supabase, user.id, "alpaca", "paper", paperResult.account);
+      return json({ 
+        ok: true, 
+        broker: "alpaca", 
+        accountType: "paper",
+        mode: "paper",
+        account: paperResult.account,
+        message: "Connected to paper trading account successfully"
+      });
     }
 
-    // Resolve workspace
-    let workspaceId: string;
-    try {
-      const { data: memberships } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .limit(1);
-      workspaceId = memberships?.[0]?.workspace_id || user.user_metadata?.workspace_id || user.id;
-    } catch (_) {
-      workspaceId = user.user_metadata?.workspace_id || user.id;
+    const liveResult = await tryAlpaca("live", testApiKey, testSecretKey);
+    if (liveResult.ok) {
+      // Store connection metadata
+      await storeConnection(supabase, user.id, "alpaca", "live", liveResult.account);
+      return json({ 
+        ok: true, 
+        broker: "alpaca", 
+        accountType: "live",
+        mode: "live",
+        account: liveResult.account,
+        message: "Connected to live trading account successfully"
+      });
     }
 
-    // Store credentials with detected account type
-    const { error: storeError } = await supabase
-      .from('connections_brokerages')
-      .insert({
-        workspace_id: workspaceId,
-        provider: 'alpaca',
-        status: 'active',
-        account_label: `Alpaca ${accountType.charAt(0).toUpperCase() + accountType.slice(1)} Account`,
-        api_key_cipher: new TextEncoder().encode(apiKey), // In production, this should be properly encrypted
-        api_secret_cipher: new TextEncoder().encode(secretKey),
-        nonce: new TextEncoder().encode('dummy_nonce'), // In production, use proper encryption nonce
-        scope: { 
-          account_type: accountType,
-          trading_permissions: accountInfo?.trading_permissions || [],
-          account_status: accountInfo?.status || 'unknown'
-        }
-      })
-
-    if (storeError) {
-      console.error('Error storing credentials:', storeError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to store credentials' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    return new Response(
-      JSON.stringify({ 
-        accountType,
-        accountStatus: accountInfo?.status,
-        tradingPermissions: accountInfo?.trading_permissions || [],
-        buyingPower: accountInfo?.buying_power,
-        portfolioValue: accountInfo?.portfolio_value,
-        message: `Connected to ${accountType} trading account successfully`
-      }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    )
+    return json({ 
+      ok: false, 
+      error: "auth_failed",
+      message: "Could not authenticate with either paper or live trading endpoints"
+    }, 401);
 
   } catch (error) {
-    console.error('Account type detection error:', error)
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to detect account type', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      }),
-      { 
-        status: 500,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    )
+    console.error('Account type detection error:', error);
+    return json({ 
+      ok: false, 
+      error: (error as Error).message || 'Failed to detect account type'
+    }, 500);
   }
-})
+});
+
+async function tryAlpaca(mode: "paper" | "live", apiKey: string, secretKey: string) {
+  const baseUrl = mode === "live"
+    ? "https://api.alpaca.markets"
+    : "https://paper-api.alpaca.markets";
+
+  try {
+    const response = await fetch(`${baseUrl}/v2/account`, {
+      headers: {
+        "APCA-API-KEY-ID": apiKey,
+        "APCA-API-SECRET-KEY": secretKey
+      }
+    });
+
+    if (!response.ok) {
+      return { ok: false, error: `HTTP ${response.status}` };
+    }
+
+    const account = await response.json();
+    console.log(`✅ Successfully authenticated with Alpaca ${mode} account`);
+    
+    return { ok: true, account };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+async function storeConnection(supabase: any, userId: string, broker: string, mode: string, accountInfo: any) {
+  // Ensure workspace exists
+  const { data: wsId } = await supabase.rpc('ensure_default_workspace');
+  const workspace_id = wsId as string;
+
+  // Store connection metadata (not actual credentials)
+  await supabase.from('connections_brokerages').upsert({
+    workspace_id,
+    provider: broker,
+    status: 'active',
+    account_label: `Alpaca ${mode.charAt(0).toUpperCase() + mode.slice(1)} Account`,
+    scope: { 
+      account_type: mode,
+      trading_permissions: accountInfo?.trading_blocked === false ? ['trading'] : [],
+      account_status: accountInfo?.status || 'unknown',
+      account_number: accountInfo?.account_number
+    },
+    last_sync: new Date().toISOString()
+  }, { onConflict: 'workspace_id,provider' });
+
+  console.log(`💾 Stored connection metadata for workspace ${workspace_id}`);
+}
+
+function json(body: any, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}

@@ -34,6 +34,13 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const handleAddConnection = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Bypass subscription check during development
+    const ENF = import.meta.env.VITE_SUBSCRIPTION_ENFORCEMENT === 'true';
+    if (ENF) {
+      // TODO: Re-enable tier check when subscriptions are active
+      // For now, allow all users to connect brokerages
+    }
+    
     if (!newConnection.provider || !newConnection.apiKey || !newConnection.apiSecret) {
       toast({
         title: "Missing Information",
@@ -49,6 +56,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
       // Use the new detect-account-type function
       const { data, error } = await supabase.functions.invoke('detect-account-type', {
         body: { 
+          broker: newConnection.provider,
           apiKey: newConnection.apiKey, 
           secretKey: newConnection.apiSecret 
         }
@@ -58,7 +66,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
 
       toast({
         title: "Connection Successful",
-        description: `Connected to ${data.accountType} trading account. Syncing portfolio data...`,
+        description: `Connected to ${data.accountType || data.mode || 'paper'} trading account. Syncing portfolio data...`,
       });
 
       setNewConnection({
