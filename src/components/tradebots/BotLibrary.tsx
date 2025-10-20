@@ -275,24 +275,6 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
           </TabsContent>
         </Tabs>
 
-        {/* Tier Upgrade Notice for Elite Bots */}
-        {userTier === 'pro' && (
-          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600" />
-                <div>
-                  <h4 className="font-semibold text-amber-800 dark:text-amber-200">
-                    Unlock Advanced Bots
-                  </h4>
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
-                    Access the full bot library with advanced strategies and custom editing capabilities.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Deployment Modal */}

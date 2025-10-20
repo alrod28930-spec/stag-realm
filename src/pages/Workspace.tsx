@@ -40,7 +40,7 @@ const Workspace: React.FC = () => {
     ]
   });
 
-  const hasEliteAccess = hasFeature('workspace_multi_panel');
+  const hasEliteAccess = true; // Feature access enabled
 
   // Handle layout preset changes
   const setPresetLayout = useCallback((cols: number, rows: number) => {

@@ -532,8 +532,8 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
           ))}
         </div>
 
-        {/* Order Book Panel (Elite only) */}
-        {showOrderBook && canShowDOM && (
+        {/* Order Book Panel */}
+        {showOrderBook && (
           <div className="w-80">
             <OrderBookDOM
               symbol={visibleCharts.find(c => c.id === selectedChart)?.symbol || 'AAPL'}

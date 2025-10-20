@@ -8,6 +8,7 @@ import { AlertTriangle, Bot, Pause, Play, Square } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { BotActivationModal } from './BotActivationModal';
+import { SimpleDayTradingModal } from './SimpleDayTradingModal';
 
 interface BotProfile {
   workspace_id: string;
@@ -29,6 +30,7 @@ export function BotExecutionPanel() {
   const [showActivationModal, setShowActivationModal] = useState(false);
   const [showDayTradingModal, setShowDayTradingModal] = useState(false);
   const [selectedBot, setSelectedBot] = useState<BotProfile | null>(null);
+  const [pendingMode, setPendingMode] = useState<'standard' | 'intraday' | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -312,24 +314,10 @@ export function BotExecutionPanel() {
                       {getRiskLabel(bot.risk_indicator, bot.mode)}
                     </Badge>
                     
-                    {/* Bot Activation Switch with Feature Guard */}
-                    <LockGuard 
-                      feature={isAdvancedBot(bot) ? 'ADV_BOTS' : 'CORE_BOTS'}
-                      workspaceId={bot.workspace_id}
-                      fallback={
-                        <div className="flex items-center gap-2">
-                          <Switch disabled checked={false} />
-                          <span className="text-xs text-muted-foreground">
-                            {isAdvancedBot(bot) ? 'Pro Required' : 'Standard Required'}
-                          </span>
-                        </div>
-                      }
-                    >
-                      <Switch
-                        checked={bot.active}
-                        onCheckedChange={(active) => handleBotToggle(bot, active)}
-                      />
-                    </LockGuard>
+                    <Switch
+                      checked={bot.active}
+                      onCheckedChange={(active) => handleBotToggle(bot, active)}
+                    />
                   </div>
                 </div>
 
@@ -338,37 +326,20 @@ export function BotExecutionPanel() {
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium">Mode:</label>
                     
-                    {/* Day Trading Mode with Feature Guard */}
-                    <LockGuard 
-                      feature="DAY_TRADE_MODE"
-                      workspaceId={bot.workspace_id}
-                      fallback={
-                        <Select disabled value="standard">
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="standard">Standard</SelectItem>
-                            <SelectItem value="intraday" disabled>Day Trading (Pro)</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <Select
+                      value={bot.mode}
+                      onValueChange={(value: string) => 
+                        handleModeChange(bot, value as 'standard' | 'intraday')
                       }
                     >
-                      <Select
-                        value={bot.mode}
-                        onValueChange={(value: string) => 
-                          handleModeChange(bot, value as 'standard' | 'intraday')
-                        }
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="standard">Standard</SelectItem>
-                          <SelectItem value="intraday">Day Trading</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </LockGuard>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="intraday">Day Trading</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {bot.mode === 'intraday' && (
