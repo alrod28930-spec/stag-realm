@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,20 @@ import { useBrokerageSync } from '@/hooks/useBrokerageSync';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Link, Plus, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import type { BrokerageConnection } from '@/types/userSettings';
+
+// Input validation schema
+const brokerageCredentialsSchema = z.object({
+  provider: z.string().min(1, 'Provider is required'),
+  apiKey: z.string()
+    .min(10, 'API Key must be at least 10 characters')
+    .max(200, 'API Key too long')
+    .trim(),
+  apiSecret: z.string()
+    .min(10, 'API Secret must be at least 10 characters')
+    .max(200, 'API Secret too long')
+    .trim(),
+  accountLabel: z.string().max(100, 'Account label too long').optional()
+});
 
 interface BrokerageConnectionCardProps {
   workspaceId: string;
@@ -34,26 +49,22 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const handleAddConnection = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Bypass subscription check during development
-    const ENF = import.meta.env.VITE_SUBSCRIPTION_ENFORCEMENT === 'true';
-    if (ENF) {
-      // TODO: Re-enable tier check when subscriptions are active
-      // For now, allow all users to connect brokerages
-    }
-    
-    if (!newConnection.provider || !newConnection.apiKey || !newConnection.apiSecret) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Use the new detect-account-type function
+      // Validate inputs client-side
+      const validationResult = brokerageCredentialsSchema.safeParse({
+        provider: newConnection.provider,
+        apiKey: newConnection.apiKey,
+        apiSecret: newConnection.apiSecret,
+        accountLabel: newConnection.accountLabel
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.issues[0];
+        throw new Error(firstError.message);
+      }
+
       console.log('🔌 Attempting brokerage connection...', { 
         provider: newConnection.provider,
         hasApiKey: !!newConnection.apiKey,
@@ -63,20 +74,28 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
       const { data, error } = await supabase.functions.invoke('detect-account-type', {
         body: { 
           broker: newConnection.provider,
-          apiKey: newConnection.apiKey, 
-          secretKey: newConnection.apiSecret 
+          apiKey: newConnection.apiKey.trim(), 
+          secretKey: newConnection.apiSecret.trim() 
         }
       });
 
-      console.log('📡 Edge function response:', { data, error });
+      console.log('📡 Edge function response:', { 
+        success: data?.ok, 
+        accountType: data?.accountType,
+        error: error?.message || data?.error 
+      });
 
       if (error) {
         console.error('❌ Edge function error:', error);
-        throw error;
+        throw new Error(error.message || 'Edge function call failed');
       }
 
-      if (!data || !data.ok) {
-        const errorMsg = data?.error || data?.message || 'Connection failed';
+      if (!data) {
+        throw new Error('No response from server');
+      }
+
+      if (!data.ok) {
+        const errorMsg = data.error || data.message || 'Connection failed';
         console.error('❌ Connection failed:', errorMsg);
         throw new Error(errorMsg);
       }

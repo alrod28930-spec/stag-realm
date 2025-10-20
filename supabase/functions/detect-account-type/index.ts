@@ -16,41 +16,74 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🔍 Starting account type detection...');
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ No authorization header');
+      return json({ ok: false, error: 'missing_auth_header', message: 'Authorization header required' }, 401);
+    }
+
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      return json({ ok: false, error: 'Unauthorized' }, 401);
+      console.error('❌ Auth failed:', authError);
+      return json({ ok: false, error: 'unauthorized', message: 'Invalid or expired token' }, 401);
     }
 
-    const { broker = 'alpaca', apiKey, secretKey } = await req.json().catch(() => ({}));
+    console.log(`✅ User authenticated: ${user.id}`);
+
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error('❌ Failed to parse request body:', e);
+      return json({ ok: false, error: 'invalid_json', message: 'Request body must be valid JSON' }, 400);
+    }
+
+    const { broker = 'alpaca', apiKey, secretKey } = body;
+    
+    console.log('📋 Request params:', { broker, hasApiKey: !!apiKey, hasSecretKey: !!secretKey });
     
     if (broker !== "alpaca") {
-      return json({ ok: false, error: "unsupported_broker" }, 400);
+      console.error('❌ Unsupported broker:', broker);
+      return json({ ok: false, error: "unsupported_broker", message: "Only Alpaca is currently supported" }, 400);
     }
 
-    // Use provided credentials or fall back to env
-    const testApiKey = apiKey || Deno.env.get('ALPACA_API_KEY');
-    const testSecretKey = secretKey || Deno.env.get('ALPACA_SECRET_KEY');
-
-    if (!testApiKey || !testSecretKey) {
+    // Validate credentials
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 10) {
+      console.error('❌ Invalid API key');
       return json({ 
         ok: false, 
-        error: "missing_credentials",
-        message: "Please provide apiKey and secretKey or configure ALPACA_API_KEY/ALPACA_SECRET_KEY"
+        error: "invalid_api_key",
+        message: "API key is required and must be at least 10 characters"
       }, 400);
     }
 
+    if (!secretKey || typeof secretKey !== 'string' || secretKey.trim().length < 10) {
+      console.error('❌ Invalid secret key');
+      return json({ 
+        ok: false, 
+        error: "invalid_secret_key",
+        message: "Secret key is required and must be at least 10 characters"
+      }, 400);
+    }
+
+    const testApiKey = apiKey.trim();
+    const testSecretKey = secretKey.trim();
+
     // Try paper first, then live
+    console.log('🔍 Testing paper trading credentials...');
     const paperResult = await tryAlpaca("paper", testApiKey, testSecretKey);
+    
     if (paperResult.ok) {
-      // Store connection metadata
+      console.log('✅ Paper trading connection successful');
       await storeConnection(supabase, user.id, "alpaca", "paper", paperResult.account);
       return json({ 
         ok: true, 
@@ -62,9 +95,11 @@ serve(async (req) => {
       });
     }
 
+    console.log('🔍 Paper failed, testing live trading credentials...');
     const liveResult = await tryAlpaca("live", testApiKey, testSecretKey);
+    
     if (liveResult.ok) {
-      // Store connection metadata
+      console.log('✅ Live trading connection successful');
       await storeConnection(supabase, user.id, "alpaca", "live", liveResult.account);
       return json({ 
         ok: true, 
@@ -76,17 +111,23 @@ serve(async (req) => {
       });
     }
 
+    console.error('❌ Both paper and live authentication failed');
     return json({ 
       ok: false, 
-      error: "auth_failed",
-      message: "Could not authenticate with either paper or live trading endpoints"
+      error: "authentication_failed",
+      message: "Invalid API credentials. Please check your API key and secret.",
+      details: {
+        paperError: paperResult.error,
+        liveError: liveResult.error
+      }
     }, 401);
 
   } catch (error) {
-    console.error('Account type detection error:', error);
+    console.error('💥 Unexpected error in detect-account-type:', error);
     return json({ 
       ok: false, 
-      error: (error as Error).message || 'Failed to detect account type'
+      error: "server_error",
+      message: (error as Error).message || 'Failed to detect account type'
     }, 500);
   }
 });
@@ -97,6 +138,8 @@ async function tryAlpaca(mode: "paper" | "live", apiKey: string, secretKey: stri
     : "https://paper-api.alpaca.markets";
 
   try {
+    console.log(`🔌 Testing ${mode} endpoint: ${baseUrl}`);
+    
     const response = await fetch(`${baseUrl}/v2/account`, {
       headers: {
         "APCA-API-KEY-ID": apiKey,
@@ -105,39 +148,61 @@ async function tryAlpaca(mode: "paper" | "live", apiKey: string, secretKey: stri
     });
 
     if (!response.ok) {
-      return { ok: false, error: `HTTP ${response.status}` };
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error(`❌ ${mode} auth failed: ${response.status} - ${errorText}`);
+      return { ok: false, error: `HTTP ${response.status}: ${errorText.substring(0, 100)}` };
     }
 
     const account = await response.json();
-    console.log(`✅ Successfully authenticated with Alpaca ${mode} account`);
+    console.log(`✅ ${mode} auth successful - Account: ${account.account_number}, Status: ${account.status}`);
     
     return { ok: true, account };
   } catch (e) {
+    console.error(`❌ ${mode} connection error:`, e);
     return { ok: false, error: (e as Error).message };
   }
 }
 
 async function storeConnection(supabase: any, userId: string, broker: string, mode: string, accountInfo: any) {
-  // Ensure workspace exists
-  const { data: wsId } = await supabase.rpc('ensure_default_workspace');
-  const workspace_id = wsId as string;
+  try {
+    console.log('💾 Storing connection metadata...');
+    
+    // Ensure workspace exists
+    const { data: wsId, error: wsError } = await supabase.rpc('ensure_default_workspace');
+    
+    if (wsError) {
+      console.error('❌ Failed to get workspace:', wsError);
+      throw new Error(`Workspace error: ${wsError.message}`);
+    }
+    
+    const workspace_id = wsId as string;
+    console.log(`📦 Workspace ID: ${workspace_id}`);
 
-  // Store connection metadata (not actual credentials)
-  await supabase.from('connections_brokerages').upsert({
-    workspace_id,
-    provider: broker,
-    status: 'active',
-    account_label: `Alpaca ${mode.charAt(0).toUpperCase() + mode.slice(1)} Account`,
-    scope: { 
-      account_type: mode,
-      trading_permissions: accountInfo?.trading_blocked === false ? ['trading'] : [],
-      account_status: accountInfo?.status || 'unknown',
-      account_number: accountInfo?.account_number
-    },
-    last_sync: new Date().toISOString()
-  }, { onConflict: 'workspace_id,provider' });
+    // Store connection metadata (not actual credentials)
+    const { error: upsertError } = await supabase.from('connections_brokerages').upsert({
+      workspace_id,
+      provider: broker,
+      status: 'active',
+      account_label: `Alpaca ${mode.charAt(0).toUpperCase() + mode.slice(1)} Account`,
+      scope: { 
+        account_type: mode,
+        trading_permissions: accountInfo?.trading_blocked === false ? ['trading'] : [],
+        account_status: accountInfo?.status || 'unknown',
+        account_number: accountInfo?.account_number
+      },
+      last_sync: new Date().toISOString()
+    }, { onConflict: 'workspace_id,provider' });
 
-  console.log(`💾 Stored connection metadata for workspace ${workspace_id}`);
+    if (upsertError) {
+      console.error('❌ Failed to store connection:', upsertError);
+      throw new Error(`Database error: ${upsertError.message}`);
+    }
+
+    console.log(`✅ Connection metadata stored successfully`);
+  } catch (e) {
+    console.error('💥 Error in storeConnection:', e);
+    throw e;
+  }
 }
 
 function json(body: any, status = 200) {
