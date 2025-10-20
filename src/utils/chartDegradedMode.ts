@@ -9,7 +9,8 @@ interface CandleData {
   h: number;
   l: number;
   c: number;
-  v?: number;
+  v: number | null;
+  vwap: number | null;
 }
 
 // In-memory cache for last good candle data
