@@ -4,6 +4,7 @@ type Bar = { t: string; o: number; h: number; l: number; c: number; v?: number; 
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const ENFORCE_SUBS = Deno.env.get("SUBSCRIPTION_ENFORCEMENT") === "true";
 
 // Align with your UI's timeframe strings
 const TIMEFRAMES = ["1D", "1h", "5m", "1m"] as const;

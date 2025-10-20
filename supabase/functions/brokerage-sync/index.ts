@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const ENFORCE_SUBS = Deno.env.get("SUBSCRIPTION_ENFORCEMENT") === "true";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -29,7 +31,19 @@ serve(async (req) => {
     }
 
     // Get request body
-    const { workspace_id, connection_id } = await req.json();
+    let { workspace_id, connection_id } = await req.json();
+    
+    // Ensure workspace exists if not provided
+    if (!workspace_id) {
+      const { data: wsId, error: wsErr } = await supabaseClient.rpc('ensure_default_workspace');
+      if (wsErr) throw new Error(`Failed to get workspace: ${wsErr.message}`);
+      workspace_id = wsId;
+    }
+
+    // Check subscription if enforcement enabled
+    if (ENFORCE_SUBS) {
+      // Add entitlement check when subscriptions are re-enabled
+    }
     
     if (!workspace_id) {
       throw new Error('workspace_id is required');
