@@ -54,6 +54,12 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
 
     try {
       // Use the new detect-account-type function
+      console.log('🔌 Attempting brokerage connection...', { 
+        provider: newConnection.provider,
+        hasApiKey: !!newConnection.apiKey,
+        hasSecret: !!newConnection.apiSecret
+      });
+
       const { data, error } = await supabase.functions.invoke('detect-account-type', {
         body: { 
           broker: newConnection.provider,
@@ -62,7 +68,18 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
         }
       });
 
-      if (error) throw error;
+      console.log('📡 Edge function response:', { data, error });
+
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw error;
+      }
+
+      if (!data || !data.ok) {
+        const errorMsg = data?.error || data?.message || 'Connection failed';
+        console.error('❌ Connection failed:', errorMsg);
+        throw new Error(errorMsg);
+      }
 
       toast({
         title: "Connection Successful",
