@@ -71,33 +71,59 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
         hasSecret: !!newConnection.apiSecret
       });
 
-      const { data, error } = await supabase.functions.invoke('detect-account-type', {
-        body: { 
-          broker: newConnection.provider,
-          apiKey: newConnection.apiKey.trim(), 
-          secretKey: newConnection.apiSecret.trim() 
-        }
-      });
+      let data: any = null;
+      let error: any = null;
+      try {
+        const res = await supabase.functions.invoke('detect-account-type', {
+          body: {
+            broker: newConnection.provider,
+            apiKey: newConnection.apiKey.trim(),
+            secretKey: newConnection.apiSecret.trim(),
+          },
+        });
+        data = res.data;
+        error = res.error;
+      } catch (err) {
+        error = err;
+      }
 
-      console.log('📡 Edge function response:', { 
-        success: data?.ok, 
+      console.log('📡 Edge function response:', {
+        success: data?.ok,
         accountType: data?.accountType,
-        error: error?.message || data?.error 
+        error: (error as any)?.message || data?.error,
       });
 
-      if (error) {
+      if (error || !data) {
         console.error('❌ Edge function error:', error);
-        throw new Error(error.message || 'Edge function call failed');
       }
 
-      if (!data) {
-        throw new Error('No response from server');
-      }
+      if (!data?.ok) {
+        console.warn('detect-account-type failed, attempting fallback to broker-connect...');
+        try {
+          const fb = await supabase.functions.invoke('broker-connect', {
+            body: {
+              broker: newConnection.provider,
+              credentials: {
+                api_key: newConnection.apiKey.trim(),
+                api_secret: newConnection.apiSecret.trim(),
+                is_live: false,
+              },
+              account_label: newConnection.accountLabel || 'Alpaca account',
+            },
+          });
 
-      if (!data.ok) {
-        const errorMsg = data.error || data.message || 'Connection failed';
-        console.error('❌ Connection failed:', errorMsg);
-        throw new Error(errorMsg);
+          if (fb.error || !fb.data?.ok) {
+            const reason = fb.error?.message || fb.data?.error || data?.error || 'Connection failed';
+            throw new Error(reason);
+          }
+
+          // Normalize to keep the success flow below unchanged
+          data = { ok: true, accountType: 'paper', mode: 'paper' };
+          console.log('✅ Fallback broker-connect succeeded');
+        } catch (fbErr) {
+          console.error('❌ Fallback broker-connect failed:', fbErr);
+          throw new Error((fbErr as Error).message || 'Connection failed');
+        }
       }
 
       toast({
