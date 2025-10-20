@@ -187,6 +187,8 @@ async function storeConnection(supabase: any, userId: string, broker: string, mo
       throw new Error('Workspace resolution failed: auth context missing or RPC returned null');
     }
     console.log(`📦 Workspace ID: ${workspace_id}`);
+
+    // Store connection metadata (not actual credentials)
     const { error: upsertError } = await supabase.from('connections_brokerages').upsert({
       workspace_id,
       provider: broker,
