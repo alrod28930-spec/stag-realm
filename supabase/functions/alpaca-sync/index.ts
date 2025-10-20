@@ -27,9 +27,15 @@ serve(async (req) => {
     if (authError || !user) {
       throw new Error('Unauthorized');
     }
+    // Create a user-scoped client so auth.uid() is available in RPC/RLS
+    const supabaseUser = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
 
     // Resolve workspace using ensure_default_workspace RPC
-    const { data: wsId, error: wsErr } = await supabaseClient.rpc('ensure_default_workspace');
+    const { data: wsId, error: wsErr } = await supabaseUser.rpc('ensure_default_workspace');
     if (wsErr) {
       throw new Error(`Failed to resolve workspace: ${wsErr.message}`);
     }

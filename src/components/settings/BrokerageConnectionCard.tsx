@@ -38,7 +38,7 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncingMarketData, setIsSyncingMarketData] = useState(false);
   const [newConnection, setNewConnection] = useState({
-    provider: '',
+    provider: 'alpaca',
     accountLabel: '',
     apiKey: '',
     apiSecret: ''

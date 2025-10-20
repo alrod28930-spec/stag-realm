@@ -18,7 +18,7 @@ serve(async (req) => {
   try {
     console.log('🔍 Starting account type detection...');
     
-    const supabase = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
@@ -30,7 +30,7 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
       console.error('❌ Auth failed:', authError);
@@ -38,6 +38,13 @@ serve(async (req) => {
     }
 
     console.log(`✅ User authenticated: ${user.id}`);
+
+    // Create a user-scoped client so auth.uid() is set in RPC/RLS calls
+    const supabaseUser = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
 
     let body;
     try {
@@ -84,7 +91,7 @@ serve(async (req) => {
     
     if (paperResult.ok) {
       console.log('✅ Paper trading connection successful');
-      await storeConnection(supabase, user.id, "alpaca", "paper", paperResult.account);
+      await storeConnection(supabaseUser, user.id, "alpaca", "paper", paperResult.account);
       return json({ 
         ok: true, 
         broker: "alpaca", 
@@ -100,7 +107,7 @@ serve(async (req) => {
     
     if (liveResult.ok) {
       console.log('✅ Live trading connection successful');
-      await storeConnection(supabase, user.id, "alpaca", "live", liveResult.account);
+      await storeConnection(supabaseUser, user.id, "alpaca", "live", liveResult.account);
       return json({ 
         ok: true, 
         broker: "alpaca", 
@@ -176,9 +183,10 @@ async function storeConnection(supabase: any, userId: string, broker: string, mo
     }
     
     const workspace_id = wsId as string;
+    if (!workspace_id) {
+      throw new Error('Workspace resolution failed: auth context missing or RPC returned null');
+    }
     console.log(`📦 Workspace ID: ${workspace_id}`);
-
-    // Store connection metadata (not actual credentials)
     const { error: upsertError } = await supabase.from('connections_brokerages').upsert({
       workspace_id,
       provider: broker,
