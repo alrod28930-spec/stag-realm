@@ -2672,6 +2672,10 @@ export type Database = {
         Args: { p_workspace_id: string }
         Returns: undefined
       }
+      ensure_default_workspace: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       ensure_workspace_for_user: {
         Args: { _user: string }
         Returns: string
@@ -2809,7 +2813,7 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: string
+        Returns: unknown
       }
       log_sync_event: {
         Args: {
