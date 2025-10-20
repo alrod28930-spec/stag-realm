@@ -1,5 +1,17 @@
+/**
+ * BILLING WEBHOOK - CURRENTLY DISABLED
+ * 
+ * This webhook is disabled while subscription enforcement is turned off.
+ * All users are treated as Elite tier by default.
+ * 
+ * To re-enable billing:
+ * 1. Set SUBSCRIPTION_ENFORCEMENT=true in backend environment
+ * 2. Set VITE_SUBSCRIPTION_ENFORCEMENT=true in frontend environment
+ * 3. Uncomment the code below and configure Stripe keys
+ */
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
+// import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -73,6 +85,16 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // BILLING DISABLED: Return early while subscription enforcement is off
+  return new Response(JSON.stringify({ 
+    received: true,
+    message: 'Billing webhook disabled - subscription enforcement is off'
+  }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    status: 200,
+  });
+
+  /* COMMENTED OUT - Re-enable when subscriptions are active
   try {
     logStep("Webhook received");
 
@@ -273,4 +295,5 @@ serve(async (req) => {
       status: 500,
     });
   }
+  */ // End of commented billing logic
 });

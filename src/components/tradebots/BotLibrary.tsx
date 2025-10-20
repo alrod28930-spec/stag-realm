@@ -132,8 +132,14 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
                 <CardContent className="p-8 text-center">
                   <Bot className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-lg font-semibold mb-2">No Bots Available</h3>
+                  {/* Upgrade prompt hidden while subscription enforcement is disabled */}
+                  {/* 
                   <p className="text-muted-foreground">
                     Upgrade to Pro or Elite tier to access our default bot library.
+                  </p>
+                  */}
+                  <p className="text-muted-foreground">
+                    No bot templates available. Check back later.
                   </p>
                 </CardContent>
               </Card>

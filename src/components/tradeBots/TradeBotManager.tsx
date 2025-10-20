@@ -248,9 +248,12 @@ export function TradeBotManager({ userTier, isDemo = false }: TradeBotManagerPro
               Autonomous trading bots with machine learning are available for Pro and Elite subscribers.
             </p>
           </div>
+          {/* Upgrade prompt hidden while subscription enforcement is disabled */}
+          {/* 
           <Button variant="outline">
             Upgrade to Pro
           </Button>
+          */}
         </div>
       </Card>
     );
