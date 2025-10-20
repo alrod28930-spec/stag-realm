@@ -38,6 +38,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { tradeBotEngine } from '@/services/tradeBotEngine';
 import { botTemplateService } from '@/services/botTemplates';
+import { isSubscriptionEnforcementEnabled } from '@/utils/subscriptionGate';
 import type { 
   TradeBotEngine, 
   BotRunMode, 
@@ -233,7 +234,10 @@ export function TradeBotManager({ userTier, isDemo = false }: TradeBotManagerPro
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
 
-  if (userTier === 'lite' || userTier === 'standard') {
+  // Bypass tier check if enforcement is disabled
+  const enforcementEnabled = isSubscriptionEnforcementEnabled();
+  
+  if (enforcementEnabled && (userTier === 'lite' || userTier === 'standard')) {
     return (
       <Card className="p-6">
         <div className="text-center space-y-4">

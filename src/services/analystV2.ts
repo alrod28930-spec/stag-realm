@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logService } from './logging';
 import { eventBus } from './eventBus';
+import { isSubscriptionEnforcementEnabled } from '@/utils/subscriptionGate';
 
 export interface AnalystResponseV2 {
   mode: 'education' | 'diagnostic' | 'overview' | 'risk_alert';
@@ -182,16 +183,24 @@ class AnalystServiceV2 {
 
       const response: AnalystResponseV2 = data;
 
-      // Handle locked features
+      // Handle locked features (bypass if enforcement disabled)
       if (response.error === 'LOCKED_FEATURE') {
-        const lockedMessage = this.addAnalystMessage(
-          `This feature requires ${response.required_tier} tier. ${response.summary || 'Upgrade to access advanced capabilities.'}`
-        );
-        lockedMessage.response = response;
+        const enforcementEnabled = isSubscriptionEnforcementEnabled();
         
-        // Remove loading message
-        this.removeMessage(loadingMessage.id);
-        return lockedMessage;
+        if (enforcementEnabled) {
+          const lockedMessage = this.addAnalystMessage(
+            `This feature requires ${response.required_tier} tier. ${response.summary || 'Upgrade to access advanced capabilities.'}`
+          );
+          lockedMessage.response = response;
+          
+          // Remove loading message
+          this.removeMessage(loadingMessage.id);
+          return lockedMessage;
+        } else {
+          // Bypass: Treat as if feature was unlocked, retry without restriction
+          console.log('🔓 Feature lock bypassed (subscription enforcement disabled)');
+          // Continue processing as normal - the backend should have granted access
+        }
       }
 
       // Update loading message with actual response
