@@ -20,8 +20,6 @@ import {
 } from 'lucide-react';
 import { botTemplateService, type BotTemplate } from '@/services/botTemplates';
 import { useToast } from '@/hooks/use-toast';
-import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
-import { LockedCard } from '@/components/subscription/LockedCard';
 import { BotTemplateModal } from './BotTemplateModal';
 
 interface BotLibraryProps {
@@ -53,21 +51,8 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const { toast } = useToast();
-  const { subscriptionStatus, checkTabAccess } = useSubscriptionAccess();
 
-  // Check if user can access bot library
-  const canAccessBots = checkTabAccess('/trade-bots').hasAccess;
-  const userTier = subscriptionStatus?.tier || 'lite';
-
-  if (!canAccessBots) {
-    return (
-      <LockedCard 
-        feature="Default Bot Library"
-      />
-    );
-  }
-
-  const availableTemplates = botTemplateService.getTemplates(userTier as 'lite' | 'standard' | 'pro' | 'elite');
+  const availableTemplates = botTemplateService.getTemplates('elite' as 'lite' | 'standard' | 'pro' | 'elite');
   
   const handleDeployBot = async (template: BotTemplate) => {
     setSelectedTemplate(template);
@@ -123,7 +108,7 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
           </div>
             <Badge variant="secondary" className="flex items-center gap-1">
               <Star className="w-3 h-3" />
-              {userTier?.toUpperCase()} Member
+              Elite Member
             </Badge>
         </div>
 
@@ -301,7 +286,7 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
                     Unlock Advanced Bots
                   </h4>
                   <p className="text-sm text-amber-700 dark:text-amber-300">
-                    Upgrade to Elite to access the Scalper bot and full strategy editing capabilities.
+                    Access the full bot library with advanced strategies and custom editing capabilities.
                   </p>
                 </div>
               </div>

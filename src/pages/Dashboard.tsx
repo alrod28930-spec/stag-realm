@@ -18,14 +18,12 @@ import {
 } from 'lucide-react';
 import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
 import { useToast } from '@/hooks/use-toast';
-import { useSubscription } from '@/hooks/useSubscription';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
 import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
 import { EquityCurveChart } from '@/components/charts/EquityCurveChart';
 import { RiskMetricsChart } from '@/components/charts/RiskMetricsChart';
 import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
-import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
 
 export default function Dashboard() {
   const {
@@ -39,7 +37,6 @@ export default function Dashboard() {
   
   const { toast } = useToast();
   const { workspace } = useWorkspace();
-  const { subscription, loading: subscriptionLoading } = useSubscription(workspace?.id);
 
   // Load portfolio data and subscribe to updates
   useEffect(() => {
@@ -122,15 +119,6 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2 items-center">
-          {!subscriptionLoading && subscription && (
-            <SubscriptionStatus
-              planCode={subscription.planCode}
-              status={subscription.status}
-              currentPeriodEnd={subscription.currentPeriodEnd}
-              cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
-              isDemoMode={false}
-            />
-          )}
           <Button onClick={handleRefresh} disabled={isLoading} size="sm" variant="outline">
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh

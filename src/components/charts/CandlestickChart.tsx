@@ -7,7 +7,6 @@ import { Settings, Download, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useEnhancedCandles } from '@/hooks/useEnhancedCandles';
 import { useOracleIndicators } from '@/hooks/useOracleIndicators';
 import { useTimeSync } from '@/hooks/useTimeSync';
-import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { format } from 'date-fns';
 import { getCurrentUserWorkspace } from '@/utils/auth';
 
@@ -50,10 +49,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   const { state, data: candleData, error, lastUpdated } = useEnhancedCandles(workspaceId, symbol, timeframe);
   const { indicators: oracleIndicators } = useOracleIndicators(workspaceId, symbol, timeframe, showOracleSignals);
   const { linked, range, setRange } = useTimeSync();
-  const { subscriptionStatus, checkTabAccess } = useSubscriptionAccess();
-
-  const chartAccess = checkTabAccess('/charts');
-  const canShowAdvanced = chartAccess.hasAccess;
   const loading = state === 'loading';
   const isDegraded = state === 'degraded';
 
@@ -177,7 +172,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
   // Update oracle indicators
   useEffect(() => {
-    if (!chartRef.current || !showIndicators || !canShowAdvanced || !oracleIndicators.length) return;
+    if (!chartRef.current || !showIndicators || !oracleIndicators.length) return;
 
     // Group indicators by name
     const indicatorsByName = oracleIndicators.reduce((acc, ind) => {
@@ -219,7 +214,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       series.setData(lineData);
       indicatorSeriesRef.current.set(name, series);
     });
-  }, [oracleIndicators, showIndicators, canShowAdvanced]);
+  }, [oracleIndicators, showIndicators]);
 
   // Apply linked time range
   useEffect(() => {
@@ -280,26 +275,22 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             </div>
             
             <div className="flex items-center gap-2">
-              {canShowAdvanced && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleIndicator('sma20')}
-                    className={activeIndicators.sma20 ? 'bg-primary text-primary-foreground' : ''}
-                  >
-                    SMA20
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleIndicator('vwap')}
-                    className={activeIndicators.vwap ? 'bg-accent text-accent-foreground' : ''}
-                  >
-                    VWAP
-                  </Button>
-                </>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleIndicator('sma20')}
+                className={activeIndicators.sma20 ? 'bg-primary text-primary-foreground' : ''}
+              >
+                SMA20
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleIndicator('vwap')}
+                className={activeIndicators.vwap ? 'bg-accent text-accent-foreground' : ''}
+              >
+                VWAP
+              </Button>
               
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <Download className="w-4 h-4" />

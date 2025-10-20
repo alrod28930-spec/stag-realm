@@ -17,7 +17,6 @@ import {
 import { useEnhancedCandles } from '@/hooks/useEnhancedCandles';
 import { useOracleIndicators } from '@/hooks/useOracleIndicators';
 import { useTimeSync } from '@/hooks/useTimeSync';
-import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { useToast } from '@/hooks/use-toast';
 import { ChartSkeleton } from './ChartSkeleton';
 import { format } from 'date-fns';
@@ -89,7 +88,6 @@ export const RealTimeTradingChart: React.FC<RealTimeTradingChartProps> = ({
   const { state, data: candleData, error, lastUpdated } = useEnhancedCandles(workspaceId, symbol, timeframe);
   const { indicators: oracleIndicators } = useOracleIndicators(workspaceId, symbol, timeframe, true);
   const { linked, range, setRange } = useTimeSync();
-  const { subscriptionStatus } = useSubscriptionAccess();
   const { toast } = useToast();
 
   const loading = state === 'loading';

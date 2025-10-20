@@ -8,8 +8,6 @@ import { AlertTriangle, Bot, Pause, Play, Square } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { BotActivationModal } from './BotActivationModal';
-import { SimpleDayTradingModal } from './SimpleDayTradingModal';
-import { LockGuard } from '@/components/subscription/LockGuard';
 
 interface BotProfile {
   workspace_id: string;
@@ -31,7 +29,6 @@ export function BotExecutionPanel() {
   const [showActivationModal, setShowActivationModal] = useState(false);
   const [showDayTradingModal, setShowDayTradingModal] = useState(false);
   const [selectedBot, setSelectedBot] = useState<BotProfile | null>(null);
-  const [pendingMode, setPendingMode] = useState<'standard' | 'intraday' | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {

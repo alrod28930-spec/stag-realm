@@ -13,7 +13,6 @@ import { DailyTradesCard } from '@/components/tradingdesk/DailyTradesCard';
 import { OpenPositionsTable } from '@/components/tradingdesk/OpenPositionsTable';
 import { OrderHistoryTable } from '@/components/tradingdesk/OrderHistoryTable';
 import { ComplianceFooter } from '@/components/tradingdesk/ComplianceFooter';
-import TierComplianceGuard from '@/components/compliance/TierComplianceGuard';
 import { SymbolIntegrationButton } from '@/components/tradingdesk/SymbolIntegrationButton';
 import TradeBots from '@/pages/TradeBots';
 import { PaperTradingTestPanel } from '@/components/tradingdesk/PaperTradingTestPanel';
@@ -41,8 +40,7 @@ export default function TradingDesk() {
   }, []);
 
   return (
-    <TierComplianceGuard requiresLiveTrading={true}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Risk Disclaimer Banner */}
         <RiskDisclaimerBanner />
         
@@ -159,6 +157,5 @@ export default function TradingDesk() {
         {/* Compliance Footer */}
         <ComplianceFooter />
       </div>
-    </TierComplianceGuard>
   );
 }

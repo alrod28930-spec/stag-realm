@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { getCurrentUserWorkspace } from '@/utils/auth';
-import { entitlementService } from '@/services/entitlementService';
 import { logService } from '@/services/logging';
 
 export interface WorkspaceInfo {
@@ -86,20 +85,6 @@ export function useWorkspace(): UseWorkspaceResult {
 
       setWorkspace(workspaceData);
       setWorkspaceId(currentWorkspaceId);
-
-      // Initialize entitlements if needed
-      if (workspaceData) {
-        try {
-          await entitlementService.initializeDefaultEntitlements(currentWorkspaceId);
-          await entitlementService.syncWithSubscription(currentWorkspaceId);
-        } catch (entitlementError) {
-          // Log but don't fail the workspace load
-          logService.log('warn', 'Failed to sync entitlements', { 
-            error: entitlementError, 
-            workspaceId: currentWorkspaceId 
-          });
-        }
-      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load workspace';
@@ -279,23 +264,6 @@ export function useWorkspace(): UseWorkspaceResult {
 
         setWorkspace(workspaceData);
         setWorkspaceId(currentWorkspaceId);
-
-        // Initialize entitlements if needed - but don't block on it
-        if (workspaceData) {
-          // Do this async without blocking
-          Promise.resolve().then(async () => {
-            try {
-              await entitlementService.initializeDefaultEntitlements(currentWorkspaceId);
-              await entitlementService.syncWithSubscription(currentWorkspaceId);
-            } catch (entitlementError) {
-              // Log but don't fail the workspace load
-              logService.log('warn', 'Failed to sync entitlements', { 
-                error: entitlementError, 
-                workspaceId: currentWorkspaceId 
-              });
-            }
-          });
-        }
 
       } catch (err) {
         if (!mounted) return;
