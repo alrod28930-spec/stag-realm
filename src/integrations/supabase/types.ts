@@ -62,6 +62,21 @@ export type Database = {
         }
         Relationships: []
       }
+      analyst_hparams: {
+        Row: {
+          params: Json
+          workspace_id: string
+        }
+        Insert: {
+          params?: Json
+          workspace_id: string
+        }
+        Update: {
+          params?: Json
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       analyst_outputs: {
         Row: {
           id: string
@@ -1289,6 +1304,39 @@ export type Database = {
           name?: string
           priority?: number | null
           url?: string | null
+        }
+        Relationships: []
+      }
+      learning_jobs: {
+        Row: {
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          job_type: string
+          payload: Json
+          started_at: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type: string
+          payload?: Json
+          started_at?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          payload?: Json
+          started_at?: string | null
+          status?: string
+          workspace_id?: string
         }
         Relationships: []
       }

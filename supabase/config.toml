@@ -77,3 +77,15 @@ verify_jwt = false
 
 [functions.oracle-score-v2]
 verify_jwt = false
+
+[functions.learning-hub-sync]
+verify_jwt = false
+
+[functions.oracle-online-update]
+verify_jwt = false
+
+[functions.analyst-auto-tune]
+verify_jwt = false
+
+[functions.backtest-run]
+verify_jwt = true

@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std/http/server.ts";
 import { json, handleCORS, ensureWorkspace } from "../_shared/supa.ts";
+import { validator, idempotencyKey } from "../_shared/safety.ts";
+import { recordEvent } from "../_shared/metrics.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -28,6 +30,24 @@ serve(async (req) => {
       candidates = [], 
       flags = { paper_only: true, allow_live_trades: false } 
     } = body;
+
+    // Load feature flags
+    const { data: featureFlags } = await supabase
+      .from("agent_feature_flags")
+      .select("flags")
+      .eq("workspace_id", workspace_id)
+      .single();
+
+    const mergedFlags = { ...flags, ...(featureFlags?.flags ?? {}) };
+
+    // Load tuned hyperparameters
+    const { data: hparams } = await supabase
+      .from("analyst_hparams")
+      .select("params")
+      .eq("workspace_id", workspace_id)
+      .single();
+
+    const params = hparams?.params ?? { w_win: 0.5, w_oracle: 0.5, risk_base: 0.02, risk_cap: 0.03 };
 
     console.log(`[analyst-core-v2] workspace_id=${workspace_id}, user_id=${user_id}, tf=${tf}`);
 
@@ -59,14 +79,14 @@ serve(async (req) => {
       .order("avg_edge_bp", { ascending: false })
       .limit(50);
 
-    // 4. Deterministic selection & sizing
+    // 4. Deterministic selection & sizing (with tuned params)
     const symbol = selectSymbol({ profile, stats: stats || [], oracleTop: oracleTop || [], candidates });
     const statsForSymbol = stats?.find((s) => s.symbol === symbol);
-    const sizing = computeRisk({ profile, statsForSymbol });
+    const sizing = computeRisk({ profile, statsForSymbol, params });
     const stops = proposeStops({ tf, profile });
 
     // 5. Determine mode (paper by default unless explicitly allowed)
-    const mode = flags.allow_live_trades ? "live" : "paper";
+    const mode = mergedFlags.allow_live_trades ? "live" : "paper";
 
     // 6. Build plan
     const plan = {
@@ -82,9 +102,18 @@ serve(async (req) => {
         max_daily_trades: profile?.max_daily_trades ?? 5,
         max_open_positions: 3,
       },
-      confidence: confidenceScore({ profile, stats: stats || [], oracleTop: oracleTop || [], symbol }),
+      confidence: confidenceScore({ profile, stats: stats || [], oracleTop: oracleTop || [], symbol, params }),
       notes: "Self-contained deterministic plan (no LLM). Pure BID + Oracle logic.",
     };
+
+    // 6b. Validate plan
+    const validation = validator(plan, mergedFlags);
+    if (!validation.ok) {
+      return json({ ok: false, error: "validation_failed", reasons: validation.errs }, 400);
+    }
+
+    // 6c. Generate idempotency key
+    const idem = idempotencyKey([workspace_id, symbol, tf, "buy", Math.floor(Date.now() / 60000)]);
 
     // 7. Save state to analyst_states
     await supabase.from("analyst_states").upsert({
@@ -95,10 +124,11 @@ serve(async (req) => {
     }, { onConflict: "workspace_id,user_id" });
 
     // 8. Log to repository_events
-    await supabase.from("repository_events").insert({
-      workspace_id,
-      source: "analyst",
-      payload: { event: "plan_generated", plan },
+    await recordEvent(supabase, workspace_id, "analyst", { 
+      event: "plan_generated", 
+      plan, 
+      idem,
+      validation 
     });
 
     return json({
@@ -157,19 +187,21 @@ function selectSymbol({
 
 function computeRisk({ 
   profile, 
-  statsForSymbol 
+  statsForSymbol,
+  params 
 }: { 
   profile: any; 
   statsForSymbol: any;
+  params: any;
 }): { risk_pct: number; qty_estimate: number } {
-  const base = Math.min(profile?.max_position_risk_pct ?? 0.02, 0.02);
+  const base = Math.min(profile?.max_position_risk_pct ?? params.risk_base, params.risk_base);
   
   // Boost risk if user has positive stats for this symbol
   const boost = statsForSymbol 
     ? Math.max(0, (statsForSymbol.win_rate - 0.5) * 0.01)
     : 0;
   
-  const risk_pct = Math.min(0.03, base + boost);
+  const risk_pct = Math.min(params.risk_cap, base + boost);
   
   // Simple qty estimate (placeholder)
   const qty_estimate = Math.floor(10000 * risk_pct / 100);
@@ -213,12 +245,14 @@ function confidenceScore({
   profile, 
   stats, 
   oracleTop, 
-  symbol 
+  symbol,
+  params 
 }: {
   profile: any;
   stats: any[];
   oracleTop: any[];
   symbol: string;
+  params: any;
 }): number {
   const userStat = stats?.find((s) => s.symbol === symbol);
   const oracleStat = oracleTop?.find((o) => o.symbol === symbol);
@@ -231,6 +265,6 @@ function confidenceScore({
     ? Math.min(1, oracleStat.hit_rate * oracleStat.avg_edge_bp / 100)
     : 0.5;
 
-  // Weighted average
-  return Math.max(0, Math.min(1, userConfidence * 0.6 + oracleConfidence * 0.4));
+  // Weighted average using tuned params
+  return Math.max(0, Math.min(1, userConfidence * params.w_win + oracleConfidence * params.w_oracle));
 }
