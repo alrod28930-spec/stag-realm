@@ -4,3 +4,6 @@ export { BacktestPanel } from './BacktestPanel';
 export { SystemHealthPanel } from './SystemHealthPanel';
 export { PortfolioPlannerPanel } from './PortfolioPlannerPanel';
 export { AuditLogPanel } from './AuditLogPanel';
+export { PoliciesPanel } from './PoliciesPanel';
+export { ExperimentsPanel } from './ExperimentsPanel';
+export { OracleModelsPanel } from './OracleModelsPanel';

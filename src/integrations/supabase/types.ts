@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ab_experiments: {
+        Row: {
+          a_policy_id: string
+          b_policy_id: string
+          id: string
+          name: string
+          started_at: string | null
+          status: string
+          stopped_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          a_policy_id: string
+          b_policy_id: string
+          id?: string
+          name: string
+          started_at?: string | null
+          status?: string
+          stopped_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          a_policy_id?: string
+          b_policy_id?: string
+          id?: string
+          name?: string
+          started_at?: string | null
+          status?: string
+          stopped_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       agent_feature_flags: {
         Row: {
           flags: Json
@@ -1403,6 +1436,36 @@ export type Database = {
         }
         Relationships: []
       }
+      oracle_models: {
+        Row: {
+          enabled: boolean
+          id: string
+          name: string
+          params: Json
+          updated_at: string | null
+          weight: number
+          workspace_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          id?: string
+          name: string
+          params?: Json
+          updated_at?: string | null
+          weight?: number
+          workspace_id: string
+        }
+        Update: {
+          enabled?: boolean
+          id?: string
+          name?: string
+          params?: Json
+          updated_at?: string | null
+          weight?: number
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       oracle_news: {
         Row: {
           headline: string | null
@@ -2293,6 +2356,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rl_policies: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          params: Json
+          status: string
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          params: Json
+          status?: string
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          params?: Json
+          status?: string
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      rl_policy_results: {
+        Row: {
+          avg_rr: number
+          created_at: string | null
+          id: string
+          pnl_bp: number
+          policy_id: string
+          sharpe: number | null
+          time_window: string
+          trades: number
+          win_rate: number
+          workspace_id: string
+        }
+        Insert: {
+          avg_rr?: number
+          created_at?: string | null
+          id?: string
+          pnl_bp?: number
+          policy_id: string
+          sharpe?: number | null
+          time_window: string
+          trades?: number
+          win_rate?: number
+          workspace_id: string
+        }
+        Update: {
+          avg_rr?: number
+          created_at?: string | null
+          id?: string
+          pnl_bp?: number
+          policy_id?: string
+          sharpe?: number | null
+          time_window?: string
+          trades?: number
+          win_rate?: number
+          workspace_id?: string
+        }
+        Relationships: []
       }
       search_queries: {
         Row: {
