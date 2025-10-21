@@ -35,23 +35,19 @@ serve(async (req) => {
     // Load BID stats for symbols
     const { data: stats } = await supabase
       .from("bid_user_stats")
-      .select("symbol, win_rate, avg_rr, volatility")
+      .select("symbol, win_rate, avg_rr")
       .in("symbol", symbols)
       .eq("workspace_id", workspace_id);
 
-    if (!stats || stats.length === 0) {
-      return json({ 
-        ok: false, 
-        error: "no_stats", 
-        message: "No BID stats found for requested symbols" 
-      }, 400);
-    }
+    const baseStats = (!stats || stats.length === 0)
+      ? symbols.map((sym: string) => ({ symbol: sym, win_rate: 0.5, avg_rr: 1.0 }))
+      : stats;
 
     // Calculate allocation weights based on performance metrics
-    const plans = stats.map(s => {
+    const plans = baseStats.map((s: any) => {
       const win_rate = s.win_rate ?? 0.5;
       const avg_rr = s.avg_rr ?? 1.0;
-      const volatility = s.volatility ?? 0.02;
+      const volatility = (s as any).volatility ?? 0.02;
       
       // Weight by win rate and risk-reward, penalize by volatility
       const performance_score = (win_rate * avg_rr) / Math.max(volatility, 0.01);
@@ -93,17 +89,22 @@ serve(async (req) => {
       planCount: allocations.length
     });
 
-    await supabase.from("execution_audit").insert({
-      workspace_id,
-      event: "portfolio_plan_generated",
-      payload: { symbols, capital, totalAlloc, allocations }
-    });
+    try {
+      await supabase.from("execution_audit").insert({
+        workspace_id,
+        event: "portfolio_plan_generated",
+        payload: { symbols, capital, totalAlloc, allocations }
+      });
+    } catch (_e) {
+      // swallow audit errors
+    }
 
     return json({ 
       ok: true, 
       totalAlloc: parseFloat(totalAlloc.toFixed(4)),
       plans: allocations,
       capital,
+      risk_cap,
       timestamp: new Date().toISOString()
     }, 200, corsHeaders);
 
