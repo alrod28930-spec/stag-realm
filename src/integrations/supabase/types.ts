@@ -987,6 +987,30 @@ export type Database = {
         }
         Relationships: []
       }
+      execution_audit: {
+        Row: {
+          created_at: string | null
+          event: string
+          id: string
+          payload: Json | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event: string
+          id?: string
+          payload?: Json | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event?: string
+          id?: string
+          payload?: Json | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       faqs: {
         Row: {
           answer: string
@@ -2802,6 +2826,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vault_keys: {
+        Row: {
+          broker: string
+          created_at: string | null
+          id: string
+          vault_ref: string
+          workspace_id: string
+        }
+        Insert: {
+          broker: string
+          created_at?: string | null
+          id?: string
+          vault_ref: string
+          workspace_id: string
+        }
+        Update: {
+          broker?: string
+          created_at?: string | null
+          id?: string
+          vault_ref?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       voice_profiles: {
         Row: {

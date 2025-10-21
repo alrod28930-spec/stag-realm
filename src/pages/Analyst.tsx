@@ -35,7 +35,7 @@ import { useScreenSize } from '@/hooks/use-mobile';
 import { userBID } from '@/services/userBID';
 import { useAuthStore } from '@/stores/authStore';
 import type { ProcessedSignal } from '@/types/oracle';
-import { AnalystV2Panel, BacktestPanel, SystemHealthPanel } from '@/components/analyst';
+import { AnalystV2Panel, BacktestPanel, SystemHealthPanel, PortfolioPlannerPanel, AuditLogPanel } from '@/components/analyst';
 
 interface AnalystProps {
   selectedSignal?: ProcessedSignal | null;
@@ -255,15 +255,21 @@ export default function Analyst(props: AnalystProps = {}) {
       {/* Phase III - Tabbed Interface */}
       <div className="w-full p-4">
         <Tabs defaultValue="v2" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="v2">Analyst v2 (Deterministic)</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="v2">Analyst v2</TabsTrigger>
+            <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="backtest">Backtest</TabsTrigger>
-            <TabsTrigger value="health">System Health</TabsTrigger>
-            <TabsTrigger value="chat">Chat (Legacy)</TabsTrigger>
+            <TabsTrigger value="health">Health</TabsTrigger>
+            <TabsTrigger value="audit">Audit</TabsTrigger>
+            <TabsTrigger value="chat">Chat</TabsTrigger>
           </TabsList>
 
           <TabsContent value="v2" className="space-y-4">
             <AnalystV2Panel />
+          </TabsContent>
+
+          <TabsContent value="portfolio" className="space-y-4">
+            <PortfolioPlannerPanel />
           </TabsContent>
 
           <TabsContent value="backtest" className="space-y-4">
@@ -272,6 +278,10 @@ export default function Analyst(props: AnalystProps = {}) {
 
           <TabsContent value="health" className="space-y-4">
             <SystemHealthPanel />
+          </TabsContent>
+
+          <TabsContent value="audit" className="space-y-4">
+            <AuditLogPanel />
           </TabsContent>
 
           <TabsContent value="chat" className="space-y-4">
