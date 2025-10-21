@@ -173,6 +173,39 @@ export type Database = {
           },
         ]
       }
+      analyst_states: {
+        Row: {
+          context: Json
+          created_at: string | null
+          last_plan: Json | null
+          mode: string
+          tone: string
+          updated_at: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string | null
+          last_plan?: Json | null
+          mode?: string
+          tone?: string
+          updated_at?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string | null
+          last_plan?: Json | null
+          mode?: string
+          tone?: string
+          updated_at?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       analyst_telemetry: {
         Row: {
           created_at: string | null
@@ -243,6 +276,33 @@ export type Database = {
           tf?: string | null
           ts?: string | null
           user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      bid_patterns: {
+        Row: {
+          feature: Json | null
+          id: string
+          last_seen: string | null
+          pattern_hash: string | null
+          success_rate: number | null
+          workspace_id: string
+        }
+        Insert: {
+          feature?: Json | null
+          id?: string
+          last_seen?: string | null
+          pattern_hash?: string | null
+          success_rate?: number | null
+          workspace_id: string
+        }
+        Update: {
+          feature?: Json | null
+          id?: string
+          last_seen?: string | null
+          pattern_hash?: string | null
+          success_rate?: number | null
           workspace_id?: string
         }
         Relationships: []
@@ -1385,6 +1445,7 @@ export type Database = {
       }
       oracle_signals: {
         Row: {
+          confidence: number | null
           direction: number
           id: string
           name: string
@@ -1400,6 +1461,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          confidence?: number | null
           direction: number
           id?: string
           name: string
@@ -1415,6 +1477,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          confidence?: number | null
           direction?: number
           id?: string
           name?: string
@@ -1880,6 +1943,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      repository_events: {
+        Row: {
+          id: string
+          payload: Json
+          source: string
+          ts: string | null
+          workspace_id: string
+        }
+        Insert: {
+          id?: string
+          payload: Json
+          source: string
+          ts?: string | null
+          workspace_id: string
+        }
+        Update: {
+          id?: string
+          payload?: Json
+          source?: string
+          ts?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
       }
       risk_counters: {
         Row: {

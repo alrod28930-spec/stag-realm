@@ -34,6 +34,7 @@ import { useScreenSize } from '@/hooks/use-mobile';
 import { userBID } from '@/services/userBID';
 import { useAuthStore } from '@/stores/authStore';
 import type { ProcessedSignal } from '@/types/oracle';
+import { AnalystV2Panel } from '@/components/analyst';
 
 interface AnalystProps {
   selectedSignal?: ProcessedSignal | null;
@@ -250,6 +251,11 @@ export default function Analyst(props: AnalystProps = {}) {
 
   return (
     <div className={`${isMobile ? 'flex flex-col h-[calc(100vh-8rem)]' : 'flex h-screen'} bg-background overflow-hidden`}>
+      {/* Phase II - Analyst V2 Demo Panel */}
+      <div className="w-full border-b">
+        <AnalystV2Panel />
+      </div>
+      
       {/* Left side - Chat with personas */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Header */}

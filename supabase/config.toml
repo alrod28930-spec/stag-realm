@@ -65,3 +65,15 @@ verify_jwt = true
 
 [functions.bid-learn-aggregate]
 verify_jwt = true
+
+[functions.analyst-core-v2]
+verify_jwt = true
+
+[functions.bid-learn-aggregate-v2]
+verify_jwt = false
+
+[functions.oracle-scan-v2]
+verify_jwt = false
+
+[functions.oracle-score-v2]
+verify_jwt = false
