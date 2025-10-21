@@ -3,6 +3,7 @@ import { json, handleCORS, ensureWorkspace } from "../_shared/supa.ts";
 import { validator, idempotencyKey } from "../_shared/safety.ts";
 import { recordEvent } from "../_shared/metrics.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadPolicyOverride, applyPolicyParams, logPolicyOverride } from "../_shared/override.ts";
 
 /**
  * Analyst Core v2 - Deterministic Planning Engine
@@ -28,7 +29,8 @@ serve(async (req) => {
       user_id = workspace_id, 
       tf = "1H", 
       candidates = [], 
-      flags = { paper_only: true, allow_live_trades: false } 
+      flags = { paper_only: true, allow_live_trades: false },
+      policy_override_id = null
     } = body;
 
     // Load feature flags
@@ -47,9 +49,27 @@ serve(async (req) => {
       .eq("workspace_id", workspace_id)
       .single();
 
-    const params = hparams?.params ?? { w_win: 0.5, w_oracle: 0.5, risk_base: 0.02, risk_cap: 0.03 };
+    let params = hparams?.params ?? { w_win: 0.5, w_oracle: 0.5, risk_base: 0.02, risk_cap: 0.03 };
 
-    console.log(`[analyst-core-v2] workspace_id=${workspace_id}, user_id=${user_id}, tf=${tf}`);
+    // Apply policy override if provided
+    let appliedPolicy = null;
+    if (policy_override_id) {
+      const policyOverride = await loadPolicyOverride(supabase, workspace_id, policy_override_id);
+      if (policyOverride) {
+        params = applyPolicyParams(params, policyOverride);
+        appliedPolicy = { id: policyOverride.id, name: policyOverride.name, status: policyOverride.status };
+        
+        // Log the override usage
+        const paramsHash = JSON.stringify(params);
+        await logPolicyOverride(supabase, workspace_id, policy_override_id, paramsHash);
+        
+        console.log(`[analyst-core-v2] Applied policy override: ${policyOverride.name} (${policy_override_id})`);
+      } else {
+        console.warn(`[analyst-core-v2] Policy override ${policy_override_id} not found or unauthorized`);
+      }
+    }
+
+    console.log(`[analyst-core-v2] workspace_id=${workspace_id}, user_id=${user_id}, tf=${tf}, policy=${appliedPolicy?.name || 'default'}`);
 
     // 1. Load user profile
     const { data: profile } = await supabase
@@ -134,6 +154,7 @@ serve(async (req) => {
     return json({
       ok: true,
       plan,
+      applied_policy: appliedPolicy,
       metadata: {
         profile,
         stats_count: stats?.length ?? 0,

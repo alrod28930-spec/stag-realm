@@ -35,7 +35,7 @@ import { useScreenSize } from '@/hooks/use-mobile';
 import { userBID } from '@/services/userBID';
 import { useAuthStore } from '@/stores/authStore';
 import type { ProcessedSignal } from '@/types/oracle';
-import { AnalystV2Panel, BacktestPanel, SystemHealthPanel, PortfolioPlannerPanel, AuditLogPanel } from '@/components/analyst';
+import { AnalystV2Panel, BacktestPanel, SystemHealthPanel, PortfolioPlannerPanel, AuditLogPanel, PoliciesPanel, ExperimentsPanel, OracleModelsPanel } from '@/components/analyst';
 
 interface AnalystProps {
   selectedSignal?: ProcessedSignal | null;
@@ -255,11 +255,14 @@ export default function Analyst(props: AnalystProps = {}) {
       {/* Phase III - Tabbed Interface */}
       <div className="w-full p-4">
         <Tabs defaultValue="v2" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-9 gap-1">
             <TabsTrigger value="v2">Analyst v2</TabsTrigger>
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="backtest">Backtest</TabsTrigger>
             <TabsTrigger value="health">Health</TabsTrigger>
+            <TabsTrigger value="policies">Policies</TabsTrigger>
+            <TabsTrigger value="experiments">Experiments</TabsTrigger>
+            <TabsTrigger value="oracle">Oracle</TabsTrigger>
             <TabsTrigger value="audit">Audit</TabsTrigger>
             <TabsTrigger value="chat">Chat</TabsTrigger>
           </TabsList>
@@ -278,6 +281,18 @@ export default function Analyst(props: AnalystProps = {}) {
 
           <TabsContent value="health" className="space-y-4">
             <SystemHealthPanel />
+          </TabsContent>
+
+          <TabsContent value="policies" className="space-y-4">
+            <PoliciesPanel />
+          </TabsContent>
+
+          <TabsContent value="experiments" className="space-y-4">
+            <ExperimentsPanel />
+          </TabsContent>
+
+          <TabsContent value="oracle" className="space-y-4">
+            <OracleModelsPanel />
           </TabsContent>
 
           <TabsContent value="audit" className="space-y-4">
