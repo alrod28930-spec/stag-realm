@@ -1,5 +1,37 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { supaFromReq, json, handleCORS, ensureWorkspace } from "../_shared/supa.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+function json(body: any, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
+function handleCORS(req: Request) {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  return null;
+}
+
+function supaFromReq(req: Request) {
+  const url = Deno.env.get('SUPABASE_URL')!;
+  const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const auth = req.headers.get('Authorization') ?? '';
+  return createClient(url, anon, { global: { headers: { Authorization: auth }}});
+}
+
+async function ensureWorkspace(supabase: any) {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) throw new Error('Unauthorized');
+  const { data, error: rpcError } = await supabase.rpc('ensure_workspace_for_user', { _user: user.id });
+  if (rpcError) throw rpcError;
+  return data as string;
+}
 
 serve(async (req) => {
   const cors = handleCORS(req);
