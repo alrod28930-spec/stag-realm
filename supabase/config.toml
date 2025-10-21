@@ -53,3 +53,15 @@ verify_jwt = false
 
 [functions.oracle-health]
 verify_jwt = false
+
+[functions.analyst-core]
+verify_jwt = true
+
+[functions.oracle-top]
+verify_jwt = true
+
+[functions.oracle-score]
+verify_jwt = true
+
+[functions.bid-learn-aggregate]
+verify_jwt = true

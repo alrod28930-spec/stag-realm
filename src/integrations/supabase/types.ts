@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_feature_flags: {
+        Row: {
+          flags: Json
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          flags?: Json
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          flags?: Json
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       analyst_context: {
         Row: {
           context_data: Json
@@ -189,6 +207,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bid_learning_events: {
+        Row: {
+          event_type: string
+          id: string
+          order_id: string | null
+          payload: Json
+          pnl: number | null
+          symbol: string | null
+          tf: string | null
+          ts: string | null
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          order_id?: string | null
+          payload?: Json
+          pnl?: number | null
+          symbol?: string | null
+          tf?: string | null
+          ts?: string | null
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          order_id?: string | null
+          payload?: Json
+          pnl?: number | null
+          symbol?: string | null
+          tf?: string | null
+          ts?: string | null
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      bid_user_stats: {
+        Row: {
+          avg_hold_minutes: number
+          avg_rr: number
+          last_updated: string | null
+          symbol: string
+          tf: string
+          trades: number
+          user_id: string
+          win_rate: number
+          workspace_id: string
+        }
+        Insert: {
+          avg_hold_minutes?: number
+          avg_rr?: number
+          last_updated?: string | null
+          symbol: string
+          tf: string
+          trades?: number
+          user_id: string
+          win_rate?: number
+          workspace_id: string
+        }
+        Update: {
+          avg_hold_minutes?: number
+          avg_rr?: number
+          last_updated?: string | null
+          symbol?: string
+          tf?: string
+          trades?: number
+          user_id?: string
+          win_rate?: number
+          workspace_id?: string
+        }
+        Relationships: []
       }
       billing_customers: {
         Row: {
@@ -1256,6 +1349,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      oracle_signal_scores: {
+        Row: {
+          avg_edge_bp: number
+          hit_rate: number
+          last_updated: string | null
+          n: number
+          regime: string
+          symbol: string
+          tf: string
+          workspace_id: string
+        }
+        Insert: {
+          avg_edge_bp?: number
+          hit_rate?: number
+          last_updated?: string | null
+          n?: number
+          regime: string
+          symbol: string
+          tf: string
+          workspace_id: string
+        }
+        Update: {
+          avg_edge_bp?: number
+          hit_rate?: number
+          last_updated?: string | null
+          n?: number
+          regime?: string
+          symbol?: string
+          tf?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       oracle_signals: {
         Row: {
@@ -2412,6 +2538,42 @@ export type Database = {
           user_id?: string
           voice_enabled?: boolean | null
           voice_rate?: number | null
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          created_at: string | null
+          max_daily_trades: number
+          max_position_risk_pct: number
+          objectives: Json
+          risk_level: string
+          style: string
+          updated_at: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          max_daily_trades?: number
+          max_position_risk_pct?: number
+          objectives?: Json
+          risk_level?: string
+          style?: string
+          updated_at?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          max_daily_trades?: number
+          max_position_risk_pct?: number
+          objectives?: Json
+          risk_level?: string
+          style?: string
+          updated_at?: string | null
+          user_id?: string
+          workspace_id?: string
         }
         Relationships: []
       }
