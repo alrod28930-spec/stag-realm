@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { json, handleCORS, ensureWorkspace } from "../_shared/supa.ts";
+import { preflight, json, supaFromReq } from "../_shared/http.ts";
+import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
+
+const FN = "oracle-sentiment-scan";
 
 /**
  * Oracle Sentiment Scan - Phase VI
@@ -11,17 +13,14 @@ const PROVIDER = Deno.env.get("NEWS_PROVIDER") ?? "mock"; // 'mock'|'finnhub'|'n
 const API_KEY = Deno.env.get("NEWS_API_KEY") ?? "";
 
 serve(async (req) => {
-  const cors = handleCORS(req);
-  if (cors) return cors;
+  const pre = preflight(req);
+  if (pre) return pre;
+  
+  const supabase = supaFromReq(req);
+  let workspace_id = "";
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
-    });
-
-    const workspace_id = await ensureWorkspace(supabase);
+    workspace_id = await ensureWorkspace(supabase);
     
     const body = await req.json().catch(() => ({}));
     const { symbols = ["SPY", "QQQ", "META"] } = body;
@@ -77,10 +76,12 @@ serve(async (req) => {
     }
 
     console.log(`[sentiment-scan] Inserted ${rows.length} news items`);
+    await repoEvent(supabase, workspace_id, FN, { ok: true, inserted: rows.length });
     return json({ ok: true, inserted: rows.length });
   } catch (e) {
     console.error("[sentiment-scan] Error:", e);
-    return json({ ok: false, error: (e as Error).message }, 500);
+    await repoEvent(supabase, workspace_id || "00000000-0000-0000-0000-000000000000", `${FN}:error`, { message: (e as Error).message });
+    return safeFail(FN, e);
   }
 });
 

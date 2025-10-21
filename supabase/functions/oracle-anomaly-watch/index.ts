@@ -1,7 +1,9 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { json, handleCORS, ensureWorkspace } from "../_shared/supa.ts";
+import { preflight, json, supaFromReq } from "../_shared/http.ts";
+import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
 import { zscore, norm01 } from "../_shared/predictive.ts";
+
+const FN = "oracle-anomaly-watch";
 
 /**
  * Oracle Anomaly Watch - Phase VI
@@ -9,17 +11,14 @@ import { zscore, norm01 } from "../_shared/predictive.ts";
  */
 
 serve(async (req) => {
-  const cors = handleCORS(req);
-  if (cors) return cors;
+  const pre = preflight(req);
+  if (pre) return pre;
+  
+  const supabase = supaFromReq(req);
+  let workspace_id = "";
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
-    });
-
-    const workspace_id = await ensureWorkspace(supabase);
+    workspace_id = await ensureWorkspace(supabase);
     
     const body = await req.json().catch(() => ({}));
     const { symbols = ["SPY", "QQQ", "META"], tf = "1H" } = body;
@@ -81,10 +80,12 @@ serve(async (req) => {
     }
 
     console.log(`[anomaly-watch] Detected ${anoms.length} anomalies`);
+    await repoEvent(supabase, workspace_id, FN, { ok: true, inserted: anoms.length });
     return json({ ok: true, inserted: anoms.length, anomalies: anoms });
   } catch (e) {
     console.error("[anomaly-watch] Error:", e);
-    return json({ ok: false, error: (e as Error).message }, 500);
+    await repoEvent(supabase, workspace_id || "00000000-0000-0000-0000-000000000000", `${FN}:error`, { message: (e as Error).message });
+    return safeFail(FN, e);
   }
 });
 
