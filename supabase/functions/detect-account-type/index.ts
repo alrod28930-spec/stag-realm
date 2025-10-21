@@ -9,14 +9,25 @@ serve(async (req) => {
     const supabase = supaFromReq(req);
     const workspace_id = await ensureWorkspace(supabase);
 
-    console.log('🔍 Testing account credentials...');
+    const { broker = "alpaca", apiKey, secretKey } = await req.json().catch(() => ({}));
     
-    const live = await probe("live");
+    if (!apiKey || !secretKey) {
+      return json({ 
+        ok: false, 
+        error: "missing_credentials",
+        message: "API key and secret are required"
+      }, 400);
+    }
+
+    console.log('🔍 Testing account credentials with provided API key...');
+    
+    // Try live first
+    const live = await probe("live", apiKey, secretKey);
     if (live.ok) {
-      await storeConnection(supabase, workspace_id, "alpaca", "live", live.account);
+      await storeConnection(supabase, workspace_id, broker, "live", live.account);
       return json({ 
         ok: true, 
-        broker: "alpaca", 
+        broker, 
         mode: "live",
         accountType: "live",
         account: live.account,
@@ -24,12 +35,13 @@ serve(async (req) => {
       });
     }
     
-    const paper = await probe("paper");
+    // Try paper
+    const paper = await probe("paper", apiKey, secretKey);
     if (paper.ok) {
-      await storeConnection(supabase, workspace_id, "alpaca", "paper", paper.account);
+      await storeConnection(supabase, workspace_id, broker, "paper", paper.account);
       return json({ 
         ok: true, 
-        broker: "alpaca", 
+        broker, 
         mode: "paper",
         accountType: "paper",
         account: paper.account,
@@ -40,7 +52,7 @@ serve(async (req) => {
     return json({ 
       ok: false, 
       error: "authentication_failed",
-      message: "Invalid API credentials. Please check your API key and secret."
+      message: "Invalid API credentials for both live and paper accounts. Please check your API key and secret."
     }, 401);
   } catch (e) {
     console.error('💥 Unexpected error:', e);
@@ -52,34 +64,30 @@ serve(async (req) => {
   }
 });
 
-async function probe(mode: "live" | "paper") {
-  const keyVar = mode === "live" ? "ALPACA_API_KEY_LIVE" : "ALPACA_API_KEY";
-  const secVar = mode === "live" ? "ALPACA_SECRET_KEY_LIVE" : "ALPACA_SECRET_KEY";
-  const apiKey = Deno.env.get(keyVar);
-  const secretKey = Deno.env.get(secVar);
-  
-  if (!apiKey || !secretKey) {
-    return { ok: false, error: "missing_env" };
-  }
-  
+async function probe(mode: "live" | "paper", apiKey: string, secretKey: string) {
   const base = mode === "live" 
     ? "https://api.alpaca.markets" 
     : "https://paper-api.alpaca.markets";
     
   try {
+    console.log(`🔍 Probing ${mode} endpoint...`);
     const r = await fetch(`${base}/v2/account`, {
       headers: { 
-        "APCA-API-KEY-ID": apiKey, 
-        "APCA-API-SECRET-KEY": secretKey 
+        "APCA-API-KEY-ID": apiKey.trim(), 
+        "APCA-API-SECRET-KEY": secretKey.trim() 
       }
     });
     
     if (!r.ok) {
+      console.log(`❌ ${mode} probe failed with status: ${r.status}`);
       return { ok: false, error: String(r.status) };
     }
     
-    return { ok: true, account: await r.json() };
+    const account = await r.json();
+    console.log(`✅ ${mode} probe successful, account: ${account.account_number}`);
+    return { ok: true, account };
   } catch (e) {
+    console.error(`💥 ${mode} probe error:`, e);
     return { ok: false, error: (e as Error).message };
   }
 }
