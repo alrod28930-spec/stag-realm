@@ -1,110 +1,103 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const ENFORCE_SUBS = Deno.env.get("SUBSCRIPTION_ENFORCEMENT") === "true";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { serve } from "https://deno.land/std/http/server.ts";
+import { supaFromReq, json, handleCORS, ensureWorkspace, ENFORCE_SUBS } from "../_shared/supa.ts";
 
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
+  const cors = handleCORS(req);
+  if (cors) return cors;
+  
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
-    );
+    const supabase = supaFromReq(req);
+    const workspace_id = await ensureWorkspace(supabase);
 
-    // Ensure user has a workspace
-    const { data: wsId, error: wsErr } = await supabase.rpc('ensure_default_workspace');
-    if (wsErr) {
-      return json({ ok: false, error: 'workspace', detail: wsErr.message }, 500);
-    }
-    const workspace_id = wsId as string;
-
-    // Check subscription if enforcement is enabled
     if (ENFORCE_SUBS) {
-      // Add entitlement check here when subscriptions are re-enabled
-      // const { data: sub } = await supabase
-      //   .from('subscriptions')
-      //   .select('plan')
-      //   .eq('workspace_id', workspace_id)
-      //   .single();
-      // if (!sub || !['pro', 'elite'].includes(sub.plan)) {
-      //   return json({ ok: false, error: 'subscription_required' }, 403);
-      // }
+      // Legacy entitlement checks if needed (currently bypassed)
     }
 
-    const { broker, credentials, account_label } = await req.json();
-
-    if (!broker || !credentials) {
-      return json({ ok: false, error: 'missing_params', detail: 'broker and credentials are required' }, 400);
-    }
-
-    // Test broker connection
-    const healthCheck = await testBrokerConnection(broker, credentials);
+    const { broker = "alpaca", credentials, account_label, mode = "paper" } = await req.json().catch(() => ({}));
     
-    // Store connection using encrypt function
-    const encryptResponse = await supabase.functions.invoke('encrypt-brokerage-credentials', {
-      body: {
+    if (!credentials) {
+      return json({ ok: false, error: "missing_credentials" }, 400);
+    }
+
+    console.log(`🔌 Connecting ${broker} in ${mode} mode...`);
+
+    // Test the connection
+    const testResult = await testBrokerConnection(broker, mode, credentials);
+    if (!testResult.ok) {
+      return json({ 
+        ok: false, 
+        error: "connection_failed",
+        message: testResult.message 
+      }, 400);
+    }
+
+    // Store connection metadata (no raw secrets)
+    const { error: upsertError } = await supabase
+      .from("connections_brokerages")
+      .upsert({
         workspace_id,
         provider: broker,
-        credentials,
-        account_label: account_label || `${broker} account`
-      }
-    });
+        status: "active",
+        account_label: account_label || `${broker} ${mode} Account`,
+        scope: { 
+          account_type: mode,
+          account_id: testResult.accountId
+        },
+        last_sync: new Date().toISOString()
+      }, { onConflict: "workspace_id,provider" });
 
-    if (encryptResponse.error) {
-      return json({ ok: false, error: 'encryption_failed', detail: encryptResponse.error }, 500);
+    if (upsertError) {
+      return json({ 
+        ok: false, 
+        error: "link_store", 
+        detail: upsertError.message 
+      }, 400);
     }
 
-    return json({
-      ok: true,
-      workspace_id,
-      broker_status: healthCheck.ok ? 'ok' : 'degraded',
-      connection_id: encryptResponse.data?.id,
-      message: healthCheck.ok ? 'Connected successfully' : `Connected with warnings: ${healthCheck.message}`
+    return json({ 
+      ok: true, 
+      workspace_id, 
+      broker,
+      status: "active",
+      message: "Brokerage connected successfully"
     });
-
   } catch (e) {
-    return json({ ok: false, error: 'exception', detail: (e as Error).message }, 500);
+    console.error('💥 broker-connect error:', e);
+    return json({ 
+      ok: false, 
+      error: "exception", 
+      detail: (e as Error).message 
+    }, 500);
   }
 });
 
-function json(body: any, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
-}
+async function testBrokerConnection(broker: string, mode: string, credentials: any) {
+  if (broker !== "alpaca") {
+    return { ok: false, message: "Unsupported broker" };
+  }
 
-async function testBrokerConnection(broker: string, credentials: any) {
+  const baseUrl = mode === "live" 
+    ? "https://api.alpaca.markets" 
+    : "https://paper-api.alpaca.markets";
+
   try {
-    if (broker.toLowerCase() === 'alpaca') {
-      const baseUrl = credentials.is_live ? 'https://api.alpaca.markets' : 'https://paper-api.alpaca.markets';
-      const response = await fetch(`${baseUrl}/v2/account`, {
-        headers: {
-          'APCA-API-KEY-ID': credentials.api_key || credentials.apiKey,
-          'APCA-API-SECRET-KEY': credentials.api_secret || credentials.apiSecret || credentials.secret_key,
-        },
-      });
+    const response = await fetch(`${baseUrl}/v2/account`, {
+      headers: {
+        "APCA-API-KEY-ID": credentials.api_key || credentials.apiKey,
+        "APCA-API-SECRET-KEY": credentials.api_secret || credentials.apiSecret,
+      },
+    });
 
-      if (!response.ok) {
-        return { ok: false, message: `Alpaca API error: ${response.status}` };
-      }
-
-      const account = await response.json();
-      return { ok: true, account_id: account.account_number };
+    if (!response.ok) {
+      return { ok: false, message: `Authentication failed: ${response.status}` };
     }
 
-    // Add other broker tests here
-    return { ok: true };
+    const account = await response.json();
+    return { 
+      ok: true, 
+      accountId: account.account_number,
+      message: "Connection successful" 
+    };
   } catch (e) {
     return { ok: false, message: (e as Error).message };
   }
