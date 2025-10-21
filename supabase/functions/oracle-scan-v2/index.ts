@@ -1,6 +1,8 @@
-import { serve } from "https://deno.land/std/http/server.ts";
-import { json, handleCORS, ensureWorkspace } from "../_shared/supa.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { preflight, json, supaFromReq } from "../_shared/http.ts";
+import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
+
+const FN = "oracle-scan-v2";
 
 /**
  * Oracle Scan v2 - Real-time Signal Generation
@@ -9,17 +11,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  */
 
 serve(async (req) => {
-  const cors = handleCORS(req);
-  if (cors) return cors;
+  const pre = preflight(req);
+  if (pre) return pre;
+  
+  const supabase = supaFromReq(req);
+  let workspace_id = "";
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
-    });
-
-    const workspace_id = await ensureWorkspace(supabase);
+    workspace_id = await ensureWorkspace(supabase);
 
     const body = await req.json().catch(() => ({}));
     const { symbols = ["META", "QQQ", "SPY"], tf = "1H" } = body;
@@ -97,15 +96,9 @@ serve(async (req) => {
         console.error("[oracle-scan-v2] insert error:", insertError);
         return json({ ok: false, error: insertError.message }, 400);
       }
-
-      // Log to repository
-      await supabase.from("repository_events").insert({
-        workspace_id,
-        source: "oracle",
-        payload: { event: "signals_generated", count: signals.length },
-      });
     }
 
+    await repoEvent(supabase, workspace_id, FN, { ok: true, inserted: signals.length });
     return json({
       ok: true,
       inserted: signals.length,
@@ -113,7 +106,8 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("[oracle-scan-v2] error:", err);
-    return json({ ok: false, error: String(err) }, 500);
+    await repoEvent(supabase, workspace_id || "00000000-0000-0000-0000-000000000000", `${FN}:error`, { message: String(err) });
+    return safeFail(FN, err);
   }
 });
 

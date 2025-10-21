@@ -1,10 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isSubsEnforced } from "../_shared/guards.ts";
+
 type Bar = { t: string; o: number; h: number; l: number; c: number; v?: number; vw?: number };
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const ENFORCE_SUBS = Deno.env.get("SUBSCRIPTION_ENFORCEMENT") === "true";
+const ENFORCE_SUBS = isSubsEnforced();
 
 // Align with your UI's timeframe strings
 const TIMEFRAMES = ["1D", "1h", "5m", "1m"] as const;

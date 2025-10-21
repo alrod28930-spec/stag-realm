@@ -3,12 +3,11 @@
  * Combines multiple signal models (EMA, RSI, Volume, Breakout) into weighted ensemble score
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { preflight, json, supaFromReq } from "../_shared/http.ts";
+import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const FN = "oracle-ensemble";
 
 interface OracleModel {
   id: string;
@@ -27,34 +26,15 @@ interface CandleData {
   v: number;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+serve(async (req) => {
+  const pre = preflight(req);
+  if (pre) return pre;
+  
+  const supabase = supaFromReq(req);
+  let workspace_id = "";
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Unauthorized');
-
-    // Get workspace
-    const { data: wm } = await supabase
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', user.id)
-      .single();
-    if (!wm) throw new Error('No workspace');
-    const wsId = wm.workspace_id;
+    workspace_id = await ensureWorkspace(supabase);
 
     const { symbols = ['SPY', 'QQQ'], tf = '1H' } = await req.json();
 
@@ -62,16 +42,15 @@ Deno.serve(async (req) => {
     const { data: models, error: modelsErr } = await supabase
       .from('oracle_models')
       .select('*')
-      .eq('workspace_id', wsId)
+      .eq('workspace_id', workspace_id)
       .eq('enabled', true);
     
     if (modelsErr) throw modelsErr;
     if (!models || models.length === 0) {
       console.log('No enabled oracle models, creating defaults');
-      await createDefaultModels(supabase, wsId);
-      return new Response(JSON.stringify({ ok: true, message: 'Created default models, run again' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      await createDefaultModels(supabase, workspace_id);
+      await repoEvent(supabase, workspace_id, FN, { ok: true, message: 'created_default_models' });
+      return json({ ok: true, message: 'Created default models, run again' });
     }
 
     const signals = [];
@@ -83,7 +62,7 @@ Deno.serve(async (req) => {
       
       const { data: candles, error: candlesErr } = await supabase
         .rpc('fetch_candles', {
-          _ws: wsId,
+          _ws: workspace_id,
           _symbol: symbol,
           _tf: tf,
           _from: fromDate.toISOString(),
@@ -121,7 +100,7 @@ Deno.serve(async (req) => {
       else if (smoothedScore < 0.4) direction = -1;
 
       const signal = {
-        workspace_id: wsId,
+        workspace_id,
         symbol,
         tf,
         signal_type: 'ensemble',
@@ -146,17 +125,13 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[oracle-ensemble] Generated ${signals.length} signals`);
-    
-    return new Response(JSON.stringify({ ok: true, signals: signals.length }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    await repoEvent(supabase, workspace_id, FN, { ok: true, signals: signals.length });
+    return json({ ok: true, signals: signals.length });
 
   } catch (err: any) {
     console.error('[oracle-ensemble] Error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    await repoEvent(supabase, workspace_id || "00000000-0000-0000-0000-000000000000", `${FN}:error`, { message: err.message });
+    return safeFail(FN, err);
   }
 });
 
