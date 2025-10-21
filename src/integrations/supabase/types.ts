@@ -1436,6 +1436,39 @@ export type Database = {
         }
         Relationships: []
       }
+      oracle_anomalies: {
+        Row: {
+          id: string
+          kind: string
+          meta: Json
+          observed_at: string
+          severity: number
+          symbol: string
+          tf: string
+          workspace_id: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          meta?: Json
+          observed_at?: string
+          severity: number
+          symbol: string
+          tf: string
+          workspace_id: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          meta?: Json
+          observed_at?: string
+          severity?: number
+          symbol?: string
+          tf?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       oracle_models: {
         Row: {
           enabled: boolean
@@ -1468,6 +1501,8 @@ export type Database = {
       }
       oracle_news: {
         Row: {
+          confidence: number
+          created_at: string | null
           headline: string | null
           id: string
           sentiment: number | null
@@ -1479,6 +1514,8 @@ export type Database = {
           workspace_id: string | null
         }
         Insert: {
+          confidence?: number
+          created_at?: string | null
           headline?: string | null
           id?: string
           sentiment?: number | null
@@ -1490,6 +1527,8 @@ export type Database = {
           workspace_id?: string | null
         }
         Update: {
+          confidence?: number
+          created_at?: string | null
           headline?: string | null
           id?: string
           sentiment?: number | null
@@ -1509,6 +1548,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      oracle_predictive: {
+        Row: {
+          anomaly: number
+          price_momentum: number
+          score: number
+          sentiment: number
+          symbol: string
+          tf: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          anomaly: number
+          price_momentum: number
+          score: number
+          sentiment: number
+          symbol: string
+          tf: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          anomaly?: number
+          price_momentum?: number
+          score?: number
+          sentiment?: number
+          symbol?: string
+          tf?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       oracle_scores: {
         Row: {

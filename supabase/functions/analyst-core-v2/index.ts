@@ -40,7 +40,13 @@ serve(async (req) => {
       .eq("workspace_id", workspace_id)
       .single();
 
-    const mergedFlags = { ...flags, ...(featureFlags?.flags ?? {}) };
+    const mergedFlags = { 
+      ...flags, 
+      ...(featureFlags?.flags ?? {}),
+      predictive_enabled: featureFlags?.flags?.predictive_enabled ?? true,
+      size_boost_cap: featureFlags?.flags?.size_boost_cap ?? 0.003,
+      size_cut_cap: featureFlags?.flags?.size_cut_cap ?? 0.005
+    };
 
     // Load tuned hyperparameters
     const { data: hparams } = await supabase
@@ -69,7 +75,23 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[analyst-core-v2] workspace_id=${workspace_id}, user_id=${user_id}, tf=${tf}, policy=${appliedPolicy?.name || 'default'}`);
+    console.log(`[analyst-core-v2] workspace_id=${workspace_id}, user_id=${user_id}, tf=${tf}, policy=${appliedPolicy?.name || 'default'}, predictive=${mergedFlags.predictive_enabled}`);
+
+    // 0. Load predictive scores if enabled
+    let predictiveMap = new Map<string, any>();
+    if (mergedFlags.predictive_enabled && candidates?.length) {
+      const { data: predData } = await supabase
+        .from("oracle_predictive")
+        .select("*")
+        .eq("workspace_id", workspace_id)
+        .in("symbol", candidates)
+        .eq("tf", tf);
+      
+      if (predData?.length) {
+        predictiveMap = new Map(predData.map((r: any) => [r.symbol, r]));
+        console.log(`[analyst-core-v2] Loaded ${predData.length} predictive scores`);
+      }
+    }
 
     // 1. Load user profile
     const { data: profile } = await supabase
@@ -99,10 +121,11 @@ serve(async (req) => {
       .order("avg_edge_bp", { ascending: false })
       .limit(50);
 
-    // 4. Deterministic selection & sizing (with tuned params)
+    // 4. Deterministic selection & sizing (with tuned params + predictive adjustment)
     const symbol = selectSymbol({ profile, stats: stats || [], oracleTop: oracleTop || [], candidates });
     const statsForSymbol = stats?.find((s) => s.symbol === symbol);
-    const sizing = computeRisk({ profile, statsForSymbol, params });
+    const predictive = predictiveMap.get(symbol);
+    const sizing = computeRisk({ profile, statsForSymbol, params, predictive, flags: mergedFlags });
     const stops = proposeStops({ tf, profile });
 
     // 5. Determine mode (paper by default unless explicitly allowed)
@@ -209,20 +232,43 @@ function selectSymbol({
 function computeRisk({ 
   profile, 
   statsForSymbol,
-  params 
+  params,
+  predictive,
+  flags
 }: { 
   profile: any; 
   statsForSymbol: any;
   params: any;
+  predictive?: any;
+  flags: any;
 }): { risk_pct: number; qty_estimate: number } {
   const base = Math.min(profile?.max_position_risk_pct ?? params.risk_base, params.risk_base);
   
   // Boost risk if user has positive stats for this symbol
-  const boost = statsForSymbol 
+  const statsBoost = statsForSymbol 
     ? Math.max(0, (statsForSymbol.win_rate - 0.5) * 0.01)
     : 0;
   
-  const risk_pct = Math.min(params.risk_cap, base + boost);
+  let risk_pct = Math.min(params.risk_cap, base + statsBoost);
+
+  // Phase VI: Predictive risk adjustment
+  if (flags.predictive_enabled && predictive) {
+    const p = predictive;
+    
+    // Boost risk if high confidence + positive sentiment + low anomaly
+    if (p.score >= 0.8 && p.sentiment >= 0.2 && p.anomaly <= 0.2) {
+      const boost = flags.size_boost_cap ?? 0.003;
+      risk_pct = Math.min(risk_pct + boost, params.risk_cap);
+      console.log(`[risk] Predictive boost: +${boost} (score=${p.score}, sent=${p.sentiment})`);
+    }
+    
+    // Cut risk if high anomaly or negative sentiment
+    if (p.anomaly >= 0.5 || p.sentiment <= -0.3) {
+      const cut = flags.size_cut_cap ?? 0.005;
+      risk_pct = Math.max(risk_pct - cut, 0.001);
+      console.log(`[risk] Predictive cut: -${cut} (anom=${p.anomaly}, sent=${p.sentiment})`);
+    }
+  }
   
   // Simple qty estimate (placeholder)
   const qty_estimate = Math.floor(10000 * risk_pct / 100);
