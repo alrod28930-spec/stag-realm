@@ -25,6 +25,7 @@ serve(async (req) => {
     const live = await probe("live", apiKey, secretKey);
     if (live.ok) {
       await storeConnection(supabase, workspace_id, broker, "live", live.account);
+      await encryptCredentials(workspace_id, broker, "live", apiKey, secretKey);
       return json({ 
         ok: true, 
         broker, 
@@ -39,6 +40,7 @@ serve(async (req) => {
     const paper = await probe("paper", apiKey, secretKey);
     if (paper.ok) {
       await storeConnection(supabase, workspace_id, broker, "paper", paper.account);
+      await encryptCredentials(workspace_id, broker, "paper", apiKey, secretKey);
       return json({ 
         ok: true, 
         broker, 
@@ -101,6 +103,7 @@ async function storeConnection(supabase: any, workspace_id: string, broker: stri
       .upsert({
         workspace_id,
         provider: broker,
+        mode,
         status: 'active',
         account_label: `Alpaca ${mode.charAt(0).toUpperCase() + mode.slice(1)} Account`,
         scope: { 
@@ -110,7 +113,7 @@ async function storeConnection(supabase: any, workspace_id: string, broker: stri
           account_number: accountInfo?.account_number
         },
         last_sync: new Date().toISOString()
-      }, { onConflict: 'workspace_id,provider' });
+      }, { onConflict: 'workspace_id,provider,mode' });
 
     if (upsertError) {
       console.error('❌ Failed to store connection:', upsertError);
@@ -121,5 +124,75 @@ async function storeConnection(supabase: any, workspace_id: string, broker: stri
   } catch (e) {
     console.error('💥 Error in storeConnection:', e);
     throw e;
+  }
+}
+
+async function encryptCredentials(workspaceId: string, broker: string, mode: string, apiKey: string, secretKey: string) {
+  try {
+    const encryptionKey = Deno.env.get('CREDENTIAL_ENCRYPTION_KEY');
+    if (!encryptionKey) {
+      console.error('❌ CREDENTIAL_ENCRYPTION_KEY not configured');
+      return;
+    }
+
+    console.log(`🔐 Encrypting credentials for ${broker}:${mode}`);
+
+    // Generate a random nonce
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    
+    // Import the encryption key
+    const keyData = new TextEncoder().encode(encryptionKey.padEnd(32, '0').substring(0, 32));
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt']
+    );
+
+    // Encrypt API key
+    const apiKeyEncrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: nonce },
+      key,
+      new TextEncoder().encode(apiKey)
+    );
+
+    // Encrypt secret key
+    const secretKeyEncrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: nonce },
+      key,
+      new TextEncoder().encode(secretKey)
+    );
+
+    // Convert to base64 for storage
+    const apiKeyCipher = btoa(String.fromCharCode(...new Uint8Array(apiKeyEncrypted)));
+    const secretKeyCipher = btoa(String.fromCharCode(...new Uint8Array(secretKeyEncrypted)));
+    const nonceB64 = btoa(String.fromCharCode(...nonce));
+
+    // Use service role to update encrypted credentials
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.57.0');
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { error } = await supabase
+      .from('connections_brokerages')
+      .update({
+        api_key_cipher: apiKeyCipher,
+        api_secret_cipher: secretKeyCipher,
+        nonce: nonceB64,
+        updated_at: new Date().toISOString()
+      })
+      .eq('workspace_id', workspaceId)
+      .eq('provider', broker)
+      .eq('mode', mode);
+
+    if (error) {
+      console.error('❌ Failed to store encrypted credentials:', error);
+    } else {
+      console.log(`✅ Credentials encrypted and stored for ${broker}:${mode}`);
+    }
+  } catch (e) {
+    console.error('💥 Error encrypting credentials:', e);
   }
 }
