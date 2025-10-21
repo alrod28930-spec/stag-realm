@@ -252,8 +252,10 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
           <Plus className="w-4 w-4 mr-2" />
           Add Connection
         </Button>
+      </CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between pt-0">
         {connections.length > 0 && (
-          <div className="flex gap-2 ml-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               onClick={() => handleManualSync()}

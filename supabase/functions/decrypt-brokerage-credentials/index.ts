@@ -1,21 +1,56 @@
 import { serve } from "https://deno.land/std/http/server.ts";
-import { json, handleCORS, supaFromReq } from "../_shared/supa.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+function json(body: any, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
+function handleCORS(req: Request) {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  return null;
+}
+
+function supaFromReq(req: Request) {
+  const url = Deno.env.get('SUPABASE_URL')!;
+  const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const auth = req.headers.get('Authorization') ?? '';
+  return createClient(url, anon, { global: { headers: { Authorization: auth }}});
+}
+
+async function ensureWorkspace(supabase: any) {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) throw new Error('Unauthorized');
+  const { data, error: rpcError } = await supabase.rpc('ensure_workspace_for_user', { _user: user.id });
+  if (rpcError) throw rpcError;
+  return data as string;
+}
 
 serve(async (req) => {
   const cors = handleCORS(req); 
   if (cors) return cors;
   
   try {
-    const { broker, mode = "paper", workspaceId } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    let { broker, mode, workspaceId } = body;
     
-    if (!broker) {
-      return json({ ok: false, error: "missing_broker" }, 400);
-    }
-
+    // If workspaceId not provided, try to get it from auth
     if (!workspaceId) {
-      return json({ ok: false, error: "missing_workspace_id" }, 400);
+      const supabase = supaFromReq(req);
+      workspaceId = await ensureWorkspace(supabase);
     }
+    
+    if (!broker) broker = "alpaca";
+    if (!mode) mode = "paper";
+    
+    console.log(`🔓 Decrypt request - workspace: ${workspaceId}, broker: ${broker}, mode: ${mode}`);
 
     const encryptionKey = Deno.env.get('CREDENTIAL_ENCRYPTION_KEY');
     if (!encryptionKey) {

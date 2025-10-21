@@ -821,12 +821,13 @@ export type Database = {
       connections_brokerages: {
         Row: {
           account_label: string | null
-          api_key_cipher: string
-          api_secret_cipher: string
+          api_key_cipher: string | null
+          api_secret_cipher: string | null
           created_at: string | null
           id: string
           last_sync: string | null
-          nonce: string
+          mode: string
+          nonce: string | null
           provider: string
           scope: Json | null
           status: string | null
@@ -835,12 +836,13 @@ export type Database = {
         }
         Insert: {
           account_label?: string | null
-          api_key_cipher: string
-          api_secret_cipher: string
+          api_key_cipher?: string | null
+          api_secret_cipher?: string | null
           created_at?: string | null
           id?: string
           last_sync?: string | null
-          nonce: string
+          mode?: string
+          nonce?: string | null
           provider: string
           scope?: Json | null
           status?: string | null
@@ -849,12 +851,13 @@ export type Database = {
         }
         Update: {
           account_label?: string | null
-          api_key_cipher?: string
-          api_secret_cipher?: string
+          api_key_cipher?: string | null
+          api_secret_cipher?: string | null
           created_at?: string | null
           id?: string
           last_sync?: string | null
-          nonce?: string
+          mode?: string
+          nonce?: string | null
           provider?: string
           scope?: Json | null
           status?: string | null
