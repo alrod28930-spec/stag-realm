@@ -132,12 +132,15 @@ export function useEnhancedCandles(
           // Update cache
           candleCache.set(cacheKey, { data: candles, timestamp, hash });
           pruneCache();
+          
+          console.log(`📊 Chart data ready: ${candles.length} candles for ${symbol}`);
         } else {
           setState('ready');
         }
       } else {
         // No data but no error - show cached if available
         if (cached) {
+          console.log(`⚠️ No fresh data, using ${cached.data.length} cached candles for ${symbol}`);
           setState('degraded');
         } else {
           setState('error');
@@ -147,10 +150,13 @@ export function useEnhancedCandles(
     } catch (err) {
       if (abortControllerRef.current?.signal.aborted) return;
 
+      console.error(`❌ Chart data error for ${symbol}:`, err);
+      
       // On error, stay in degraded mode if we have cache
       if (cached) {
+        console.log(`⚠️ Error fetching data, using ${cached.data.length} cached candles for ${symbol}`);
         setState('degraded');
-        setError('Using cached data');
+        setError('Using cached data - live feed unavailable');
       } else {
         setState('error');
         setError(err instanceof Error ? err.message : 'Failed to load chart data');

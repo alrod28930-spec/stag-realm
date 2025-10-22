@@ -3,9 +3,11 @@
  * Generates allocation-aware plans across multiple symbols
  */
 
-import { serve } from "https://deno.land/std/http/server.ts";
-import { supaFromReq, json, handleCORS, ensureWorkspace } from "../_shared/supa.ts";
-import { recordEvent } from "../_shared/metrics.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { preflight, json, supaFromReq } from "../_shared/http.ts";
+import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
+
+const FN = "analyst-portfolio-plan";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,15 +15,22 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const pre = preflight(req);
+  if (pre) return pre;
+  
+  const supabase = supaFromReq(req);
+  let workspace_id = "";
 
   try {
-    const supabase = supaFromReq(req);
-    const workspace_id = await ensureWorkspace(supabase);
+    workspace_id = await ensureWorkspace(supabase);
     
-    const { symbols = ["SPY", "QQQ", "META"], capital = 100000 } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { symbols = ["SPY", "QQQ", "META"], capital = 100000 } = body;
+    
+    if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
+      await repoEvent(supabase, workspace_id, FN, { ok: false, error: "invalid_input" });
+      return json({ ok: false, error: "invalid_input", detail: "symbols must be non-empty array" });
+    }
 
     // Load hyperparameters
     const { data: hparams } = await supabase
@@ -82,7 +91,8 @@ serve(async (req) => {
     const totalAlloc = allocations.reduce((sum, p) => sum + p.alloc, 0);
 
     // Record event
-    await recordEvent(supabase, workspace_id, "portfolio_plan", {
+    await repoEvent(supabase, workspace_id, FN, {
+      ok: true,
       symbols,
       capital,
       totalAlloc,
@@ -101,20 +111,17 @@ serve(async (req) => {
 
     return json({ 
       ok: true, 
+      workspace_id,
       totalAlloc: parseFloat(totalAlloc.toFixed(4)),
       plans: allocations,
       capital,
       risk_cap,
       timestamp: new Date().toISOString()
-    }, 200, corsHeaders);
+    });
 
   } catch (e) {
-    console.error("Portfolio plan error:", e);
-    
-    return json({ 
-      ok: false, 
-      error: "exception", 
-      detail: (e as Error).message 
-    }, 500, corsHeaders);
+    console.error("[portfolio-plan] Error:", e);
+    await repoEvent(supabase, workspace_id || "00000000-0000-0000-0000-000000000000", `${FN}:error`, { message: (e as Error).message });
+    return safeFail(FN, e);
   }
 });

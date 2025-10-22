@@ -1,3 +1,4 @@
+import { DegradedBanner } from './DegradedBanner';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, IChartApi, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

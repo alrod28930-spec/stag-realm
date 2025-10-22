@@ -1,3 +1,4 @@
+import { DegradedBanner } from './DegradedBanner';
 import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -255,10 +256,11 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   return (
     <Card className={className}>
       {/* Degraded mode banner */}
-      {isDegraded && lastUpdated && (
-        <div className="absolute top-2 right-2 z-10 text-xs px-2 py-1 bg-amber-500/15 border border-amber-400/30 rounded">
-          Degraded: {format(lastUpdated, 'HH:mm:ss')}
-        </div>
+      {isDegraded && (
+        <DegradedBanner 
+          message={`Using cached data from ${lastUpdated ? format(lastUpdated, 'HH:mm:ss') : 'earlier'}`}
+          onRetry={() => window.location.reload()}
+        />
       )}
 
       {showControls && (
