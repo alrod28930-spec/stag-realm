@@ -16,7 +16,9 @@ serve(async (req) => {
   let workspace_id = "";
   
   try {
+    console.log('🔐 Starting market-data-sync with auth check');
     workspace_id = await ensureWorkspace(supabase);
+    console.log(`✅ Workspace resolved: ${workspace_id}`);
     
     const body = await req.json().catch(() => ({}));
     const symbols = (body.symbols ?? ["SPY", "QQQ"]).slice(0, 10);

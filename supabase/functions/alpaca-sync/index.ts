@@ -26,11 +26,28 @@ function supaFromReq(req: Request) {
 }
 
 async function ensureWorkspace(supabase: any) {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) throw new Error('Unauthorized');
-  const { data, error: rpcError } = await supabase.rpc('ensure_workspace_for_user', { _user: user.id });
-  if (rpcError) throw rpcError;
-  return data as string;
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+      console.error('❌ Auth failed:', error?.message);
+      throw new Error(`Unauthorized: ${error?.message || 'No user session'}`);
+    }
+    
+    console.log('✅ User authenticated:', user.email);
+    
+    const { data, error: rpcError } = await supabase.rpc('ensure_default_workspace');
+    if (rpcError) {
+      console.error('❌ RPC failed:', rpcError);
+      throw new Error(`Workspace error: ${rpcError.message}`);
+    }
+    
+    if (!data) throw new Error('No workspace returned');
+    console.log('✅ Workspace:', data);
+    return data as string;
+  } catch (e) {
+    console.error('❌ ensureWorkspace failed:', e);
+    throw e;
+  }
 }
 
 serve(async (req) => {

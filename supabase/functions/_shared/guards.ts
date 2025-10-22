@@ -1,9 +1,33 @@
 import { json } from "./http.ts";
 
 export async function ensureWorkspace(supabase: any) {
-  const { data, error } = await supabase.rpc("ensure_default_workspace");
-  if (error || !data) throw new Error("no_workspace");
-  return data as string;
+  try {
+    // First verify user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('❌ Auth check failed:', authError?.message);
+      throw new Error(`Unauthorized: ${authError?.message || 'No user session'}`);
+    }
+    
+    console.log('✅ User authenticated:', user.email);
+    
+    // Then ensure workspace exists
+    const { data, error } = await supabase.rpc("ensure_default_workspace");
+    if (error) {
+      console.error('❌ RPC ensure_default_workspace failed:', error);
+      throw new Error(`Workspace creation failed: ${error.message}`);
+    }
+    
+    if (!data) {
+      throw new Error("no_workspace: RPC returned null");
+    }
+    
+    console.log('✅ Workspace ensured:', data);
+    return data as string;
+  } catch (e) {
+    console.error('❌ ensureWorkspace error:', e);
+    throw e;
+  }
 }
 
 export async function isWorkspaceAdmin(supabase: any, workspace_id: string) {
