@@ -782,7 +782,7 @@ export type Database = {
           acknowledged_at: string | null
           document_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
           user_id: string | null
           version: string
@@ -792,7 +792,7 @@ export type Database = {
           acknowledged_at?: string | null
           document_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
           version: string
@@ -802,7 +802,7 @@ export type Database = {
           acknowledged_at?: string | null
           document_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
           version?: string
@@ -3196,10 +3196,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
       create_order_record: {
         Args: {
           _broker_status: string
@@ -3224,14 +3220,8 @@ export type Database = {
         Args: { p_workspace_id: string }
         Returns: undefined
       }
-      ensure_default_workspace: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      ensure_workspace_for_user: {
-        Args: { _user: string }
-        Returns: string
-      }
+      ensure_default_workspace: { Args: never; Returns: string }
+      ensure_workspace_for_user: { Args: { _user: string }; Returns: string }
       fetch_candles: {
         Args: {
           _from: string
@@ -3270,46 +3260,16 @@ export type Database = {
           wins: number
           workspace_id: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "risk_counters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_user_subscription_tier: {
         Args: { p_workspace_id: string }
         Returns: string
-      }
-      gtrgm_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_options: {
-        Args: { "": unknown }
-        Returns: undefined
-      }
-      gtrgm_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
       }
       has_entitlement: {
         Args: { p_feature: string; p_workspace: string }
@@ -3319,58 +3279,13 @@ export type Database = {
         Args: { p_tab_code: string; p_workspace_id: string }
         Returns: boolean
       }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       increment_trade_counter: {
         Args: { _is_loss: boolean; _pnl: number; _workspace_id: string }
         Returns: undefined
       }
-      is_member_of_workspace: {
-        Args: { w_id: string }
-        Returns: boolean
-      }
-      is_owner_of_workspace: {
-        Args: { w_id: string }
-        Returns: boolean
-      }
-      is_subscription_enforcement_enabled: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
-      }
+      is_member_of_workspace: { Args: { w_id: string }; Returns: boolean }
+      is_owner_of_workspace: { Args: { w_id: string }; Returns: boolean }
+      is_subscription_enforcement_enabled: { Args: never; Returns: boolean }
       log_sync_event: {
         Args: {
           _actor: string
@@ -3408,62 +3323,10 @@ export type Database = {
         }
         Returns: string
       }
-      set_limit: {
-        Args: { "": number }
-        Returns: number
-      }
-      show_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      show_trgm: {
-        Args: { "": string }
-        Returns: string[]
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      trigger_market_data_sync: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      validate_workspace_name: {
-        Args: { p_name: string }
-        Returns: boolean
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      trigger_market_data_sync: { Args: never; Returns: Json }
+      validate_workspace_name: { Args: { p_name: string }; Returns: boolean }
     }
     Enums: {
       plan_tier: "lite" | "standard" | "pro" | "elite"
