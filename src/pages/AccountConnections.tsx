@@ -1,11 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import BrokerageDock from "@/components/brokerage/BrokerageDock";
-import LicensePanel from "@/components/account/LicensePanel";
-import LicenseAdmin from "@/components/account/LicenseAdmin";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Database, Users, Activity, Key } from "lucide-react";
+import { Database, Users, Activity } from "lucide-react";
 
 export default function AccountConnections() {
   const { data: candlesCount } = useQuery({
@@ -42,19 +40,6 @@ export default function AccountConnections() {
     }
   });
 
-  const { data: userRole } = useQuery({
-    queryKey: ['user-role'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('workspace_members')
-        .select('role')
-        .limit(1)
-        .single();
-      return data?.role || 'member';
-    }
-  });
-
-  const isAdmin = userRole === 'owner' || userRole === 'admin';
 
   return (
     <div className="p-6 space-y-6">
@@ -64,18 +49,6 @@ export default function AccountConnections() {
           Manage your license, broker connections, data health, and workspace access
         </p>
       </div>
-
-      {/* License Key */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <Key className="w-5 h-5" />
-          License
-        </h2>
-        <div className="space-y-4">
-          <LicensePanel />
-          {isAdmin && <LicenseAdmin />}
-        </div>
-      </section>
 
       {/* Brokerage Connection */}
       <section>

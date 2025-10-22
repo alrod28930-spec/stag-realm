@@ -1,10 +1,8 @@
 /**
- * Shared subscription enforcement flag
- * When false (default), all subscription checks are bypassed - everyone is treated as Elite tier
- * Set SUBSCRIPTION_ENFORCEMENT=true to re-enable tier restrictions
+ * Subscription enforcement is permanently disabled
+ * All users have full Elite tier access to all features
  */
-export const ENFORCE_SUBS = 
-  (Deno.env.get("SUBSCRIPTION_ENFORCEMENT") ?? "false").toLowerCase() === "true";
+export const ENFORCE_SUBS = false;
 
 /**
  * Check if subscription enforcement is active
