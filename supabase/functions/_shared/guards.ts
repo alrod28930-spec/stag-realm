@@ -6,17 +6,12 @@ export async function ensureWorkspace(supabase: any) {
   return data as string;
 }
 
-export function isSubsEnforced() {
-  return (Deno.env.get("SUBSCRIPTION_ENFORCEMENT") ?? "false").toLowerCase() === "true";
-}
-
-export async function requireEntitlementOrBypass(
-  supabase: any,
-  workspace_id: string,
-  key: string
-) {
-  // ALWAYS bypass - subscriptions removed, replaced with roles + feature flags
-  return { ok: true, bypass: true };
+export async function isWorkspaceAdmin(supabase: any, workspace_id: string) {
+  const { data } = await supabase
+    .from("workspace_members")
+    .select("role").eq("workspace_id", workspace_id).limit(1);
+  const role = data?.[0]?.role ?? "member";
+  return role === "owner" || role === "admin";
 }
 
 export async function repoEvent(
