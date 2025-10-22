@@ -25,6 +25,7 @@ const About = lazy(() => import("@/pages/About"));
 const UserManual = lazy(() => import("@/pages/UserManual"));
 const Workspace = lazy(() => import("@/pages/Workspace"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const AccountConnections = lazy(() => import("@/pages/AccountConnections"));
 const SystemMonitor = lazy(() => import("@/pages/SystemMonitor"));
 const AdminPortal = lazy(() => import("@/pages/AdminPortal"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
@@ -85,6 +86,7 @@ const App = () => {
                           <Route path="/about" element={<About />} />
                           <Route path="/user-manual" element={<UserManual />} />
                           <Route path="/workspace" element={<Workspace />} />
+                          <Route path="/account" element={<AccountConnections />} />
                           <Route path="/settings" element={<Settings />} />
                           <Route path="/system-monitor" element={<SystemMonitor />} />
                           <Route path="/admin" element={<AdminPortal />} />

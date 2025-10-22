@@ -234,31 +234,6 @@ export function TradeBotManager({ userTier, isDemo = false }: TradeBotManagerPro
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
 
-  // Bypass tier check if enforcement is disabled
-  const enforcementEnabled = isSubscriptionEnforcementEnabled();
-  
-  if (enforcementEnabled && (userTier === 'lite' || userTier === 'standard')) {
-    return (
-      <Card className="p-6">
-        <div className="text-center space-y-4">
-          <Bot className="w-16 h-16 mx-auto text-muted-foreground" />
-          <div>
-            <h3 className="text-lg font-semibold">TradeBot Engine</h3>
-            <p className="text-muted-foreground">
-              Autonomous trading bots with machine learning are available for Pro and Elite subscribers.
-            </p>
-          </div>
-          {/* Upgrade prompt hidden while subscription enforcement is disabled */}
-          {/* 
-          <Button variant="outline">
-            Upgrade to Pro
-          </Button>
-          */}
-        </div>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* System Overview */}

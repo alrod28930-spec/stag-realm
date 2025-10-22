@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0"
-import { ENFORCE_SUBS } from "../_shared/subscription.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,26 +26,8 @@ serve(async (req) => {
     const { text, workspace_id, voice_opts = {} } = await req.json()
     if (!text) throw new Error('text required')
 
-    // Check VOICE_ANALYST entitlement (bypass if enforcement disabled)
-    if (workspace_id && ENFORCE_SUBS) {
-      const { data: hasEntitlement } = await supabaseClient.rpc('has_entitlement', {
-        p_workspace: workspace_id,
-        p_feature: 'VOICE_ANALYST'
-      })
-
-      if (!hasEntitlement) {
-        return new Response(JSON.stringify({ 
-          audio_url: null,
-          error: 'LOCKED_FEATURE',
-          feature: 'VOICE_ANALYST',
-          required_tier: 'elite'
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      }
-    } else if (!ENFORCE_SUBS) {
-      console.log('🔓 Voice analyst access granted (subscription enforcement disabled)');
-    }
+    // Subscription checks removed - always grant voice access
+    console.log('🔓 Voice analyst access granted (subscription enforcement disabled)');
 
     // Check user voice preferences
     const { data: prefs } = await supabaseClient

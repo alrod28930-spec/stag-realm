@@ -21,7 +21,6 @@ import {
 import { botTemplateService, type BotTemplate } from '@/services/botTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { BotTemplateModal } from './BotTemplateModal';
-import { isSubscriptionEnforcementEnabled } from '@/utils/subscriptionGate';
 
 interface BotLibraryProps {
   onBotDeployed?: (botId: string, templateName: string) => void;
@@ -53,9 +52,8 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
   const [activeTab, setActiveTab] = useState('all');
   const { toast } = useToast();
 
-  // Bypass tier check if enforcement is disabled - show all templates
-  const userTier = isSubscriptionEnforcementEnabled() ? 'elite' : 'elite';
-  const availableTemplates = botTemplateService.getTemplates(userTier as 'lite' | 'standard' | 'pro' | 'elite');
+  // Always show all templates - subscription checks removed
+  const availableTemplates = botTemplateService.getTemplates('elite');
   
   const handleDeployBot = async (template: BotTemplate) => {
     setSelectedTemplate(template);

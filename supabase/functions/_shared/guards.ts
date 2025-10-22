@@ -7,7 +7,7 @@ export async function ensureWorkspace(supabase: any) {
 }
 
 export function isSubsEnforced() {
-  return (Deno.env.get("SUBSCRIPTION_ENFORCEMENT") === "true");
+  return (Deno.env.get("SUBSCRIPTION_ENFORCEMENT") ?? "false").toLowerCase() === "true";
 }
 
 export async function requireEntitlementOrBypass(
@@ -15,20 +15,8 @@ export async function requireEntitlementOrBypass(
   workspace_id: string,
   key: string
 ) {
-  // If enforcement is OFF, bypass
-  if (!isSubsEnforced()) return { ok: true, bypass: true };
-  
-  // Otherwise check entitlement; return ok:false if missing
-  const { data, error } = await supabase
-    .from("workspace_entitlements")
-    .select("entitlement_key")
-    .eq("workspace_id", workspace_id)
-    .eq("entitlement_key", key)
-    .limit(1);
-  
-  if (error) return { ok: false, error: "entitlement_query_error" };
-  if (!data?.length) return { ok: false, error: "entitlement_missing", key };
-  return { ok: true, bypass: false };
+  // ALWAYS bypass - subscriptions removed, replaced with roles + feature flags
+  return { ok: true, bypass: true };
 }
 
 export async function repoEvent(

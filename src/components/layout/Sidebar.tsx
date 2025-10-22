@@ -59,6 +59,7 @@ export function AppSidebar() {
   const adminItems = [
     { title: 'About', url: '/about', icon: Info, description: 'Platform overview' },
     { title: 'User Manual', url: '/user-manual', icon: BookOpen, description: 'Complete user guide' },
+    { title: 'Account & Connections', url: '/account', icon: CreditCard, description: 'Broker & data health' },
     { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
     { title: 'System Monitor', url: '/system-monitor', icon: Monitor, description: 'Core scaffold health' },
     { title: 'Admin Portal', url: '/admin', icon: Shield, description: 'Admin controls', adminOnly: true },

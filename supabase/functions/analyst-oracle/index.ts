@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0"
-import { ENFORCE_SUBS } from "../_shared/subscription.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,36 +26,9 @@ serve(async (req) => {
     const { symbols = [], horizon = 'swing', workspace_id } = await req.json()
     if (!workspace_id) throw new Error('workspace_id required')
 
-    // Check Oracle entitlements (bypass if enforcement disabled)
-    let hasBasic = true;
-    let hasExpanded = true;
-    
-    if (ENFORCE_SUBS) {
-      const { data: basicCheck } = await supabaseClient.rpc('has_entitlement', {
-        p_workspace: workspace_id,
-        p_feature: 'ORACLE_BASIC'
-      })
-      hasBasic = basicCheck ?? false;
-
-      const { data: expandedCheck } = await supabaseClient.rpc('has_entitlement', {
-        p_workspace: workspace_id,
-        p_feature: 'ORACLE_EXPANDED'
-      })
-      hasExpanded = expandedCheck ?? false;
-
-      if (!hasBasic) {
-        return new Response(JSON.stringify({ 
-          signals: [],
-          error: 'LOCKED_FEATURE',
-          feature: 'ORACLE_BASIC',
-          required_tier: 'standard'
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      }
-    } else {
-      console.log('🔓 Oracle access granted (subscription enforcement disabled)');
-    }
+    // Subscription checks removed - always grant full oracle access
+    console.log('🔓 Oracle access granted (subscription enforcement disabled)');
+    const hasExpanded = true;
 
     // Log telemetry
     await supabaseClient.from('analyst_telemetry').insert({
