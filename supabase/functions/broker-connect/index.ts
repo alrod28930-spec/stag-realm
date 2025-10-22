@@ -1,104 +1,81 @@
-import { serve } from "https://deno.land/std/http/server.ts";
-import { supaFromReq, json, handleCORS, ensureWorkspace, ENFORCE_SUBS } from "../_shared/supa.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { preflight, json, supaFromReq } from "../_shared/http.ts";
+import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
+
+const FN = "broker-connect";
+const BASE = {
+  paper: "https://paper-api.alpaca.markets",
+  live: "https://api.alpaca.markets"
+};
 
 serve(async (req) => {
-  const cors = handleCORS(req);
-  if (cors) return cors;
+  const pre = preflight(req);
+  if (pre) return pre;
+  
+  const supabase = supaFromReq(req);
+  let workspace_id = "";
   
   try {
-    const supabase = supaFromReq(req);
-    const workspace_id = await ensureWorkspace(supabase);
+    workspace_id = await ensureWorkspace(supabase);
 
-    if (ENFORCE_SUBS) {
-      // Legacy entitlement checks if needed (currently bypassed)
-    }
-
-    const { broker = "alpaca", credentials, account_label, mode = "paper" } = await req.json().catch(() => ({}));
+    // Get credentials from decrypt endpoint
+    const dec = await fetch(
+      new URL(req.url).origin + "/functions/v1/decrypt-brokerage-credentials",
+      { method: "POST", headers: req.headers }
+    ).then(r => r.json());
     
-    if (!credentials) {
-      return json({ ok: false, error: "missing_credentials" }, 400);
+    if (!dec?.ok) {
+      await repoEvent(supabase, workspace_id, FN, { ok: false, error: "decrypt_failed" });
+      return json({ ok: false, error: "decrypt_failed" });
     }
 
-    console.log(`🔌 Connecting ${broker} in ${mode} mode...`);
+    const mode = (dec.mode ?? "paper").toLowerCase();
+    const url = BASE[mode as "paper" | "live"];
 
-    // Test the connection
-    const testResult = await testBrokerConnection(broker, mode, credentials);
-    if (!testResult.ok) {
-      return json({ 
-        ok: false, 
-        error: "connection_failed",
-        message: testResult.message 
-      }, 400);
-    }
+    console.log(`🔌 Testing ${mode} connection...`);
 
-    // Store connection metadata (no raw secrets)
-    const { error: upsertError } = await supabase
-      .from("connections_brokerages")
-      .upsert({
-        workspace_id,
-        provider: broker,
-        status: "active",
-        account_label: account_label || `${broker} ${mode} Account`,
-        scope: { 
-          account_type: mode,
-          account_id: testResult.accountId
-        },
-        last_sync: new Date().toISOString()
-      }, { onConflict: "workspace_id,provider" });
+    // Test connection
+    const r = await fetch(`${url}/v2/account`, {
+      headers: {
+        "APCA-API-KEY-ID": dec.apiKey,
+        "APCA-API-SECRET-KEY": dec.secret
+      }
+    });
+    
+    const ok = r.ok;
+    const acct = ok ? await r.json() : null;
+    const status = ok ? "connected" : "error";
 
-    if (upsertError) {
-      return json({ 
-        ok: false, 
-        error: "link_store", 
-        detail: upsertError.message 
-      }, 400);
-    }
+    // Store in broker_links
+    await supabase.from("broker_links").upsert({
+      workspace_id,
+      broker: "alpaca",
+      mode,
+      status,
+      last_ok: ok ? new Date().toISOString() : null,
+      meta: { buying_power: acct?.buying_power, account_id: acct?.id }
+    });
 
-    return json({ 
-      ok: true, 
-      workspace_id, 
-      broker,
-      status: "active",
-      message: "Brokerage connected successfully"
+    // Store health cache
+    await supabase.from("broker_health").upsert({
+      workspace_id,
+      broker: "alpaca",
+      mode,
+      status: ok ? "ok" : "down",
+      last_check: new Date().toISOString(),
+      error_message: ok ? null : `status ${r.status}`
+    });
+
+    await repoEvent(supabase, workspace_id, FN, { ok, mode, bp: acct?.buying_power });
+    
+    return json({
+      ok,
+      mode,
+      account: ok ? { id: acct?.id, bp: acct?.buying_power } : null
     });
   } catch (e) {
     console.error('💥 broker-connect error:', e);
-    return json({ 
-      ok: false, 
-      error: "exception", 
-      detail: (e as Error).message 
-    }, 500);
+    await repoEvent(supabase, workspace_id, `${FN}:error`, { message: (e as Error).message });
+    return safeFail(FN, e);
   }
 });
-
-async function testBrokerConnection(broker: string, mode: string, credentials: any) {
-  if (broker !== "alpaca") {
-    return { ok: false, message: "Unsupported broker" };
-  }
-
-  const baseUrl = mode === "live" 
-    ? "https://api.alpaca.markets" 
-    : "https://paper-api.alpaca.markets";
-
-  try {
-    const response = await fetch(`${baseUrl}/v2/account`, {
-      headers: {
-        "APCA-API-KEY-ID": credentials.api_key || credentials.apiKey,
-        "APCA-API-SECRET-KEY": credentials.api_secret || credentials.apiSecret,
-      },
-    });
-
-    if (!response.ok) {
-      return { ok: false, message: `Authentication failed: ${response.status}` };
-    }
-
-    const account = await response.json();
-    return { 
-      ok: true, 
-      accountId: account.account_number,
-      message: "Connection successful" 
-    };
-  } catch (e) {
-    return { ok: false, message: (e as Error).message };
-  }
-}

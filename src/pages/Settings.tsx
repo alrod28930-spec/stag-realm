@@ -37,6 +37,7 @@ import { BrokerageConnectionCard } from '@/components/settings/BrokerageConnecti
 import { BrokerageDockSettings } from '@/components/settings/BrokerageDockSettings';
 import { BrokerHealthCard } from '@/components/system/BrokerHealthCard';
 import { RiskPolicyCard } from '@/components/trading/RiskPolicyCard';
+import BrokerageDock from '@/components/brokerage/BrokerageDock';
 import { supabase } from '@/integrations/supabase/client';
 import type { BrokerageConnection } from '@/types/userSettings';
 import { useEffect } from 'react';
@@ -326,6 +327,8 @@ export default function Settings() {
 
         {/* Brokerage Dock Settings */}
         <TabsContent value="dock" className="space-y-6">
+          <BrokerageDock />
+          <Separator />
           <BrokerageDockSettings />
         </TabsContent>
 

@@ -666,6 +666,33 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_links: {
+        Row: {
+          broker: string
+          last_ok: string | null
+          meta: Json
+          mode: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          broker: string
+          last_ok?: string | null
+          meta?: Json
+          mode: string
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          broker?: string
+          last_ok?: string | null
+          meta?: Json
+          mode?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       brokerage_dock_sites: {
         Row: {
           created_at: string | null
