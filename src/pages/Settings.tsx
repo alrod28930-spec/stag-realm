@@ -38,6 +38,7 @@ import { BrokerageDockSettings } from '@/components/settings/BrokerageDockSettin
 import { BrokerHealthCard } from '@/components/system/BrokerHealthCard';
 import { RiskPolicyCard } from '@/components/trading/RiskPolicyCard';
 import BrokerageDock from '@/components/brokerage/BrokerageDock';
+import { UpdateBrokerageCredentials } from '@/components/settings/UpdateBrokerageCredentials';
 import { supabase } from '@/integrations/supabase/client';
 import type { BrokerageConnection } from '@/types/userSettings';
 import { useEffect } from 'react';
@@ -279,6 +280,8 @@ export default function Settings() {
 
         {/* Broker API Keys */}
         <TabsContent value="brokers" className="space-y-6">
+          <UpdateBrokerageCredentials />
+          
           {currentWorkspaceId && (
             <>
               <BrokerageConnectionCard
