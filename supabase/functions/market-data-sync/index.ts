@@ -23,22 +23,26 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const symbols = (body.symbols ?? ["SPY", "QQQ"]).slice(0, 10);
     const tf = body.tf ?? "1H";
+    const broker = body.broker ?? "alpaca";
+    const mode = body.mode ?? "paper";
     
     const now = new Date();
     const fromISO = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 10).toISOString();
 
     console.log(`📊 Syncing ${symbols.length} symbols, tf=${tf}`);
 
-    // Get credentials
-    const dec = await fetch(
-      new URL(req.url).origin + "/functions/v1/decrypt-brokerage-credentials",
-      { method: "POST", headers: req.headers }
-    ).then(r => r.json());
+    // Get credentials using Supabase client
+    const { data: decData, error: decError } = await supabase.functions.invoke(
+      'decrypt-brokerage-credentials',
+      { body: { broker, mode } }
+    );
     
-    if (!dec?.ok) {
+    if (decError || !decData?.ok) {
       await repoEvent(supabase, workspace_id, FN, { ok: false, error: "decrypt_failed" });
       return json({ ok: false, error: "decrypt_failed" });
     }
+
+    const dec = decData;
 
     const url = BASE[(dec.mode ?? "paper") as "paper" | "live"];
 
@@ -52,8 +56,8 @@ serve(async (req) => {
       
       const r = await fetch(u.toString(), {
         headers: {
-          "APCA-API-KEY-ID": dec.apiKey,
-          "APCA-API-SECRET-KEY": dec.secret
+          "APCA-API-KEY-ID": dec.credentials?.apiKey || dec.apiKey,
+          "APCA-API-SECRET-KEY": dec.credentials?.secretKey || dec.secret || dec.secretKey
         }
       });
       
