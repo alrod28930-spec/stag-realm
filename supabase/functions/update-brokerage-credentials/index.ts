@@ -9,7 +9,7 @@ serve(async (req) => {
   const supabase = supaFromReq(req);
   
   try {
-    const workspace_id = await ensureWorkspace(supabase);
+    const workspace_id = await ensureWorkspace(supabase, req);
     const body = await req.json();
     
     const { provider, mode, apiKey, secretKey } = body;
@@ -20,30 +20,49 @@ serve(async (req) => {
 
     console.log(`🔐 Updating credentials for ${provider}:${mode}`);
 
-    // Call the encryption function
-    const encryptResult = await fetch(
-      new URL(req.url).origin + "/functions/v1/encrypt-brokerage-credentials",
+    // Ensure connection row exists
+    const { data: existing } = await supabase
+      .from('connections_brokerages')
+      .select('id')
+      .eq('workspace_id', workspace_id)
+      .eq('provider', provider)
+      .eq('mode', mode)
+      .single();
+
+    if (!existing) {
+      // Create the connection record first
+      const { error: insertError } = await supabase
+        .from('connections_brokerages')
+        .insert({
+          workspace_id,
+          provider,
+          mode,
+          is_active: true
+        });
+
+      if (insertError) {
+        console.error('❌ Failed to create connection:', insertError);
+        return json({ ok: false, error: "failed_to_create_connection" }, 500);
+      }
+    }
+
+    // Call the encryption function using Supabase client
+    const { data: encryptData, error: encryptError } = await supabase.functions.invoke(
+      'encrypt-brokerage-credentials',
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": req.headers.get("Authorization") || ""
-        },
-        body: JSON.stringify({
+        body: {
           broker: provider,
           mode,
           apiKey,
           secretKey,
           workspaceId: workspace_id
-        })
+        }
       }
     );
-
-    const encryptData = await encryptResult.json();
     
-    if (!encryptData.ok) {
-      console.error('❌ Encryption failed:', encryptData.error);
-      return json({ ok: false, error: encryptData.error }, 500);
+    if (encryptError || !encryptData?.ok) {
+      console.error('❌ Encryption failed:', encryptError || encryptData?.error);
+      return json({ ok: false, error: encryptData?.error || 'encryption_failed' }, 500);
     }
 
     console.log(`✅ Credentials updated successfully`);
