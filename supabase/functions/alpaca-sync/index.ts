@@ -20,14 +20,23 @@ function handleCORS(req: Request) {
 
 function supaFromReq(req: Request) {
   const url = Deno.env.get('SUPABASE_URL')!;
-  const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const auth = req.headers.get('Authorization') ?? '';
-  return createClient(url, anon, { global: { headers: { Authorization: auth }}});
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  return createClient(url, key);
 }
 
-async function ensureWorkspace(supabase: any) {
+async function ensureWorkspace(supabase: any, req: Request) {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    // Extract JWT token from request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ No Authorization header');
+      throw new Error('Unauthorized: No Authorization header');
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Verify user with explicit token
+    const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) {
       console.error('❌ Auth failed:', error?.message);
       throw new Error(`Unauthorized: ${error?.message || 'No user session'}`);
@@ -35,15 +44,15 @@ async function ensureWorkspace(supabase: any) {
     
     console.log('✅ User authenticated:', user.email);
     
-    const { data, error: rpcError } = await supabase.rpc('ensure_default_workspace');
+    const { data: wsData, error: rpcError } = await supabase.rpc('ensure_default_workspace');
     if (rpcError) {
       console.error('❌ RPC failed:', rpcError);
       throw new Error(`Workspace error: ${rpcError.message}`);
     }
     
-    if (!data) throw new Error('No workspace returned');
-    console.log('✅ Workspace:', data);
-    return data as string;
+    if (!wsData) throw new Error('No workspace returned');
+    console.log('✅ Workspace:', wsData);
+    return wsData as string;
   } catch (e) {
     console.error('❌ ensureWorkspace failed:', e);
     throw e;
@@ -56,7 +65,7 @@ serve(async (req) => {
 
   try {
     const supabase = supaFromReq(req);
-    const workspaceId = await ensureWorkspace(supabase);
+    const workspaceId = await ensureWorkspace(supabase, req);
     
     console.log(`✅ Resolved workspace: ${workspaceId}`);
 

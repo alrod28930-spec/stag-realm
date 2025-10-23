@@ -1,9 +1,22 @@
 import { json } from "./http.ts";
 
-export async function ensureWorkspace(supabase: any) {
+export async function ensureWorkspace(supabase: any, req: Request) {
   try {
-    // First verify user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Extract JWT token from request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ No Authorization header');
+      throw new Error('Unauthorized: No Authorization header');
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) {
+      console.error('❌ Invalid Authorization header format');
+      throw new Error('Unauthorized: Invalid Authorization header');
+    }
+    
+    // Verify user with explicit token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       console.error('❌ Auth check failed:', authError?.message);
       throw new Error(`Unauthorized: ${authError?.message || 'No user session'}`);

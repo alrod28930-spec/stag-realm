@@ -12,7 +12,7 @@ serve(async (req) => {
   let workspace_id = "";
 
   try {
-    workspace_id = await ensureWorkspace(supabase);
+    workspace_id = await ensureWorkspace(supabase, req);
     
     const body = await req.json().catch(() => ({}));
     const { broker = "alpaca", mode = "paper" } = body;
