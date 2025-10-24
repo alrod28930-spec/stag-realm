@@ -76,54 +76,22 @@ serve(async (req) => {
 
     console.log(`🔓 Fetching credentials for ${broker}:${mode}`);
 
-    // Decrypt credentials from database
-    const { data: connData, error: connError } = await supabase
-      .from('connections_brokerages')
-      .select('api_key_cipher, api_secret_cipher, nonce')
-      .eq('workspace_id', workspaceId)
-      .eq('provider', broker)
-      .eq('mode', mode)
-      .single();
+    // Call centralized decrypt function
+    const { data: decryptData, error: decryptError } = await supabase.functions.invoke(
+      'decrypt-brokerage-credentials',
+      {
+        body: { broker, mode }
+      }
+    );
 
-    if (connError || !connData || !connData.api_key_cipher || !connData.api_secret_cipher || !connData.nonce) {
-      throw new Error('Alpaca credentials not found. Please connect your brokerage account first.');
+    if (decryptError || !decryptData?.ok) {
+      throw new Error('Failed to decrypt credentials: ' + (decryptData?.error || decryptError?.message));
     }
 
-    // Decrypt credentials
-    const encryptionKey = Deno.env.get('CREDENTIAL_ENCRYPTION_KEY');
-    if (!encryptionKey) {
-      throw new Error('Encryption key not configured.');
-    }
+    const alpacaApiKey = decryptData.credentials.apiKey;
+    const alpacaSecretKey = decryptData.credentials.secretKey;
 
-    const nonceBytes = Uint8Array.from(atob(connData.nonce), c => c.charCodeAt(0));
-    const apiKeyCipherBytes = Uint8Array.from(atob(connData.api_key_cipher), c => c.charCodeAt(0));
-    const secretKeyCipherBytes = Uint8Array.from(atob(connData.api_secret_cipher), c => c.charCodeAt(0));
-
-    const keyData = new TextEncoder().encode(encryptionKey.padEnd(32, '0').substring(0, 32));
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['decrypt']
-    );
-
-    const apiKeyDecrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: nonceBytes },
-      key,
-      apiKeyCipherBytes
-    );
-
-    const secretKeyDecrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: nonceBytes },
-      key,
-      secretKeyCipherBytes
-    );
-
-    const alpacaApiKey = new TextDecoder().decode(apiKeyDecrypted);
-    const alpacaSecretKey = new TextDecoder().decode(secretKeyDecrypted);
-
-    console.log(`✅ Credentials decrypted successfully`);
+    console.log(`✅ Credentials retrieved successfully (mode: ${decryptData.mode})`);
 
     // Detect correct Alpaca base URL (paper vs live)
     let baseUrl = 'https://paper-api.alpaca.markets';
