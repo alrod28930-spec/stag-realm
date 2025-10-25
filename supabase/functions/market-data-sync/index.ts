@@ -42,9 +42,11 @@ serve(async (req) => {
       return json({ ok: false, error: "decrypt_failed" });
     }
 
-    const dec = decData;
+    const apiKey = decData.credentials.apiKey;
+    const secretKey = decData.credentials.secretKey;
+    const url = BASE[(decData.mode ?? "paper") as "paper" | "live"];
 
-    const url = BASE[(dec.mode ?? "paper") as "paper" | "live"];
+    console.log(`✅ Credentials retrieved (mode: ${decData.mode})`);
 
     let inserted = 0;
     let warned = 0;
@@ -56,8 +58,8 @@ serve(async (req) => {
       
       const r = await fetch(u.toString(), {
         headers: {
-          "APCA-API-KEY-ID": dec.credentials?.apiKey || dec.apiKey,
-          "APCA-API-SECRET-KEY": dec.credentials?.secretKey || dec.secret || dec.secretKey
+          "APCA-API-KEY-ID": apiKey,
+          "APCA-API-SECRET-KEY": secretKey
         }
       });
       
