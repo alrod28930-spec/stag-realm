@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+import { ensureWorkspace } from "../_shared/guards.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,54 +18,12 @@ function handleCORS(req: Request) {
   return null;
 }
 
-function supaFromReq(req: Request) {
-  const url = Deno.env.get('SUPABASE_URL')!;
-  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  return createClient(url, key);
-}
-
-async function ensureWorkspace(supabase: any, req: Request) {
-  try {
-    // Extract JWT token from request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('❌ No Authorization header');
-      throw new Error('Unauthorized: No Authorization header');
-    }
-    
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify user with explicit token
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) {
-      console.error('❌ Auth failed:', error?.message);
-      throw new Error(`Unauthorized: ${error?.message || 'No user session'}`);
-    }
-    
-    console.log('✅ User authenticated:', user.email);
-    
-    const { data: wsData, error: rpcError } = await supabase.rpc('ensure_default_workspace');
-    if (rpcError) {
-      console.error('❌ RPC failed:', rpcError);
-      throw new Error(`Workspace error: ${rpcError.message}`);
-    }
-    
-    if (!wsData) throw new Error('No workspace returned');
-    console.log('✅ Workspace:', wsData);
-    return wsData as string;
-  } catch (e) {
-    console.error('❌ ensureWorkspace failed:', e);
-    throw e;
-  }
-}
-
 serve(async (req) => {
   const cors = handleCORS(req);
   if (cors) return cors;
 
   try {
-    const supabase = supaFromReq(req);
-    const workspaceId = await ensureWorkspace(supabase, req);
+    const { workspaceId, supabase } = await ensureWorkspace(req);
     
     console.log(`✅ Resolved workspace: ${workspaceId}`);
 

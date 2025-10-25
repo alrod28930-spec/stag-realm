@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { preflight, json, supaFromReq } from "../_shared/http.ts";
+import { preflight, json } from "../_shared/http.ts";
 import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
 
 const FN = "market-data-sync";
@@ -12,12 +12,14 @@ serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
   
-  const supabase = supaFromReq(req);
   let workspace_id = "";
+  let supabase: any;
   
   try {
     console.log('🔐 Starting market-data-sync with auth check');
-    workspace_id = await ensureWorkspace(supabase, req);
+    const result = await ensureWorkspace(req);
+    workspace_id = result.workspaceId;
+    supabase = result.supabase;
     console.log(`✅ Workspace resolved: ${workspace_id}`);
     
     const body = await req.json().catch(() => ({}));

@@ -1,42 +1,67 @@
 import { json } from "./http.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
 
-export async function ensureWorkspace(supabase: any, req: Request) {
+/**
+ * Create a user-scoped Supabase client from the request
+ * This client will have the user's auth context for RLS policies
+ */
+export function supaUserClient(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    throw new Error('No Authorization header');
+  }
+  
+  const token = authHeader.replace('Bearer ', '');
+  if (!token) {
+    throw new Error('Invalid Authorization header format');
+  }
+  
+  const url = Deno.env.get('SUPABASE_URL')!;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  // Create client with user's JWT token
+  return createClient(url, anonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    },
+    auth: {
+      persistSession: false
+    }
+  });
+}
+
+/**
+ * Ensure workspace exists for the authenticated user
+ * Uses user-scoped client so RPC has proper auth context
+ */
+export async function ensureWorkspace(req: Request) {
   try {
-    // Extract JWT token from request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('❌ No Authorization header');
-      throw new Error('Unauthorized: No Authorization header');
-    }
+    const supabase = supaUserClient(req);
     
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) {
-      console.error('❌ Invalid Authorization header format');
-      throw new Error('Unauthorized: Invalid Authorization header');
-    }
-    
-    // Verify user with explicit token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // Get current user (validates token)
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      console.error('❌ Auth check failed:', authError?.message);
-      throw new Error(`Unauthorized: ${authError?.message || 'No user session'}`);
+      console.error('❌ Auth failed:', authError?.message);
+      throw new Error(`Unauthorized: ${authError?.message || 'No user'}`);
     }
     
     console.log('✅ User authenticated:', user.email);
     
-    // Then ensure workspace exists
+    // Ensure workspace exists (RPC now has user context via auth.uid())
     const { data, error } = await supabase.rpc("ensure_default_workspace");
     if (error) {
-      console.error('❌ RPC ensure_default_workspace failed:', error);
-      throw new Error(`Workspace creation failed: ${error.message}`);
+      console.error('❌ RPC failed:', error);
+      throw new Error(`Workspace error: ${error.message}`);
     }
     
     if (!data) {
-      throw new Error("no_workspace: RPC returned null");
+      throw new Error("No workspace returned");
     }
     
-    console.log('✅ Workspace ensured:', data);
-    return data as string;
+    console.log('✅ Workspace:', data);
+    return { workspaceId: data as string, userId: user.id, supabase };
   } catch (e) {
     console.error('❌ ensureWorkspace error:', e);
     throw e;

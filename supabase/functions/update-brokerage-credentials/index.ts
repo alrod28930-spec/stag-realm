@@ -1,15 +1,14 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { preflight, json, supaFromReq } from "../_shared/http.ts";
+import { preflight, json } from "../_shared/http.ts";
 import { ensureWorkspace } from "../_shared/guards.ts";
 
 serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
   
-  const supabase = supaFromReq(req);
-  
   try {
-    const workspace_id = await ensureWorkspace(supabase, req);
+    const { workspaceId, supabase } = await ensureWorkspace(req);
+    const workspace_id = workspaceId;
     const body = await req.json();
     
     const { provider, mode, apiKey, secretKey } = body;
