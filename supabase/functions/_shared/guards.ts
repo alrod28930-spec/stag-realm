@@ -2,33 +2,26 @@ import { json } from "./http.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
 
 /**
- * Create a user-scoped Supabase client from the request
- * This client will have the user's auth context for RLS policies
+ * Create a user-scoped Supabase client from the request (RLS aware)
  */
 export function supaUserClient(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    throw new Error('No Authorization header');
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new Error("Unauthorized: missing or invalid Authorization header");
   }
-  
-  const token = authHeader.replace('Bearer ', '');
-  if (!token) {
-    throw new Error('Invalid Authorization header format');
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  if (!token) throw new Error("Unauthorized: empty bearer token");
+
+  const url = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!url || !anonKey) {
+    throw new Error("Server misconfig: missing SUPABASE_URL or SUPABASE_ANON_KEY");
   }
-  
-  const url = Deno.env.get('SUPABASE_URL')!;
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  
-  // Create client with user's JWT token
+
   return createClient(url, anonKey, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    },
-    auth: {
-      persistSession: false
-    }
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
   });
 }
 
@@ -68,14 +61,37 @@ export async function ensureWorkspace(req: Request) {
   }
 }
 
-export async function isWorkspaceAdmin(supabase: any, workspace_id: string) {
-  const { data } = await supabase
+/** 
+ * SECURITY FIX: bind admin check to current user to prevent privilege escalation
+ */
+export async function isWorkspaceAdmin(
+  supabase: any,
+  workspace_id: string
+) {
+  // Get current user ID
+  const { data: who } = await supabase.auth.getUser();
+  const userId = who?.user?.id;
+  
+  if (!userId) {
+    return false;
+  }
+
+  // Check if THIS user is admin/owner for the workspace
+  const { data: me } = await supabase
     .from("workspace_members")
-    .select("role").eq("workspace_id", workspace_id).limit(1);
-  const role = data?.[0]?.role ?? "member";
+    .select("role")
+    .eq("workspace_id", workspace_id)
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  const role = me?.role ?? "member";
   return role === "owner" || role === "admin";
 }
 
+/** 
+ * Prefer the hardened recorder_log RPC; fallback only if needed 
+ */
 export async function repoEvent(
   supabase: any,
   workspace_id: string,
@@ -83,19 +99,35 @@ export async function repoEvent(
   payload: any
 ) {
   try {
-    await supabase.from("repository_events").insert({
-      workspace_id,
-      source,
-      payload
+    const { error } = await supabase.rpc("recorder_log", {
+      p_workspace: workspace_id,
+      p_event_type: source,
+      p_severity: 2,
+      p_entity_type: "system",
+      p_entity_id: null,
+      p_summary: source,
+      p_payload: payload as any,
     });
-  } catch (_e) {
+    if (error) {
+      // Fallback to direct insert if RPC fails
+      await supabase.from("repository_events").insert({ 
+        workspace_id, 
+        source, 
+        payload 
+      });
+    }
+  } catch {
     // swallow to avoid masking original response
   }
 }
 
-export function safeFail(fnName: string, e: any) {
+/** 
+ * Return an appropriate status code for failures (not 200)
+ */
+export function safeFail(fnName: string, e: any, status = 400) {
   const msg = (e && e.message) ? e.message : String(e);
   const detail = msg.slice(0, 500);
-  return json({ ok: false, error: "exception", fn: fnName, detail }, 200);
+  const code = Number.isInteger(status) && status >= 400 && status < 600 ? status : 400;
+  return json({ ok: false, error: "exception", fn: fnName, detail }, code);
 }
 
