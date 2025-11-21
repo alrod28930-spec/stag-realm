@@ -112,8 +112,8 @@ const VerifyEmail = () => {
     if (type === 'recovery') {
       return '/reset/complete';
     }
-    // Default to dashboard (root path renders Dashboard)
-    return '/';
+    // Default to dashboard after successful verification
+    return '/dashboard';
   };
 
   const handleResendVerification = async () => {
