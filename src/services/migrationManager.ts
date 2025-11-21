@@ -46,11 +46,47 @@ class MigrationManager {
   }
 
   /**
+   * Preview migration without executing (dry run)
+   */
+  async previewMigration(migrationId: string): Promise<{
+    steps: Array<{ id: string; name: string; description: string }>;
+    estimatedDuration: number;
+    risks: string[];
+  }> {
+    const steps = this.migrations.get(migrationId);
+
+    if (!steps) {
+      throw new Error(`Migration ${migrationId} not found`);
+    }
+
+    const risks: string[] = [];
+    
+    // Analyze potential risks
+    if (steps.length > 5) {
+      risks.push('Complex migration with many steps');
+    }
+    if (steps.some(s => s.id.includes('delete'))) {
+      risks.push('Contains destructive operations');
+    }
+
+    return {
+      steps: steps.map(s => ({
+        id: s.id,
+        name: s.name,
+        description: s.description
+      })),
+      estimatedDuration: steps.length * 2000, // Rough estimate
+      risks
+    };
+  }
+
+  /**
    * Execute a migration
    */
   async executeMigration(
     migrationId: string,
-    workspaceId?: string
+    workspaceId?: string,
+    options?: { dryRun?: boolean }
   ): Promise<MigrationResult> {
     const startTime = Date.now();
     const steps = this.migrations.get(migrationId);
@@ -73,7 +109,7 @@ class MigrationManager {
 
     try {
       for (const step of steps) {
-        console.log(`  ▶️ Executing step: ${step.name}`);
+        console.log(`  ▶️ ${options?.dryRun ? 'Simulating' : 'Executing'} step: ${step.name}`);
 
         // Validate before execution
         const isValid = await step.validate();
@@ -81,14 +117,16 @@ class MigrationManager {
           throw new Error(`Validation failed for step: ${step.name}`);
         }
 
-        // Execute the step
-        const success = await step.execute();
-        if (!success) {
-          throw new Error(`Execution failed for step: ${step.name}`);
+        // Execute the step (skip if dry run)
+        if (!options?.dryRun) {
+          const success = await step.execute();
+          if (!success) {
+            throw new Error(`Execution failed for step: ${step.name}`);
+          }
         }
 
         completedSteps.push(step.id);
-        console.log(`  ✅ Completed step: ${step.name}`);
+        console.log(`  ✅ ${options?.dryRun ? 'Simulated' : 'Completed'} step: ${step.name}`);
       }
 
       const duration = Date.now() - startTime;

@@ -7,6 +7,34 @@ type EventMap = {
   // Portfolio events
   'portfolio.updated': any;
   'portfolio.error': { error: string };
+
+  // Migration events
+  'migration.started': { migrationId: string; workspaceId?: string };
+  'migration.completed': { migrationId: string; workspaceId?: string; result: any };
+  'migration.failed': { migrationId: string; workspaceId?: string; result: any };
+  'migration.queued': { queueItem: any };
+
+  // Connection health events
+  'connection.error': { 
+    connectionId: string; 
+    type: string; 
+    name: string; 
+    error?: string; 
+    errorCount: number 
+  };
+
+  // Circuit breaker events
+  'circuit.opened': { circuitId: string; reason: string; failures?: number };
+  'circuit.closed': { circuitId: string };
+  'circuit.reset': { circuitId: string };
+
+  // Recovery events
+  'recovery.exhausted': { connectionId: string };
+  'recovery.success': { connectionId: string };
+
+  // Queue events
+  'queue.paused': {};
+  'queue.completed': {};
   
   // Repository events
   'repository.snapshot_cleaned': any;
