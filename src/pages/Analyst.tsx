@@ -23,7 +23,6 @@ import {
   Clock
 } from 'lucide-react';
 import { analystService, AnalystMessage } from '@/services/analyst';
-import { ANALYST_PERSONAS } from '@/services/llm';
 import { bid } from '@/services/bid';
 import { eventBus } from '@/services/eventBus';
 import { useToast } from '@/hooks/use-toast';
@@ -48,7 +47,6 @@ export default function Analyst(props: AnalystProps = {}) {
   const [messages, setMessages] = useState<AnalystMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState(ANALYST_PERSONAS[0].id);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const { toast } = useToast();
   const { showDisclaimer } = useCompliance();
@@ -150,7 +148,6 @@ export default function Analyst(props: AnalystProps = {}) {
       const response = await supabase.functions.invoke('analyst-chat-enhanced', {
         body: {
           message: userInput,
-          persona: selectedPersona,
           workspace_id: 'demo-workspace'
         }
       });
@@ -170,8 +167,7 @@ export default function Analyst(props: AnalystProps = {}) {
         id: `msg_${Date.now()}_analyst`,
         timestamp: new Date(),
         type: 'analyst',
-        content: response.data.response,
-        persona: selectedPersona
+        content: response.data.response
       };
 
       setMessages(prev => [...prev, userMessage, analystMessage]);
@@ -189,11 +185,7 @@ export default function Analyst(props: AnalystProps = {}) {
     }
   };
 
-  const handlePersonaChange = (personaId: string) => {
-    setSelectedPersona(personaId);
-    analystService.setPersona(personaId);
-    setMessages(analystService.getMessages());
-  };
+  // Persona selection removed - using single Strategic Analyst
 
   const handleActionButtonClick = (eventType: string, eventData: any) => {
     // Emit the event through the event bus
@@ -249,8 +241,6 @@ export default function Analyst(props: AnalystProps = {}) {
   const formatTimestamp = (timestamp: Date) => {
     return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-
-  const currentPersona = ANALYST_PERSONAS.find(p => p.id === selectedPersona);
 
   return (
     <div className={`${isMobile ? 'flex flex-col h-[calc(100vh-8rem)]' : 'flex h-screen'} bg-background overflow-hidden`}>

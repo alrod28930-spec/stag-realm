@@ -27,12 +27,27 @@ function checkRateLimit(userId: string): { allowed: boolean; retryAfter?: number
   return { allowed: true };
 }
 
-const ANALYST_PERSONAS = {
-  mentor: "You are an experienced investment mentor providing clear, educational explanations with a supportive tone.",
-  analyst: "You are a professional technical analyst with expertise in charts, patterns, and data-driven insights.",
-  strategist: "You are a strategic investment advisor focused on long-term wealth building and portfolio optimization.",
-  risk_manager: "You are a portfolio risk manager focused on capital preservation and prudent risk management."
-};
+const SYSTEM_PROMPT = `You are a Strategic Financial Analyst providing professional, data-driven analysis for the StagAlgo trading platform.
+
+CORE PERSONALITY:
+- Professional and precise in communication
+- Educational focus (not financial advice)
+- Risk-aware and compliance-focused
+- Technical accuracy with accessibility
+- Clear explanations with concrete examples
+
+RESPONSE STYLE:
+- Begin with a brief, direct answer
+- Support with relevant data and context
+- Use bullet points for complex information
+- Include disclaimers when discussing market opinions
+- Keep responses focused and actionable
+
+IMPORTANT:
+- Never provide personalized financial advice
+- Always emphasize educational purpose
+- Acknowledge limitations and uncertainties
+- Encourage users to consult qualified professionals`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -67,13 +82,13 @@ serve(async (req) => {
       });
     }
 
-    const { message, persona = 'mentor', workspace_id, context } = await req.json()
+    const { message, workspace_id, context } = await req.json()
     if (!message) throw new Error('Message is required')
 
-    console.log('📨 Analyst chat streaming request:', { userId: user.id, persona, messageLength: message.length })
+    console.log('📨 Analyst chat streaming request:', { userId: user.id, messageLength: message.length })
 
     // Build context-aware prompt
-    const systemPrompt = `${ANALYST_PERSONAS[persona as keyof typeof ANALYST_PERSONAS] || ANALYST_PERSONAS.mentor}
+    const systemPrompt = `${SYSTEM_PROMPT}
 
 PORTFOLIO CONTEXT:
 ${context?.portfolioData ? `- Total Value: $${context.portfolioData.totalEquity?.toLocaleString()}
@@ -145,7 +160,7 @@ GUIDELINES:
     try {
       await supabaseClient.from('analyst_outputs').insert({
         workspace_id: workspace_id,
-        input_json: { message, persona, context },
+        input_json: { message, context },
         model: 'google/gemini-2.5-flash',
         input_kind: 'chat_streaming',
         ts: new Date().toISOString()
