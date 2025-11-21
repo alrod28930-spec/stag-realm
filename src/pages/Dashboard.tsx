@@ -24,6 +24,8 @@ import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compli
 import { EquityCurveChart } from '@/components/charts/EquityCurveChart';
 import { RiskMetricsChart } from '@/components/charts/RiskMetricsChart';
 import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
+import { ConnectionHealthIndicator } from '@/components/system/ConnectionHealthIndicator';
+import { useConnectionHealth } from '@/hooks/useConnectionHealth';
 
 export default function Dashboard() {
   const {
@@ -37,6 +39,12 @@ export default function Dashboard() {
   
   const { toast } = useToast();
   const { workspace } = useWorkspace();
+  const { registerConnection, systemHealth } = useConnectionHealth();
+
+  // Register database connection for health monitoring
+  useEffect(() => {
+    registerConnection('database', 'database', 'Supabase Database');
+  }, [registerConnection]);
 
   // Load portfolio data and subscribe to updates
   useEffect(() => {
@@ -226,6 +234,10 @@ export default function Dashboard() {
           }))}
         />
 
+        <ConnectionHealthIndicator />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Position Summary</CardTitle>

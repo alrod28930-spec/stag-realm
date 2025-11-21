@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { preflight, json } from "../_shared/http.ts";
 import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
+import { validateCredentials, validateEncryptedData, logValidation } from "../_shared/validation.ts";
 
 const FN = "decrypt-brokerage-credentials";
 
@@ -65,6 +66,24 @@ serve(async (req) => {
       return json({ ok: false, error: "incomplete_credentials" }, 400);
     }
 
+    // Validate encrypted data structure
+    const encValidation = validateEncryptedData(api_key_cipher, nonce);
+    logValidation('encrypted_data', encValidation);
+    
+    if (!encValidation.valid) {
+      console.error('❌ Encrypted data validation failed:', encValidation.errors);
+      await repoEvent(supabase, workspace_id, FN, { 
+        ok: false, 
+        error: "invalid_encrypted_data",
+        details: encValidation.errors
+      });
+      return json({ 
+        ok: false, 
+        error: "invalid_encrypted_data",
+        details: encValidation.errors.join(', ')
+      }, 400);
+    }
+
     const encryptionKey = Deno.env.get('CREDENTIAL_ENCRYPTION_KEY');
     if (!encryptionKey) {
       console.error('❌ CREDENTIAL_ENCRYPTION_KEY not configured');
@@ -105,8 +124,30 @@ serve(async (req) => {
 
     const apiKey = new TextDecoder().decode(apiKeyDecrypted);
     const secretKey = new TextDecoder().decode(secretKeyDecrypted);
+    
+    // Validate decrypted credentials
+    const credValidation = validateCredentials(apiKey, secretKey);
+    logValidation('decrypted_credentials', credValidation);
+    
+    if (!credValidation.valid) {
+      console.error('❌ Decrypted credentials invalid:', credValidation.errors);
+      await repoEvent(supabase, workspace_id, FN, { 
+        ok: false, 
+        error: "invalid_credentials",
+        details: credValidation.errors
+      });
+      return json({ 
+        ok: false, 
+        error: "invalid_credentials",
+        details: credValidation.errors.join(', ')
+      }, 400);
+    }
+    
+    if (credValidation.warnings.length > 0) {
+      console.warn('⚠️ Credential warnings:', credValidation.warnings);
+    }
 
-    console.log('✅ Credentials decrypted successfully');
+    console.log('✅ Credentials decrypted and validated successfully');
     await repoEvent(supabase, workspace_id, FN, { ok: true, mode: "database" });
     
     return json({

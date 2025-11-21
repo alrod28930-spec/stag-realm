@@ -9,8 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useBrokerageSync } from '@/hooks/useBrokerageSync';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Link, Plus, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Loader2, Link, Plus, Trash2, AlertTriangle, RefreshCw, Activity } from 'lucide-react';
 import type { BrokerageConnection } from '@/types/userSettings';
+import { useConnectionHealth } from '@/hooks/useConnectionHealth';
+import { migrationManager } from '@/services/migrationManager';
+import { useEffect } from 'react';
 
 // Input validation schema
 const brokerageCredentialsSchema = z.object({
@@ -45,6 +48,19 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   });
   const { toast } = useToast();
   const { triggerSync, autoSyncAfterConnection } = useBrokerageSync();
+  const { registerConnection, checkConnection } = useConnectionHealth();
+
+  // Register brokerage connections for health monitoring
+  useEffect(() => {
+    connections.forEach(conn => {
+      registerConnection(
+        `brokerage-${conn.provider}-${conn.mode}`,
+        'brokerage',
+        `${conn.provider} (${conn.mode})`,
+        { broker: conn.provider, mode: conn.mode }
+      );
+    });
+  }, [connections, registerConnection]);
 
   // Enhanced sync function with retry logic
   const syncPortfolioWithRetry = async (workspaceId: string, mode: string, maxRetries = 3) => {
@@ -137,70 +153,26 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
         throw new Error(firstError.message);
       }
 
-      console.log('🔌 Attempting brokerage connection...', { 
-        provider: newConnection.provider,
-        hasApiKey: !!newConnection.apiKey,
-        hasSecret: !!newConnection.apiSecret
-      });
+      console.log('🔌 Creating brokerage connection migration...');
 
-      let data: any = null;
-      let error: any = null;
-      try {
-        const res = await supabase.functions.invoke('detect-account-type', {
-          body: {
-            broker: newConnection.provider,
-            apiKey: newConnection.apiKey.trim(),
-            secretKey: newConnection.apiSecret.trim(),
-          },
-        });
-        data = res.data;
-        error = res.error;
-      } catch (err) {
-        error = err;
-      }
+      // Use migration manager for safe connection process
+      const migrationId = migrationManager.createBrokerageConnectionMigration(
+        newConnection.provider,
+        newConnection.apiKey.trim(),
+        newConnection.apiSecret.trim(),
+        'paper' // Will be auto-detected
+      );
 
-      console.log('📡 Edge function response:', {
-        success: data?.ok,
-        accountType: data?.accountType,
-        error: (error as any)?.message || data?.error,
-      });
+      console.log(`📋 Executing migration: ${migrationId}`);
+      const result = await migrationManager.executeMigration(migrationId, workspaceId);
 
-      if (error || !data) {
-        console.error('❌ Edge function error:', error);
-      }
-
-      if (!data?.ok) {
-        console.warn('detect-account-type failed, attempting fallback to broker-connect...');
-        try {
-          const fb = await supabase.functions.invoke('broker-connect', {
-            body: {
-              broker: newConnection.provider,
-              credentials: {
-                api_key: newConnection.apiKey.trim(),
-                api_secret: newConnection.apiSecret.trim(),
-                is_live: false,
-              },
-              account_label: newConnection.accountLabel || 'Alpaca account',
-            },
-          });
-
-          if (fb.error || !fb.data?.ok) {
-            const reason = fb.error?.message || fb.data?.error || data?.error || 'Connection failed';
-            throw new Error(reason);
-          }
-
-          // Normalize to keep the success flow below unchanged
-          data = { ok: true, accountType: 'paper', mode: 'paper' };
-          console.log('✅ Fallback broker-connect succeeded');
-        } catch (fbErr) {
-          console.error('❌ Fallback broker-connect failed:', fbErr);
-          throw new Error((fbErr as Error).message || 'Connection failed');
-        }
+      if (!result.success) {
+        throw new Error(result.error || 'Connection migration failed');
       }
 
       toast({
         title: "Connection Successful",
-        description: `Connected to ${data.accountType || data.mode || 'paper'} trading account. Syncing portfolio data...`,
+        description: `Connected successfully. Completed ${result.completedSteps.length} steps in ${result.duration}ms.`,
       });
 
       setNewConnection({
@@ -214,8 +186,18 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
       // Refresh connections list to show new connection
       onUpdate();
       
-      // Wait for database to fully commit, then trigger sync with retry
-      await syncPortfolioWithRetry(workspaceId, data.mode || 'paper');
+      // Register new connection for health monitoring
+      registerConnection(
+        `brokerage-${newConnection.provider}-paper`,
+        'brokerage',
+        `${newConnection.provider} (paper)`,
+        { broker: newConnection.provider, mode: 'paper' }
+      );
+
+      // Check connection health
+      setTimeout(() => {
+        checkConnection(`brokerage-${newConnection.provider}-paper`);
+      }, 2000);
 
     } catch (error) {
       toast({
