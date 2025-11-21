@@ -76,6 +76,7 @@ export default function Settings() {
         id: conn.id,
         workspace_id: conn.workspace_id,
         provider: conn.provider,
+        mode: conn.mode || 'paper',
         account_label: conn.account_label,
         scope: conn.scope,
         status: conn.status as 'active' | 'revoked' | 'error',

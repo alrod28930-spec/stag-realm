@@ -127,7 +127,7 @@ export default function Dashboard() {
       </div>
 
       {/* No Portfolio Connection Warning */}
-      {portfolioValue === 0 && (
+      {portfolioValue === 0 && !isLoading && (
         <Card className="border-warning bg-warning/10">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
@@ -135,11 +135,16 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <p className="font-medium text-warning-foreground">No Portfolio Data Found</p>
                 <p className="text-sm text-warning-foreground/80">
-                  Connect your brokerage account in Settings to start tracking your portfolio and enable live trading.
+                  Connect your brokerage account in Settings → Brokers tab to start tracking your portfolio and enable live trading.
                 </p>
-                <Button variant="outline" size="sm" className="mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => window.location.href = '/settings'}
+                >
                   <Building2 className="w-4 h-4 mr-2" />
-                  Connect Brokerage Account
+                  Go to Settings
                 </Button>
               </div>
             </div>
