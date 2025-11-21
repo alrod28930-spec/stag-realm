@@ -13,6 +13,9 @@ import { Loader2, Link, Plus, Trash2, AlertTriangle, RefreshCw, Activity } from 
 import type { BrokerageConnection } from '@/types/userSettings';
 import { useConnectionHealth } from '@/hooks/useConnectionHealth';
 import { migrationManager } from '@/services/migrationManager';
+import { migrationQueue } from '@/services/migrationQueue';
+import { circuitBreaker } from '@/services/circuitBreaker';
+import { recoveryManager } from '@/services/recoveryManager';
 import { useEffect } from 'react';
 
 // Input validation schema
@@ -139,7 +142,14 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
     
     setIsLoading(true);
 
+    const connectionId = `brokerage-${newConnection.provider}-paper`;
+
     try {
+      // Check if circuit breaker allows this connection
+      if (!circuitBreaker.canExecute(connectionId)) {
+        throw new Error('Connection temporarily blocked due to repeated failures. Please wait before retrying.');
+      }
+
       // Validate inputs client-side
       const validationResult = brokerageCredentialsSchema.safeParse({
         provider: newConnection.provider,
@@ -155,6 +165,14 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
 
       console.log('🔌 Creating brokerage connection migration...');
 
+      // Register circuit breaker for this connection
+      circuitBreaker.register(connectionId, {
+        failureThreshold: 3,
+        successThreshold: 2,
+        timeout: 120000, // 2 minutes
+        monitoringPeriod: 300000 // 5 minutes
+      });
+
       // Use migration manager for safe connection process
       const migrationId = migrationManager.createBrokerageConnectionMigration(
         newConnection.provider,
@@ -163,41 +181,63 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
         'paper' // Will be auto-detected
       );
 
-      console.log(`📋 Executing migration: ${migrationId}`);
-      const result = await migrationManager.executeMigration(migrationId, workspaceId);
+      // Add to migration queue with high priority
+      console.log(`📋 Queuing migration: ${migrationId}`);
+      const queueId = migrationQueue.enqueue(migrationId, workspaceId, 'high', 2);
+      
+      toast({
+        title: "Connection Queued",
+        description: "Your connection is being processed...",
+      });
 
-      if (!result.success) {
-        throw new Error(result.error || 'Connection migration failed');
+      // Wait for queue to complete
+      const maxWait = 60000; // 60 seconds
+      const startTime = Date.now();
+      
+      while (Date.now() - startTime < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const queuedItem = migrationQueue.getQueue().find(q => q.id === queueId);
+        
+        if (queuedItem?.status === 'completed') {
+          const result = queuedItem.result!;
+          
+          toast({
+            title: "Connection Successful",
+            description: `Connected successfully. Completed ${result.completedSteps.length} steps in ${result.duration}ms.`,
+          });
+
+          setNewConnection({
+            provider: '',
+            accountLabel: '',
+            apiKey: '',
+            apiSecret: ''
+          });
+          setIsAdding(false);
+          
+          // Refresh connections list to show new connection
+          onUpdate();
+          
+          // Register new connection for health monitoring
+          registerConnection(
+            connectionId,
+            'brokerage',
+            `${newConnection.provider} (paper)`,
+            { broker: newConnection.provider, mode: 'paper' }
+          );
+
+          // Check connection health
+          setTimeout(() => {
+            checkConnection(connectionId);
+          }, 2000);
+          
+          return;
+        } else if (queuedItem?.status === 'failed') {
+          throw new Error(queuedItem.result?.error || 'Migration failed after retries');
+        }
       }
 
-      toast({
-        title: "Connection Successful",
-        description: `Connected successfully. Completed ${result.completedSteps.length} steps in ${result.duration}ms.`,
-      });
-
-      setNewConnection({
-        provider: '',
-        accountLabel: '',
-        apiKey: '',
-        apiSecret: ''
-      });
-      setIsAdding(false);
-      
-      // Refresh connections list to show new connection
-      onUpdate();
-      
-      // Register new connection for health monitoring
-      registerConnection(
-        `brokerage-${newConnection.provider}-paper`,
-        'brokerage',
-        `${newConnection.provider} (paper)`,
-        { broker: newConnection.provider, mode: 'paper' }
-      );
-
-      // Check connection health
-      setTimeout(() => {
-        checkConnection(`brokerage-${newConnection.provider}-paper`);
-      }, 2000);
+      throw new Error('Connection timeout - please try again');
 
     } catch (error) {
       toast({
@@ -205,6 +245,9 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
         description: error instanceof Error ? error.message : "Failed to add connection.",
         variant: "destructive",
       });
+      
+      // Enable automatic recovery
+      recoveryManager.scheduleRecovery(connectionId);
     } finally {
       setIsLoading(false);
     }

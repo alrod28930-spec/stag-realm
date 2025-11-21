@@ -13,6 +13,14 @@ export interface ConnectionHealth {
   errorCount: number;
   latencyMs: number | null;
   metadata?: any;
+  history?: HealthHistoryEntry[];
+}
+
+export interface HealthHistoryEntry {
+  timestamp: Date;
+  status: 'healthy' | 'degraded' | 'down';
+  latencyMs: number;
+  error?: string;
 }
 
 export interface HealthCheckResult {
@@ -26,6 +34,7 @@ class ConnectionHealthService {
   private connections: Map<string, ConnectionHealth> = new Map();
   private checkInterval: NodeJS.Timeout | null = null;
   private listeners: Set<(connections: ConnectionHealth[]) => void> = new Set();
+  private maxHistorySize = 100; // Keep last 100 health checks per connection
 
   constructor() {
     this.initialize();
@@ -254,6 +263,23 @@ class ConnectionHealthService {
     conn.lastCheck = new Date();
     conn.latencyMs = result.latencyMs;
 
+    // Add to history
+    if (!conn.history) {
+      conn.history = [];
+    }
+    
+    const historyEntry: HealthHistoryEntry = {
+      timestamp: new Date(),
+      status: result.healthy ? 'healthy' : (conn.errorCount >= 3 ? 'down' : 'degraded'),
+      latencyMs: result.latencyMs,
+      error: result.error
+    };
+    
+    conn.history.unshift(historyEntry);
+    if (conn.history.length > this.maxHistorySize) {
+      conn.history = conn.history.slice(0, this.maxHistorySize);
+    }
+
     if (result.healthy) {
       conn.status = 'healthy';
       conn.lastSuccess = new Date();
@@ -280,6 +306,36 @@ class ConnectionHealthService {
 
     this.persist();
     this.notifyListeners();
+  }
+
+  /**
+   * Get health history for a connection
+   */
+  getHealthHistory(id: string): HealthHistoryEntry[] {
+    const conn = this.connections.get(id);
+    return conn?.history || [];
+  }
+
+  /**
+   * Get average latency from history
+   */
+  getAverageLatency(id: string, lastN = 10): number | null {
+    const history = this.getHealthHistory(id).slice(0, lastN);
+    if (history.length === 0) return null;
+    
+    const sum = history.reduce((acc, entry) => acc + entry.latencyMs, 0);
+    return sum / history.length;
+  }
+
+  /**
+   * Get uptime percentage from history
+   */
+  getUptimePercentage(id: string, lastN = 100): number {
+    const history = this.getHealthHistory(id).slice(0, lastN);
+    if (history.length === 0) return 0;
+    
+    const healthyCount = history.filter(e => e.status === 'healthy').length;
+    return (healthyCount / history.length) * 100;
   }
 
   /**
