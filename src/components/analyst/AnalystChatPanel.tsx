@@ -21,7 +21,6 @@ import {
   Zap
 } from 'lucide-react';
 import { useAnalystChat } from '@/hooks/useAnalystChat';
-import { ANALYST_PERSONAS } from '@/services/llm';
 import { DisclaimerBadge } from '@/components/compliance/DisclaimerBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -35,12 +34,10 @@ export function AnalystChatPanel() {
     chatHealth,
     sendMessage,
     retryMessage,
-    setPersona,
     getCacheStats
-  } = useAnalystChat('mentor');
+  } = useAnalystChat();
 
   const [inputMessage, setInputMessage] = useState('');
-  const [selectedPersona, setSelectedPersona] = useState('mentor');
   const [streamingMessage, setStreamingMessage] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   
@@ -75,7 +72,6 @@ export function AnalystChatPanel() {
           },
           body: JSON.stringify({
             message: userInput,
-            persona: selectedPersona,
             workspace_id: 'demo-workspace',
             context
           }),
@@ -187,11 +183,6 @@ export function AnalystChatPanel() {
     };
   };
 
-  const handlePersonaChange = (personaId: string) => {
-    setSelectedPersona(personaId);
-    setPersona(personaId);
-  };
-
   const handleRetry = (message: string) => {
     retryMessage(message);
   };
@@ -212,7 +203,6 @@ export function AnalystChatPanel() {
     }
   };
 
-  const currentPersona = ANALYST_PERSONAS.find(p => p.id === selectedPersona);
   const cacheStats = getCacheStats();
 
   return (
@@ -223,11 +213,11 @@ export function AnalystChatPanel() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5" />
-              Analyst Chat
+              Strategic Analyst
               <DisclaimerBadge variant="minimal" component="analyst" />
             </CardTitle>
             <CardDescription className="mt-1">
-              {currentPersona?.description}
+              Professional financial analysis and portfolio insights for educational purposes
             </CardDescription>
           </div>
           
@@ -245,23 +235,6 @@ export function AnalystChatPanel() {
             )}
           </div>
         </div>
-
-        {/* Persona Selector */}
-        <Select value={selectedPersona} onValueChange={handlePersonaChange}>
-          <SelectTrigger className="w-full mt-2">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ANALYST_PERSONAS.map((persona) => (
-              <SelectItem key={persona.id} value={persona.id}>
-                <div className="flex flex-col">
-                  <span className="font-medium">{persona.name}</span>
-                  <span className="text-xs text-muted-foreground">{persona.description}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         {/* Stats Bar */}
         <div className="flex gap-4 text-xs text-muted-foreground mt-2">
@@ -313,8 +286,8 @@ export function AnalystChatPanel() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs opacity-70 font-medium">
-                            {message.type === 'analyst' && message.persona
-                              ? ANALYST_PERSONAS.find(p => p.id === message.persona)?.name
+                            {message.type === 'analyst' 
+                              ? 'Strategic Analyst'
                               : message.type.charAt(0).toUpperCase() + message.type.slice(1)
                             }
                           </span>
@@ -378,7 +351,7 @@ export function AnalystChatPanel() {
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs opacity-70 font-medium">
-                          {ANALYST_PERSONAS.find(p => p.id === selectedPersona)?.name}
+                          Strategic Analyst
                         </span>
                         <span className="text-xs opacity-70 flex items-center gap-1">
                           <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />

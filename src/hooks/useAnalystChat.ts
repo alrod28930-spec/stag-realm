@@ -22,7 +22,7 @@ export interface ChatHealth {
   errorCount: number;
 }
 
-export function useAnalystChat(initialPersona?: string) {
+export function useAnalystChat() {
   const [messages, setMessages] = useState<AnalystMessage[]>([]);
   const [messageStatuses, setMessageStatuses] = useState<Map<string, MessageStatus>>(new Map());
   const [isTyping, setIsTyping] = useState(false);
@@ -42,9 +42,6 @@ export function useAnalystChat(initialPersona?: string) {
   // Initialize session and load messages
   useEffect(() => {
     analystService.startSession();
-    if (initialPersona) {
-      analystService.setPersona(initialPersona);
-    }
     setMessages(analystService.getMessages());
 
     // Register connection for health monitoring
@@ -103,7 +100,7 @@ export function useAnalystChat(initialPersona?: string) {
       cleanup.forEach(unsub => unsub());
       analystService.endSession();
     };
-  }, [initialPersona, toast]);
+  }, [toast]);
 
   const updateChatHealth = useCallback(() => {
     const conn = connectionHealthService.getConnectionHealth('analyst-chat');
@@ -231,11 +228,6 @@ export function useAnalystChat(initialPersona?: string) {
     setMessageStatuses(new Map());
   }, []);
 
-  const setPersona = useCallback((personaId: string) => {
-    analystService.setPersona(personaId);
-    setMessages(analystService.getMessages());
-  }, []);
-
   const getCacheStats = useCallback(() => {
     return analystCache.getStats();
   }, []);
@@ -256,7 +248,6 @@ export function useAnalystChat(initialPersona?: string) {
     sendMessage,
     retryMessage,
     clearMessages,
-    setPersona,
     
     // Utilities
     getCacheStats,

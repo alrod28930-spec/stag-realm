@@ -34,7 +34,6 @@ export interface AnalystSession {
   startTime: Date;
   endTime?: Date;
   messageCount: number;
-  persona: string;
   disclaimerShown: boolean;
   topics: string[];
 }
@@ -42,7 +41,6 @@ export interface AnalystSession {
 class AnalystService {
   private messages: AnalystMessage[] = [];
   private currentSession: AnalystSession | null = null;
-  private currentPersona: string = ANALYST_PERSONAS[0].id;
   private requestQueue: Array<() => Promise<any>> = [];
   private isProcessingQueue = false;
 
@@ -161,15 +159,14 @@ class AnalystService {
       id: sessionId,
       startTime: new Date(),
       messageCount: 0,
-      persona: this.currentPersona,
       disclaimerShown: false,
       topics: []
     };
 
     // Add welcome message with disclaimer
     this.addSystemMessage(
-      "Welcome to The Analyst. I'm here to explain your portfolio, market context, system decisions, and outcomes.\n\n" +
-      "**Important:** This is not financial advice. All analysis is for educational purposes only. Always consult with qualified financial professionals before making investment decisions.",
+      "Welcome to the Strategic Analyst. I provide professional analysis of your portfolio, market context, and trading decisions.\n\n" +
+      "**Important:** This is educational analysis, not financial advice. Always consult qualified financial professionals before making investment decisions.",
       'system'
     );
 
@@ -177,7 +174,7 @@ class AnalystService {
       this.currentSession.disclaimerShown = true;
     }
 
-    logService.log('info', 'Analyst session started', { sessionId, persona: this.currentPersona });
+    logService.log('info', 'Analyst session started', { sessionId });
     
     return sessionId;
   }
@@ -191,7 +188,6 @@ class AnalystService {
         sessionId: this.currentSession.id,
         duration: this.currentSession.endTime.getTime() - this.currentSession.startTime.getTime(),
         messageCount: this.currentSession.messageCount,
-        persona: this.currentSession.persona,
         topics: this.currentSession.topics
       });
     }
@@ -199,23 +195,7 @@ class AnalystService {
     this.currentSession = null;
   }
 
-  setPersona(personaId: string) {
-    const persona = ANALYST_PERSONAS.find(p => p.id === personaId);
-    if (persona) {
-      this.currentPersona = personaId;
-      llmService.setPersona(personaId);
-      
-      this.addSystemMessage(
-        `Switched to ${persona.name} persona: ${persona.description}`,
-        'system'
-      );
-
-      logService.log('info', 'Analyst persona changed', { 
-        newPersona: personaId,
-        sessionId: this.currentSession?.id 
-      });
-    }
-  }
+  // Persona functionality removed - using single Strategic Analyst personality
 
   async processUserMessage(userInput: string): Promise<AnalystMessage> {
     if (!this.currentSession) {
@@ -239,7 +219,7 @@ class AnalystService {
     };
 
     // Check cache first
-    const cachedResponse = analystCache.get(userInput, this.currentPersona, enhancedContext);
+    const cachedResponse = analystCache.get(userInput, 'strategic', enhancedContext);
     if (cachedResponse) {
       const analystMessage = this.addAnalystMessage(
         cachedResponse,
@@ -265,7 +245,7 @@ class AnalystService {
           // Fallback response when circuit is open
           return {
             content: "I'm currently experiencing high load. Please try again in a moment, or check the cache for recent similar queries.",
-            persona: this.currentPersona,
+            persona: 'strategic',
             actionButtons: [
               {
                 label: 'Retry',
@@ -288,13 +268,13 @@ class AnalystService {
       );
 
       // Cache the response
-      analystCache.set(userInput, this.currentPersona, llmResponse.content, enhancedContext);
+      analystCache.set(userInput, 'strategic', llmResponse.content, enhancedContext);
 
       // Log to recorder with knowledge base sources
       recorder.recordAnalystConversation({
         userQuery: userInput,
         analystResponse: llmResponse.content,
-        persona: this.currentPersona,
+        persona: 'strategic',
         citedSources: [...(llmResponse.relatedEventIds || []), ...kbResults.sources],
         chartsGenerated: [],
         confidenceLevel: 0.8
@@ -314,7 +294,7 @@ class AnalystService {
         sessionId: this.currentSession!.id,
         userQuery: userInput,
         response: llmResponse.content,
-        persona: this.currentPersona,
+        persona: 'strategic',
         knowledgeBaseSources: kbResults.sources
       });
 
@@ -414,7 +394,6 @@ class AnalystService {
         sessionId: this.currentSession?.id,
         userInputPreview: userInput.substring(0, 100),
         responsePreview: analystResponse.substring(0, 100),
-        persona: this.currentPersona,
         complianceMode: 'educational',
         citedSources: context.retrievedSources || [],
         contextSummary: {
@@ -495,7 +474,6 @@ class AnalystService {
       timestamp: new Date(),
       type: 'analyst',
       content,
-      persona: this.currentPersona,
       actionButtons,
       watchNext,
       relatedEventIds,
@@ -607,7 +585,7 @@ class AnalystService {
   }
 
   getCurrentPersona(): string {
-    return this.currentPersona;
+    return 'strategic'; // Fixed single personality
   }
 
   clearMessages() {
