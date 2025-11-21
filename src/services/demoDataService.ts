@@ -1,7 +1,7 @@
 import { eventBus } from './eventBus';
 import { logService } from './logging';
 
-// Demo portfolio data
+// Comprehensive demo portfolio data
 export const DEMO_PORTFOLIO = {
   cash: 125000.50,
   equity: 247845.75,
@@ -75,9 +75,11 @@ export const DEMO_ORACLE_SIGNALS = [
     signal_type: 'technical',
     direction: 1,
     strength: 0.87,
+    confidence: 0.85,
     summary: 'Strong bullish momentum with RSI oversold recovery and volume confirmation',
     source: 'Technical Analysis Engine',
-    ts: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 minutes ago
+    ts: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    tf: '1H',
     workspace_id: '00000000-0000-0000-0000-000000000001'
   },
   {
@@ -86,9 +88,11 @@ export const DEMO_ORACLE_SIGNALS = [
     signal_type: 'sentiment',
     direction: 1,
     strength: 0.92,
+    confidence: 0.90,
     summary: 'Positive sentiment surge following AI chip demand reports',
     source: 'News Sentiment Engine',
-    ts: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 minutes ago
+    ts: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    tf: '1H',
     workspace_id: '00000000-0000-0000-0000-000000000001'
   },
   {
@@ -97,14 +101,29 @@ export const DEMO_ORACLE_SIGNALS = [
     signal_type: 'technical',
     direction: -1,
     strength: 0.75,
+    confidence: 0.72,
     summary: 'Bearish divergence detected with declining volume',
     source: 'Technical Analysis Engine',
-    ts: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
+    ts: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    tf: '1H',
+    workspace_id: '00000000-0000-0000-0000-000000000001'
+  },
+  {
+    id: 'demo-signal-4',
+    symbol: 'MSFT',
+    signal_type: 'momentum',
+    direction: 1,
+    strength: 0.68,
+    confidence: 0.75,
+    summary: 'Moderate upward momentum with increasing institutional buying',
+    source: 'Flow Analysis Engine',
+    ts: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    tf: '1H',
     workspace_id: '00000000-0000-0000-0000-000000000001'
   }
 ];
 
-// Demo trade history
+// Demo trade history with proper structure for KPI calculations
 export const DEMO_TRADE_HISTORY = [
   {
     id: 'demo-trade-1',
@@ -112,10 +131,10 @@ export const DEMO_TRADE_HISTORY = [
     side: 'buy',
     quantity: 50,
     price: 172.45,
+    fees: 0.50,
     status: 'filled',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    pnl: 175.00,
-    commission: 0.50
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    pnl: 175.00
   },
   {
     id: 'demo-trade-2',
@@ -123,10 +142,10 @@ export const DEMO_TRADE_HISTORY = [
     side: 'sell',
     quantity: 25,
     price: 415.20,
+    fees: 0.25,
     status: 'filled',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-    pnl: 287.50,
-    commission: 0.25
+    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    pnl: 287.50
   },
   {
     id: 'demo-trade-3',
@@ -134,10 +153,65 @@ export const DEMO_TRADE_HISTORY = [
     side: 'buy',
     quantity: 15,
     price: 895.75,
+    fees: 0.75,
     status: 'filled',
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    pnl: 325.50,
-    commission: 0.75
+    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    pnl: 325.50
+  },
+  {
+    id: 'demo-trade-4',
+    symbol: 'TSLA',
+    side: 'sell',
+    quantity: 30,
+    price: 248.90,
+    fees: 0.30,
+    status: 'filled',
+    timestamp: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
+    pnl: -87.25
+  },
+  {
+    id: 'demo-trade-5',
+    symbol: 'GOOGL',
+    side: 'buy',
+    quantity: 40,
+    price: 140.15,
+    fees: 0.40,
+    status: 'filled',
+    timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+    pnl: 156.80
+  },
+  {
+    id: 'demo-trade-6',
+    symbol: 'AAPL',
+    side: 'buy',
+    quantity: 45,
+    price: 168.20,
+    fees: 0.45,
+    status: 'filled',
+    timestamp: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(),
+    pnl: 265.50
+  },
+  {
+    id: 'demo-trade-7',
+    symbol: 'MSFT',
+    side: 'sell',
+    quantity: 20,
+    price: 418.75,
+    fees: 0.20,
+    status: 'filled',
+    timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+    pnl: -45.00
+  },
+  {
+    id: 'demo-trade-8',
+    symbol: 'NVDA',
+    side: 'buy',
+    quantity: 10,
+    price: 912.30,
+    fees: 0.50,
+    status: 'filled',
+    timestamp: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(),
+    pnl: 89.75
   }
 ];
 
@@ -146,10 +220,15 @@ export const DEMO_ANALYTICS = {
   totalReturn: 15.7,
   sharpeRatio: 1.42,
   maxDrawdown: -3.2,
-  winRate: 67,
-  avgWin: 245.67,
-  avgLoss: -123.45,
-  totalTrades: 28,
+  winRate: 75.00,
+  avgWin: 215.01,
+  avgLoss: -66.13,
+  expectancy: 145.98,
+  totalTrades: 8,
+  winningTrades: 6,
+  losingTrades: 2,
+  totalPnL: 1167.80,
+  avgHoldHours: 24,
   weeklyReturns: [2.1, -0.8, 1.4, 3.2, -1.1, 0.9, 2.5],
   monthlyReturns: [5.2, -2.1, 8.7, 3.4, -1.8, 6.9, 2.3, 4.1, -0.5, 7.2, 1.8, 3.6]
 };
@@ -194,6 +273,24 @@ export const DEMO_SEARCH_RESULTS = [
   }
 ];
 
+// Demo bot configuration
+export const DEMO_BOT_PROFILE = {
+  workspace_id: '00000000-0000-0000-0000-000000000001',
+  active: false,
+  mode: 'paper',
+  name: 'Demo Trading Bot',
+  risk_per_trade_pct: 0.02,
+  max_concurrent_positions: 3,
+  max_trades_per_day: 5,
+  execution_mode: 'manual',
+  signal_confidence_min: 0.7,
+  rr_min: 1.5,
+  stop_style: 'atr',
+  capital_risk_pct: 0.10,
+  daily_loss_halt_pct: 0.03,
+  pdt_guard: true
+};
+
 class DemoDataService {
   private static instance: DemoDataService;
   private isActive = false;
@@ -237,8 +334,49 @@ class DemoDataService {
     return DEMO_ANALYTICS;
   }
 
+  getBotProfile() {
+    return DEMO_BOT_PROFILE;
+  }
+
   getSearchResults(query?: string, limit = 10) {
     return DEMO_SEARCH_RESULTS.slice(0, limit);
+  }
+
+  // Get demo candle data for charts
+  getDemoCandles(symbol: string, tf: string, limit = 100) {
+    const now = Date.now();
+    const tfMinutes = tf === '1D' ? 1440 : tf === '1H' ? 60 : tf === '5m' ? 5 : 1;
+    const candles = [];
+    
+    let basePrice = 100;
+    if (symbol === 'AAPL') basePrice = 174;
+    if (symbol === 'MSFT') basePrice = 420;
+    if (symbol === 'NVDA') basePrice = 917;
+    if (symbol === 'GOOGL') basePrice = 141;
+    if (symbol === 'TSLA') basePrice = 257;
+
+    for (let i = limit; i >= 0; i--) {
+      const timestamp = new Date(now - i * tfMinutes * 60 * 1000);
+      const volatility = Math.random() * 0.02 - 0.01; // ±1%
+      const open = basePrice * (1 + volatility);
+      const high = open * (1 + Math.abs(volatility) * 1.5);
+      const low = open * (1 - Math.abs(volatility) * 1.5);
+      const close = open * (1 + volatility * 0.5);
+      
+      candles.push({
+        ts: timestamp.toISOString(),
+        o: Number(open.toFixed(2)),
+        h: Number(high.toFixed(2)),
+        l: Number(low.toFixed(2)),
+        c: Number(close.toFixed(2)),
+        v: Math.floor(Math.random() * 1000000),
+        vwap: Number(((open + close) / 2).toFixed(2))
+      });
+      
+      basePrice = close; // Next candle starts at previous close
+    }
+    
+    return candles;
   }
 
   // Simulate placing a trade (no real execution)
@@ -250,8 +388,8 @@ class DemoDataService {
       ...order,
       status: 'filled',
       timestamp: new Date().toISOString(),
-      commission: Math.round(order.quantity * order.price * 0.001 * 100) / 100, // 0.1% commission
-      pnl: 0 // Initial PnL is 0
+      fees: Math.round(order.quantity * order.price * 0.001 * 100) / 100,
+      pnl: 0
     };
 
     eventBus.emit('demo.trade.placed', demoResult);
@@ -276,6 +414,14 @@ class DemoDataService {
         sentiment: 0.7,
         symbol: 'AAPL',
         timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'demo-news-3',
+        headline: 'Microsoft Azure Cloud Growth Accelerates',
+        source: 'Demo Tech Report',
+        sentiment: 0.75,
+        symbol: 'MSFT',
+        timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString()
       }
     ];
   }
