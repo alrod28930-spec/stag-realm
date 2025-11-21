@@ -1,11 +1,21 @@
 // useAnalystChat - Comprehensive Analyst chat management hook
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { analystService, AnalystMessage } from '@/services/analyst';
 import { analystCache } from '@/services/analystCache';
-import { connectionHealthService } from '@/services/connectionHealth';
 import { circuitBreaker } from '@/services/circuitBreaker';
 import { eventBus } from '@/services/eventBus';
 import { useToast } from '@/hooks/use-toast';
+
+export interface AnalystMessage {
+  id: string;
+  timestamp: Date;
+  type: 'user' | 'assistant' | 'system';
+  content: string;
+  metadata?: {
+    mode?: string;
+    disclaimer?: string;
+    sources?: Array<{ kind: string; id?: string; title?: string }>;
+  };
+}
 
 export interface MessageStatus {
   id: string;
@@ -41,9 +51,6 @@ export function useAnalystChat() {
 
   // Initialize session and load messages
   useEffect(() => {
-    analystService.startSession();
-    setMessages(analystService.getMessages());
-
     // Set initial connection as healthy - we'll update based on actual requests
     setIsConnected(true);
     setChatHealth(prev => ({
@@ -101,7 +108,6 @@ export function useAnalystChat() {
 
     return () => {
       cleanup.forEach(unsub => unsub());
-      analystService.endSession();
     };
   }, [toast]);
 
@@ -144,8 +150,49 @@ export function useAnalystChat() {
 
     try {
       setIsTyping(true);
-      const response = await analystService.processUserMessage(message);
-      setMessages(analystService.getMessages());
+      
+      // Call the new analyst-chat-lite endpoint directly
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/analyst-chat-lite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          message,
+          persona: 'strategic'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Analyst Lite error:', response.status, errorText);
+        throw new Error('Analyst service temporarily unavailable');
+      }
+
+      const data = await response.json();
+      
+      // Add messages to local state
+      const userMessage: AnalystMessage = {
+        id: `msg_${Date.now()}_user`,
+        timestamp: new Date(),
+        type: 'user',
+        content: message
+      };
+
+      const assistantMessage: AnalystMessage = {
+        id: `msg_${Date.now()}_assistant`,
+        timestamp: new Date(),
+        type: 'assistant',
+        content: data.summary,
+        metadata: {
+          mode: data.mode,
+          disclaimer: data.disclaimer,
+          sources: data.sources
+        }
+      };
+
+      setMessages(prev => [...prev, userMessage, assistantMessage]);
       
       // Mark message as delivered and update connection status
       setMessageStatuses(prev => {
@@ -158,7 +205,7 @@ export function useAnalystChat() {
       });
 
       updateConnectionStatus(true);
-      resolve(response);
+      resolve(assistantMessage);
     } catch (error) {
       console.error('Failed to process message:', error);
       
@@ -235,9 +282,7 @@ export function useAnalystChat() {
   }, [sendMessage, toast]);
 
   const clearMessages = useCallback(() => {
-    analystService.endSession();
-    analystService.startSession();
-    setMessages(analystService.getMessages());
+    setMessages([]);
     setMessageStatuses(new Map());
   }, []);
 
@@ -246,7 +291,7 @@ export function useAnalystChat() {
   }, []);
 
   const getCurrentSession = useCallback(() => {
-    return analystService.getCurrentSession();
+    return { id: 'lite-session', startTime: new Date() };
   }, []);
 
   return {

@@ -294,7 +294,7 @@ export function AnalystChatPanel() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs opacity-70 font-medium">
-                            {message.type === 'analyst' 
+                            {message.type === 'assistant' 
                               ? 'Strategic Analyst'
                               : message.type.charAt(0).toUpperCase() + message.type.slice(1)
                             }
@@ -313,22 +313,16 @@ export function AnalystChatPanel() {
                       {message.content}
                     </div>
 
-                    {/* Action Buttons */}
-                    {message.actionButtons && message.actionButtons.length > 0 && (
+                    {/* Sources */}
+                    {message.metadata?.sources && message.metadata.sources.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/20">
-                        {message.actionButtons.map((button, index) => (
-                          <Button
+                        {message.metadata.sources.map((source, index) => (
+                          <span
                             key={index}
-                            variant={button.variant || 'outline'}
-                            size="sm"
-                            onClick={() => {
-                              if (button.eventType === 'analyst.retry') {
-                                handleRetry(button.eventData.message);
-                              }
-                            }}
+                            className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded"
                           >
-                            {button.label}
-                          </Button>
+                            {source.title || source.kind}
+                          </span>
                         ))}
                       </div>
                     )}
