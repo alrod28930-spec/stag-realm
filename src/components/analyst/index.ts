@@ -7,3 +7,4 @@ export { AuditLogPanel } from './AuditLogPanel';
 export { PoliciesPanel } from './PoliciesPanel';
 export { ExperimentsPanel } from './ExperimentsPanel';
 export { OracleModelsPanel } from './OracleModelsPanel';
+export { AnalystHealthCard } from './AnalystHealthCard';

@@ -5,6 +5,9 @@ import { recorder } from './recorder';
 import { llmService, LLMResponse, ANALYST_PERSONAS } from './llm';
 import { knowledgeBaseService, RetrievalResult } from './knowledgeBase';
 import { userBID } from './userBID';
+import { analystCache } from './analystCache';
+import { circuitBreaker } from './circuitBreaker';
+import { connectionLifecycle } from './connectionLifecycle';
 
 export interface AnalystMessage {
   id: string;
@@ -40,9 +43,89 @@ class AnalystService {
   private messages: AnalystMessage[] = [];
   private currentSession: AnalystSession | null = null;
   private currentPersona: string = ANALYST_PERSONAS[0].id;
+  private requestQueue: Array<() => Promise<any>> = [];
+  private isProcessingQueue = false;
 
   constructor() {
     this.subscribeToEvents();
+    this.initializeConnections();
+    this.loadPersistedSession();
+  }
+
+  /**
+   * Initialize connections for health monitoring
+   */
+  private initializeConnections() {
+    // Register Analyst API connection
+    connectionLifecycle.register('analyst-api', {
+      maxReconnectAttempts: 5,
+      reconnectDelay: 3000,
+      maxReconnectDelay: 30000
+    });
+
+    // Register circuit breaker for API calls
+    circuitBreaker.register('analyst-llm', {
+      failureThreshold: 3,
+      successThreshold: 2,
+      timeout: 120000,
+      monitoringPeriod: 300000
+    });
+
+    console.log('🧠 Analyst connections initialized');
+  }
+
+  /**
+   * Load persisted session from localStorage
+   */
+  private loadPersistedSession() {
+    try {
+      const stored = localStorage.getItem('analyst_session');
+      if (stored) {
+        const data = JSON.parse(stored);
+        
+        // Only restore if recent (within last hour)
+        const sessionStart = new Date(data.startTime);
+        const hourAgo = Date.now() - 3600000;
+        
+        if (sessionStart.getTime() > hourAgo) {
+          this.currentSession = {
+            ...data,
+            startTime: new Date(data.startTime),
+            endTime: data.endTime ? new Date(data.endTime) : undefined
+          };
+          
+          // Restore messages
+          const storedMessages = localStorage.getItem('analyst_messages');
+          if (storedMessages) {
+            this.messages = JSON.parse(storedMessages).map((m: any) => ({
+              ...m,
+              timestamp: new Date(m.timestamp)
+            }));
+          }
+          
+          console.log('🧠 Restored analyst session:', this.currentSession.id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load analyst session:', error);
+    }
+  }
+
+  /**
+   * Persist session state
+   */
+  private persistSession() {
+    try {
+      if (this.currentSession) {
+        localStorage.setItem('analyst_session', JSON.stringify(this.currentSession));
+      }
+      
+      // Only store last 50 messages to save space
+      const recentMessages = this.messages.slice(-50);
+      localStorage.setItem('analyst_messages', JSON.stringify(recentMessages));
+    } catch (error) {
+      console.error('Failed to persist analyst session:', error);
+    }
   }
 
   private subscribeToEvents() {
@@ -155,9 +238,45 @@ class AnalystService {
       retrievedSources: kbResults.sources
     };
 
-    // Generate LLM response
+    // Check cache first
+    const cachedResponse = analystCache.get(userInput, this.currentPersona, enhancedContext);
+    if (cachedResponse) {
+      const analystMessage = this.addAnalystMessage(
+        cachedResponse,
+        undefined,
+        undefined,
+        undefined,
+        enhancedContext
+      );
+      
+      this.persistSession();
+      return analystMessage;
+    }
+
+    // Generate LLM response with circuit breaker protection
     try {
-      const llmResponse = await llmService.generateResponse(userInput, enhancedContext);
+      const llmResponse = await circuitBreaker.execute<LLMResponse>(
+        'analyst-llm',
+        async () => {
+          connectionLifecycle.markConnected('analyst-api');
+          return await llmService.generateResponse(userInput, enhancedContext);
+        },
+        async () => {
+          // Fallback response when circuit is open
+          return {
+            content: "I'm currently experiencing high load. Please try again in a moment, or check the cache for recent similar queries.",
+            persona: this.currentPersona,
+            actionButtons: [
+              {
+                label: 'Retry',
+                eventType: 'analyst.retry',
+                eventData: { message: userInput },
+                variant: 'default' as const
+              }
+            ]
+          };
+        }
+      );
       
       // Add analyst response
       const analystMessage = this.addAnalystMessage(
@@ -167,6 +286,9 @@ class AnalystService {
         llmResponse.relatedEventIds,
         enhancedContext
       );
+
+      // Cache the response
+      analystCache.set(userInput, this.currentPersona, llmResponse.content, enhancedContext);
 
       // Log to recorder with knowledge base sources
       recorder.recordAnalystConversation({
@@ -183,6 +305,9 @@ class AnalystService {
 
       // Extract topics for session tracking
       this.extractTopics(userInput);
+
+      // Persist session state
+      this.persistSession();
 
       // Emit analyst note event
       eventBus.emit('analyst.note', {
@@ -202,12 +327,27 @@ class AnalystService {
         sessionId: this.currentSession?.id
       });
 
+      // Mark connection as having issues
+      eventBus.emit('connection.error', {
+        connectionId: 'analyst-api',
+        type: 'api',
+        name: 'Analyst API',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorCount: 1
+      });
+
       return this.addAnalystMessage(
-        "I apologize, but I'm having difficulty processing your request right now. Please try again or rephrase your question.",
+        "I apologize, but I'm having difficulty processing your request right now. The system is attempting to recover automatically. Please try again in a moment.",
         [
           {
-            label: 'Refresh Data',
-            eventType: 'portfolio.refresh.request',
+            label: 'Retry',
+            eventType: 'analyst.retry',
+            eventData: { message: userInput },
+            variant: 'default'
+          },
+          {
+            label: 'Check Cache',
+            eventType: 'analyst.cache.stats',
             eventData: {},
             variant: 'outline'
           }

@@ -37,6 +37,7 @@ import { useAuthStore } from '@/stores/authStore';
 import type { ProcessedSignal } from '@/types/oracle';
 import { AnalystV2Panel, BacktestPanel, SystemHealthPanel, PortfolioPlannerPanel, AuditLogPanel, PoliciesPanel, ExperimentsPanel, OracleModelsPanel } from '@/components/analyst';
 import { PredictiveDashboard } from '@/components/oracle/PredictiveDashboard';
+import { AnalystHealthCard } from '@/components/analyst/AnalystHealthCard';
 
 interface AnalystProps {
   selectedSignal?: ProcessedSignal | null;
@@ -282,6 +283,7 @@ export default function Analyst(props: AnalystProps = {}) {
           </TabsContent>
 
           <TabsContent value="health" className="space-y-4">
+            <AnalystHealthCard />
             <SystemHealthPanel />
           </TabsContent>
 
