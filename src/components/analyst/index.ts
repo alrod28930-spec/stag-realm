@@ -8,3 +8,4 @@ export { PoliciesPanel } from './PoliciesPanel';
 export { ExperimentsPanel } from './ExperimentsPanel';
 export { OracleModelsPanel } from './OracleModelsPanel';
 export { AnalystHealthCard } from './AnalystHealthCard';
+export { AnalystChatPanel } from './AnalystChatPanel';

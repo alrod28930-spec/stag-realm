@@ -95,3 +95,9 @@ verify_jwt = true
 
 [functions.analyst-portfolio-plan]
 verify_jwt = true
+
+[functions.analyst-chat-enhanced]
+verify_jwt = true
+
+[functions.analyst-chat-streaming]
+verify_jwt = true
