@@ -70,6 +70,7 @@ export default function Dashboard() {
 
   // Load portfolio data and subscribe to updates
   useEffect(() => {
+    console.log('📊 Dashboard loading portfolio data');
     loadPortfolio();
     const unsubscribe = subscribeToUpdates();
     return unsubscribe;

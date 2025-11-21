@@ -9,8 +9,14 @@ const DEMO_USER_EMAIL = 'demo@example.com';
  */
 export function isLandingPageDemo(): boolean {
   const authState = useAuthStore.getState();
-  return authState.user?.email === DEMO_USER_EMAIL && 
-         authState.user?.id === DEMO_USER_ID;
+  const isDemo = authState.user?.email === DEMO_USER_EMAIL && 
+                 authState.user?.id === DEMO_USER_ID;
+  
+  if (isDemo) {
+    console.log('✅ Demo user detected:', authState.user?.email);
+  }
+  
+  return isDemo;
 }
 
 /**
@@ -20,6 +26,7 @@ export function initializeLandingPageDemo(): void {
   if (isLandingPageDemo()) {
     demoDataService.activate();
     console.log('✅ Demo mode activated - all data is isolated from production');
+    console.log('📊 Demo portfolio available:', demoDataService.getPortfolio());
   } else {
     demoDataService.deactivate();
   }
