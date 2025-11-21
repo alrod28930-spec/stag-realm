@@ -16,6 +16,8 @@ import { migrationManager } from '@/services/migrationManager';
 import { migrationQueue } from '@/services/migrationQueue';
 import { circuitBreaker } from '@/services/circuitBreaker';
 import { recoveryManager } from '@/services/recoveryManager';
+import { connectionPool } from '@/services/connectionPool';
+import { connectionLifecycle } from '@/services/connectionLifecycle';
 import { useEffect } from 'react';
 
 // Input validation schema
@@ -53,16 +55,50 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const { triggerSync, autoSyncAfterConnection } = useBrokerageSync();
   const { registerConnection, checkConnection } = useConnectionHealth();
 
-  // Register brokerage connections for health monitoring
+  // Register brokerage connections for health monitoring and lifecycle management
   useEffect(() => {
     connections.forEach(conn => {
+      const connectionId = `brokerage-${conn.provider}-${conn.mode}`;
+      
+      // Register for health monitoring
       registerConnection(
-        `brokerage-${conn.provider}-${conn.mode}`,
+        connectionId,
         'brokerage',
         `${conn.provider} (${conn.mode})`,
         { broker: conn.provider, mode: conn.mode }
       );
+
+      // Register for lifecycle management with automatic reconnection
+      connectionLifecycle.register(connectionId, {
+        maxReconnectAttempts: 5,
+        reconnectDelay: 2000,
+        maxReconnectDelay: 60000
+      });
+
+      // Mark as connected if last_sync is recent
+      if (conn.last_sync) {
+        const lastSync = new Date(conn.last_sync);
+        const fiveMinutesAgo = Date.now() - 300000;
+        
+        if (lastSync.getTime() > fiveMinutesAgo) {
+          connectionLifecycle.markConnected(connectionId);
+        }
+      }
     });
+
+    // Initialize connection pool for brokerage connections
+    if (connections.length > 0 && !connectionPool.getStats('brokerage-pool')) {
+      connectionPool.initialize('brokerage-pool', 'brokerage', {
+        minConnections: 1,
+        maxConnections: 3,
+        idleTimeout: 300000,
+        warmupInterval: 60000
+      });
+    }
+
+    return () => {
+      // Cleanup is handled by individual services
+    };
   }, [connections, registerConnection]);
 
   // Enhanced sync function with retry logic

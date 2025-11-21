@@ -35,6 +35,18 @@ type EventMap = {
   // Queue events
   'queue.paused': {};
   'queue.completed': {};
+
+  // Pool events
+  'pool.initialized': { poolId: string; config: any };
+  'pool.connection_acquired': { poolId: string; connectionId: string };
+  'pool.connection_released': { poolId: string; connectionId: string };
+  'pool.shutdown': { poolId: string };
+
+  // Lifecycle events
+  'lifecycle.registered': { connectionId: string };
+  'lifecycle.connected': { connectionId: string; previousState: string };
+  'lifecycle.reconnecting': { connectionId: string; attempt: number; delay: number };
+  'lifecycle.failed': { connectionId: string };
   
   // Repository events
   'repository.snapshot_cleaned': any;
