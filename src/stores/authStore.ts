@@ -197,6 +197,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             initializeLandingPageDemo();
             await initializeUserWorkspace();
             
+            console.log('✅ Demo account logged in successfully');
+            
             eventBus.emit('user-login' as any, { email: demoUser.email, timestamp: new Date() });
             return { data: { user: demoUser }, error: null };
           }

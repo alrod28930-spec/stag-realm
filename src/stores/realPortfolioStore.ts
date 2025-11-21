@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { eventBus } from '@/services/eventBus';
 import { logService } from '@/services/logging';
+import { demoDataService } from '@/services/demoDataService';
+import { useAuthStore } from '@/stores/authStore';
+import { isDemoUserId } from '@/hooks/useDemoAware';
 
 interface Position {
   symbol: string;
@@ -42,6 +45,44 @@ export const useRealPortfolioStore = create<RealPortfolioState>((set, get) => ({
   loadPortfolio: async () => {
     try {
       set({ isLoading: true, error: null });
+
+      // Check if this is a demo user - use demo data instead
+      const user = useAuthStore.getState().user;
+      if (isDemoUserId(user?.id)) {
+        const demoPortfolio = demoDataService.getPortfolio();
+        
+        set({
+          portfolio: {
+            cash: demoPortfolio.cash,
+            equity: demoPortfolio.equity,
+            updated_at: new Date().toISOString()
+          },
+          positions: demoPortfolio.positions.map(pos => ({
+            symbol: pos.symbol,
+            qty: pos.qty,
+            avg_cost: pos.avg_cost,
+            mv: pos.mv,
+            unr_pnl: pos.unr_pnl,
+            r_pnl: pos.r_pnl,
+            updated_at: pos.updated_at
+          })),
+          isLoading: false,
+          lastUpdated: new Date(),
+          error: null
+        });
+
+        eventBus.emit('portfolio.loaded', { 
+          portfolio: demoPortfolio,
+          positions: demoPortfolio.positions
+        });
+
+        logService.log('info', 'Demo portfolio loaded', {
+          positionsCount: demoPortfolio.positions.length,
+          portfolioValue: demoPortfolio.equity
+        });
+        
+        return;
+      }
 
       // Get current user's workspace instead of hardcoded ID
       const { getCurrentUserWorkspace } = await import('@/utils/auth');
