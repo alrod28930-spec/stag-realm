@@ -34,7 +34,8 @@ export function AnalystChatPanel() {
     chatHealth,
     sendMessage,
     retryMessage,
-    getCacheStats
+    getCacheStats,
+    updateConnectionStatus
   } = useAnalystChat();
 
   const [inputMessage, setInputMessage] = useState('');
@@ -160,9 +161,16 @@ export function AnalystChatPanel() {
 
       // Add completed message using the service
       await sendMessage(userInput);
+      
+      // Update connection status on success
+      updateConnectionStatus(true);
 
     } catch (error) {
       console.error('Streaming error:', error);
+      
+      // Update connection status on error
+      updateConnectionStatus(false, error instanceof Error ? error.message : 'Streaming failed');
+      
       toast({
         title: "Message Failed",
         description: "Could not send message. Click retry or try again later.",
