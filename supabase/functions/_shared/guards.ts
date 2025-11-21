@@ -1,6 +1,14 @@
 import { json } from "./http.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
 
+// Fail-fast environment validation
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error("FATAL: Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables");
+}
+
 /**
  * Create a user-scoped Supabase client from the request (RLS aware)
  */
@@ -62,21 +70,49 @@ export async function ensureWorkspace(req: Request) {
 }
 
 /** 
+ * Validate workspace membership before proceeding
+ */
+export async function validateWorkspaceMembership(
+  supabase: any,
+  workspaceId: string,
+  userId: string
+): Promise<{ valid: boolean; error?: string }> {
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("id", workspaceId)
+    .maybeSingle();
+
+  if (!workspace) {
+    return { valid: false, error: "Workspace not found" };
+  }
+
+  const { data: membership } = await supabase
+    .from("workspace_members")
+    .select("role")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!membership) {
+    return { valid: false, error: "Not a workspace member" };
+  }
+
+  return { valid: true };
+}
+
+/** 
  * SECURITY FIX: bind admin check to current user to prevent privilege escalation
  */
 export async function isWorkspaceAdmin(
   supabase: any,
   workspace_id: string
 ) {
-  // Get current user ID
   const { data: who } = await supabase.auth.getUser();
   const userId = who?.user?.id;
   
-  if (!userId) {
-    return false;
-  }
+  if (!userId) return false;
 
-  // Check if THIS user is admin/owner for the workspace
   const { data: me } = await supabase
     .from("workspace_members")
     .select("role")
