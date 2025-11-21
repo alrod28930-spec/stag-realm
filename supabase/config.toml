@@ -104,3 +104,6 @@ verify_jwt = true
 
 [functions.analyst-chat-lite]
 verify_jwt = false
+
+[functions.kpis-lite]
+verify_jwt = false
