@@ -46,6 +46,78 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const { toast } = useToast();
   const { triggerSync, autoSyncAfterConnection } = useBrokerageSync();
 
+  // Enhanced sync function with retry logic
+  const syncPortfolioWithRetry = async (workspaceId: string, mode: string, maxRetries = 3) => {
+    let attempt = 0;
+    let lastError: any = null;
+
+    while (attempt < maxRetries) {
+      try {
+        attempt++;
+        console.log(`📊 Portfolio sync attempt ${attempt}/${maxRetries}`);
+
+        // Wait progressively longer between retries to allow DB commits
+        if (attempt > 1) {
+          const waitTime = Math.pow(2, attempt - 1) * 1000; // 2s, 4s, 8s
+          console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+
+        // Verify credentials exist before attempting sync
+        const { data: connCheck } = await supabase
+          .from('connections_brokerages')
+          .select('api_key_cipher, nonce')
+          .eq('workspace_id', workspaceId)
+          .eq('provider', 'alpaca')
+          .eq('mode', mode)
+          .maybeSingle();
+
+        if (!connCheck?.api_key_cipher || !connCheck?.nonce) {
+          console.warn('⚠️ Credentials not yet stored, retrying...');
+          lastError = new Error('Credentials not ready');
+          continue;
+        }
+
+        console.log('✅ Credentials verified, attempting sync...');
+
+        // Attempt sync
+        const { data: syncData, error: syncError } = await supabase.functions.invoke('alpaca-sync', {
+          body: { 
+            workspace_id: workspaceId,
+            broker: 'alpaca',
+            mode: mode
+          }
+        });
+
+        if (syncError) throw syncError;
+        if (!syncData?.success) throw new Error(syncData?.error || 'Sync failed');
+
+        console.log('✅ Portfolio synced successfully:', syncData);
+        
+        toast({
+          title: "Portfolio Synced",
+          description: `Loaded ${syncData.data?.positions_count || 0} positions, equity: $${(syncData.data?.equity || 0).toLocaleString()}`,
+        });
+        
+        // Refresh connections to show updated last_sync
+        onUpdate();
+        return;
+
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Sync attempt ${attempt} failed:`, error);
+      }
+    }
+
+    // All retries exhausted
+    console.error('💥 Portfolio sync failed after all retries:', lastError);
+    toast({
+      title: "Portfolio Sync Failed",
+      description: `Unable to sync after ${maxRetries} attempts. Please try manual sync from the Sync Portfolio button.`,
+      variant: "destructive",
+    });
+  };
+
   const handleAddConnection = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -139,24 +211,11 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
       });
       setIsAdding(false);
       
-      // Refresh connections list
+      // Refresh connections list to show new connection
       onUpdate();
       
-      // Trigger immediate portfolio sync using alpaca-sync
-      setTimeout(async () => {
-        try {
-          await supabase.functions.invoke('alpaca-sync', {
-            body: { workspace_id: workspaceId }
-          });
-          
-          toast({
-            title: "Portfolio Synced",
-            description: "Initial portfolio data has been loaded.",
-          });
-        } catch (error) {
-          console.error('Sync failed:', error);
-        }
-      }, 1000);
+      // Wait for database to fully commit, then trigger sync with retry
+      await syncPortfolioWithRetry(workspaceId, data.mode || 'paper');
 
     } catch (error) {
       toast({
@@ -199,11 +258,38 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const handleManualSync = async (connectionId?: string) => {
     setIsSyncing(true);
     try {
-      await triggerSync(workspaceId, connectionId);
-      // Refresh data after sync
-      setTimeout(() => {
-        onUpdate();
-      }, 1000);
+      console.log('🔄 Manual sync triggered...');
+      
+      // Find the connection mode for proper sync
+      const connection = connections.find(c => !connectionId || c.id === connectionId);
+      const mode = connection?.mode || 'paper';
+      
+      // Use alpaca-sync directly for better control
+      const { data, error } = await supabase.functions.invoke('alpaca-sync', {
+        body: {
+          workspace_id: workspaceId,
+          broker: 'alpaca',
+          mode: mode
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Sync failed');
+
+      toast({
+        title: "Sync Complete",
+        description: `Portfolio updated: ${data.data?.positions_count || 0} positions, $${(data.data?.equity || 0).toLocaleString()} equity`,
+      });
+
+      // Refresh connections and wait for update
+      onUpdate();
+    } catch (error) {
+      console.error('Manual sync error:', error);
+      toast({
+        title: "Sync Failed",
+        description: error instanceof Error ? error.message : "Failed to sync portfolio",
+        variant: "destructive",
+      });
     } finally {
       setIsSyncing(false);
     }
@@ -405,6 +491,9 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
                     >
                       {connection.status}
                     </Badge>
+                    <Badge variant="outline" className="capitalize">
+                      {connection.mode || 'paper'}
+                    </Badge>
                     {connection.scope?.account_type && (
                       <Badge variant="outline">
                         {connection.scope.account_type}
@@ -414,6 +503,11 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
                   <p className="text-sm text-muted-foreground capitalize">
                     {connection.provider.replace('_', ' ')}
                   </p>
+                  {connection.last_sync && (
+                    <p className="text-xs text-muted-foreground">
+                      Last synced: {new Date(connection.last_sync).toLocaleString()}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Added {new Date(connection.created_at).toLocaleDateString()}
                   </p>
