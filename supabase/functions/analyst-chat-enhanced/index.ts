@@ -7,6 +7,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Rate limiting configuration
+const RATE_LIMIT = {
+  maxRequestsPerMinute: 20,
+  windowMs: 60000
+};
+
+const requestCounts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(userId: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const userLimit = requestCounts.get(userId);
+  
+  if (!userLimit || now > userLimit.resetAt) {
+    requestCounts.set(userId, { count: 1, resetAt: now + RATE_LIMIT.windowMs });
+    return { allowed: true };
+  }
+  
+  if (userLimit.count >= RATE_LIMIT.maxRequestsPerMinute) {
+    return { 
+      allowed: false, 
+      retryAfter: Math.ceil((userLimit.resetAt - now) / 1000) 
+    };
+  }
+  
+  userLimit.count++;
+  return { allowed: true };
+}
+
 // System prompts for different analyst personas
 const ANALYST_PERSONAS = {
   mentor: {
@@ -103,6 +131,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
+  const startTime = Date.now();
+
   try {
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -117,10 +147,33 @@ serve(async (req) => {
     const user = data.user
     if (!user) throw new Error('Unauthorized')
 
+    // Rate limiting check
+    const rateCheck = checkRateLimit(user.id);
+    if (!rateCheck.allowed) {
+      console.log(`⚠️ Rate limit exceeded for user ${user.id}`);
+      return new Response(JSON.stringify({
+        error: 'Rate limit exceeded',
+        retryAfter: rateCheck.retryAfter,
+        message: `Too many requests. Please wait ${rateCheck.retryAfter} seconds before trying again.`
+      }), {
+        status: 429,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateCheck.retryAfter)
+        }
+      });
+    }
+
     const { message, persona = 'mentor', workspace_id } = await req.json()
     if (!message) throw new Error('Message is required')
 
-    console.log('Processing analyst chat request:', { userId: user.id, persona, workspaceId: workspace_id })
+    console.log('Processing analyst chat request:', { 
+      userId: user.id, 
+      persona, 
+      workspaceId: workspace_id,
+      messageLength: message.length 
+    })
 
     // Get user BID profile
     const { data: userBIDProfile } = await supabaseClient
@@ -252,6 +305,9 @@ IMPORTANT GUIDELINES:
 
     console.log('Enhanced analyst chat completed successfully')
 
+    const processingTime = Date.now() - startTime;
+    console.log(`⏱️ Total processing time: ${processingTime}ms`);
+
     return new Response(JSON.stringify({
       response: aiResponse,
       persona: selectedPersona.name,
@@ -261,19 +317,27 @@ IMPORTANT GUIDELINES:
         demoMode: isDemoMode,
         riskLevel: tradingProfile?.riskTolerance || 5
       },
+      performance: {
+        processingTimeMs: processingTime,
+        cached: false
+      },
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
-    // TypeScript error handling fix
+    const processingTime = Date.now() - startTime;
     console.error('Enhanced analyst chat error:', error)
+    
+    // Provide detailed error context for debugging
     return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : 'Failed to process analyst chat',
+      errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+      processingTimeMs: processingTime,
       timestamp: new Date().toISOString()
     }), {
-      status: 500,
+      status: error instanceof Error && error.message.includes('Rate limit') ? 429 : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }

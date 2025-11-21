@@ -81,6 +81,11 @@ type EventMap = {
   // Analyst events
   'analyst.conversation': any;
   'analyst.emergency_notification': { type: string; reason: string; timestamp: Date };
+  'analyst.voice_interaction': { transcription: string; response: string; personality: string; timestamp: string };
+  'analyst.cache_hit': { key: string; hits: number };
+  'analyst.note': { sessionId: string; userQuery: string; response: string; persona: string; knowledgeBaseSources: string[] };
+  'analyst.retry': { message: string };
+  'analyst.cache.stats': {};
   
   // Recorder events
   'recorder.exported': any;
