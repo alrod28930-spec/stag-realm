@@ -44,44 +44,25 @@ export function useAnalystChat() {
     analystService.startSession();
     setMessages(analystService.getMessages());
 
-    // Register connection for health monitoring
-    connectionHealthService.registerConnection(
-      'analyst-chat',
-      'api',
-      'Analyst Chat Service'
-    );
+    // Set initial connection as healthy - we'll update based on actual requests
+    setIsConnected(true);
+    setChatHealth(prev => ({
+      ...prev,
+      connectionStatus: 'connected'
+    }));
 
     // Subscribe to events
     const cleanup: Array<() => void> = [];
 
-    // Connection status
-    const connHealthyHandler = (data: any) => {
-      if (data.connectionId === 'analyst-api' || data.connectionId === 'analyst-chat') {
-        setIsConnected(true);
-        updateChatHealth();
-      }
-    };
-    eventBus.on('connection.healthy', connHealthyHandler);
-    cleanup.push(() => eventBus.off('connection.healthy', connHealthyHandler));
-
-    const connErrorHandler = (data: any) => {
-      if (data.connectionId === 'analyst-api' || data.connectionId === 'analyst-chat') {
-        setIsConnected(false);
-        updateChatHealth();
-        toast({
-          title: "Connection Issue",
-          description: "Analyst service is experiencing issues. Retrying automatically...",
-          variant: "default",
-        });
-      }
-    };
-    eventBus.on('connection.error', connErrorHandler);
-    cleanup.push(() => eventBus.off('connection.error', connErrorHandler));
-
     // Circuit breaker events
     const circuitOpenedHandler = (data: any) => {
       if (data.circuitId === 'analyst-llm') {
-        updateChatHealth();
+        setIsConnected(false);
+        setChatHealth(prev => ({
+          ...prev,
+          connectionStatus: 'degraded',
+          circuitBreakerState: 'open'
+        }));
         toast({
           title: "Service Protection Active",
           description: "Too many errors detected. Service will retry automatically.",
@@ -92,9 +73,31 @@ export function useAnalystChat() {
     eventBus.on('circuit.opened', circuitOpenedHandler);
     cleanup.push(() => eventBus.off('circuit.opened', circuitOpenedHandler));
 
-    // Update health every 5 seconds
-    const healthInterval = setInterval(updateChatHealth, 5000);
-    cleanup.push(() => clearInterval(healthInterval));
+    const circuitClosedHandler = (data: any) => {
+      if (data.circuitId === 'analyst-llm') {
+        setIsConnected(true);
+        setChatHealth(prev => ({
+          ...prev,
+          connectionStatus: 'connected',
+          circuitBreakerState: 'closed'
+        }));
+      }
+    };
+    eventBus.on('circuit.closed', circuitClosedHandler);
+    cleanup.push(() => eventBus.off('circuit.closed', circuitClosedHandler));
+
+    // Update cache stats every 5 seconds
+    const cacheInterval = setInterval(() => {
+      const cacheStats = analystCache.getStats();
+      const breakerStats = circuitBreaker.getStats('analyst-llm');
+      setChatHealth(prev => ({
+        ...prev,
+        cacheHitRate: cacheStats.hitRate,
+        circuitBreakerState: breakerStats.state,
+        lastSuccessfulRequest: breakerStats.lastSuccessTime
+      }));
+    }, 5000);
+    cleanup.push(() => clearInterval(cacheInterval));
 
     return () => {
       cleanup.forEach(unsub => unsub());
@@ -102,26 +105,34 @@ export function useAnalystChat() {
     };
   }, [toast]);
 
-  const updateChatHealth = useCallback(() => {
-    const conn = connectionHealthService.getConnectionHealth('analyst-chat');
-    const breakerStats = circuitBreaker.getStats('analyst-llm');
-    const cacheStats = analystCache.getStats();
-
-    let mappedStatus: 'connected' | 'degraded' | 'disconnected' = 'disconnected';
-    if (conn?.status === 'healthy') {
-      mappedStatus = 'connected';
-    } else if (conn?.status === 'degraded') {
-      mappedStatus = 'degraded';
+  const updateConnectionStatus = useCallback((success: boolean, error?: string) => {
+    if (success) {
+      setIsConnected(true);
+      setChatHealth(prev => ({
+        ...prev,
+        connectionStatus: 'connected',
+        errorCount: 0,
+        lastSuccessfulRequest: new Date()
+      }));
+    } else {
+      setChatHealth(prev => {
+        const newErrorCount = (prev.errorCount || 0) + 1;
+        return {
+          ...prev,
+          connectionStatus: newErrorCount >= 3 ? 'disconnected' : 'degraded',
+          errorCount: newErrorCount
+        };
+      });
+      
+      if (error) {
+        toast({
+          title: "Connection Issue",
+          description: error,
+          variant: "default",
+        });
+      }
     }
-
-    setChatHealth({
-      connectionStatus: mappedStatus,
-      circuitBreakerState: breakerStats.state,
-      cacheHitRate: cacheStats.hitRate,
-      lastSuccessfulRequest: breakerStats.lastSuccessTime,
-      errorCount: conn?.errorCount || 0
-    });
-  }, []);
+  }, [toast]);
 
   const processMessageQueue = useCallback(async () => {
     if (isProcessingRef.current || messageQueueRef.current.length === 0) {
@@ -136,7 +147,7 @@ export function useAnalystChat() {
       const response = await analystService.processUserMessage(message);
       setMessages(analystService.getMessages());
       
-      // Mark message as delivered
+      // Mark message as delivered and update connection status
       setMessageStatuses(prev => {
         const updated = new Map(prev);
         const status = Array.from(updated.values()).find(s => s.status === 'pending');
@@ -146,11 +157,12 @@ export function useAnalystChat() {
         return updated;
       });
 
+      updateConnectionStatus(true);
       resolve(response);
     } catch (error) {
       console.error('Failed to process message:', error);
       
-      // Mark message as failed
+      // Mark message as failed and update connection
       setMessageStatuses(prev => {
         const updated = new Map(prev);
         const status = Array.from(updated.values()).find(s => s.status === 'pending');
@@ -160,6 +172,7 @@ export function useAnalystChat() {
         return updated;
       });
 
+      updateConnectionStatus(false, error instanceof Error ? error.message : 'Failed to process message');
       reject(error);
     } finally {
       setIsTyping(false);
@@ -170,7 +183,7 @@ export function useAnalystChat() {
         setTimeout(() => processMessageQueue(), 500);
       }
     }
-  }, []);
+  }, [updateConnectionStatus]);
 
   const sendMessage = useCallback(async (message: string): Promise<AnalystMessage> => {
     if (!message.trim()) {
@@ -251,6 +264,7 @@ export function useAnalystChat() {
     
     // Utilities
     getCacheStats,
-    getCurrentSession
+    getCurrentSession,
+    updateConnectionStatus
   };
 }
