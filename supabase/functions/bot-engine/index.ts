@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { ENFORCE_SUBS } from "../_shared/subscription.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,13 +97,6 @@ serve(async (req) => {
 
 async function handleCreateBot(supabase: any, user: any, deploymentRequest: any) {
   console.log('🚀 Creating new bot:', deploymentRequest);
-
-  // Bypass tier check if enforcement is disabled
-  if (!ENFORCE_SUBS) {
-    console.log('🔓 Bot creation allowed (subscription enforcement disabled)');
-  }
-  // TODO: Add tier check here when enforcement is enabled
-  // else if (!hasTier(user, 'pro')) { throw new Error('LOCKED_FEATURE:BOT_CREATION') }
 
   // Validate deployment request
   if (!deploymentRequest?.name || !deploymentRequest?.config) {

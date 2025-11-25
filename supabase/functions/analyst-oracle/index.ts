@@ -26,9 +26,27 @@ serve(async (req) => {
     const { symbols = [], horizon = 'swing', workspace_id } = await req.json()
     if (!workspace_id) throw new Error('workspace_id required')
 
-    // Subscription checks removed - always grant full oracle access
-    console.log('🔓 Oracle access granted (subscription enforcement disabled)');
-    const hasExpanded = true;
+    // Check Oracle entitlements
+    const { data: hasBasic } = await supabaseClient.rpc('has_entitlement', {
+      p_workspace: workspace_id,
+      p_feature: 'ORACLE_BASIC'
+    })
+
+    const { data: hasExpanded } = await supabaseClient.rpc('has_entitlement', {
+      p_workspace: workspace_id,
+      p_feature: 'ORACLE_EXPANDED'
+    })
+
+    if (!hasBasic) {
+      return new Response(JSON.stringify({ 
+        signals: [],
+        error: 'LOCKED_FEATURE',
+        feature: 'ORACLE_BASIC',
+        required_tier: 'standard'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     // Log telemetry
     await supabaseClient.from('analyst_telemetry').insert({

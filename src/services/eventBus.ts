@@ -7,46 +7,6 @@ type EventMap = {
   // Portfolio events
   'portfolio.updated': any;
   'portfolio.error': { error: string };
-
-  // Migration events
-  'migration.started': { migrationId: string; workspaceId?: string };
-  'migration.completed': { migrationId: string; workspaceId?: string; result: any };
-  'migration.failed': { migrationId: string; workspaceId?: string; result: any };
-  'migration.queued': { queueItem: any };
-
-  // Connection health events
-  'connection.error': { 
-    connectionId: string; 
-    type: string; 
-    name: string; 
-    error?: string; 
-    errorCount: number 
-  };
-
-  // Circuit breaker events
-  'circuit.opened': { circuitId: string; reason: string; failures?: number };
-  'circuit.closed': { circuitId: string };
-  'circuit.reset': { circuitId: string };
-
-  // Recovery events
-  'recovery.exhausted': { connectionId: string };
-  'recovery.success': { connectionId: string };
-
-  // Queue events
-  'queue.paused': {};
-  'queue.completed': {};
-
-  // Pool events
-  'pool.initialized': { poolId: string; config: any };
-  'pool.connection_acquired': { poolId: string; connectionId: string };
-  'pool.connection_released': { poolId: string; connectionId: string };
-  'pool.shutdown': { poolId: string };
-
-  // Lifecycle events
-  'lifecycle.registered': { connectionId: string };
-  'lifecycle.connected': { connectionId: string; previousState: string };
-  'lifecycle.reconnecting': { connectionId: string; attempt: number; delay: number };
-  'lifecycle.failed': { connectionId: string };
   
   // Repository events
   'repository.snapshot_cleaned': any;
@@ -81,11 +41,6 @@ type EventMap = {
   // Analyst events
   'analyst.conversation': any;
   'analyst.emergency_notification': { type: string; reason: string; timestamp: Date };
-  'analyst.voice_interaction': { transcription: string; response: string; personality: string; timestamp: string };
-  'analyst.cache_hit': { key: string; hits: number };
-  'analyst.note': { sessionId: string; userQuery: string; response: string; persona: string; knowledgeBaseSources: string[] };
-  'analyst.retry': { message: string };
-  'analyst.cache.stats': {};
   
   // Recorder events
   'recorder.exported': any;

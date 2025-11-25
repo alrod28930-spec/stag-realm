@@ -22,11 +22,10 @@ export interface BrokerageConnection {
   id: string;
   workspace_id: string;
   provider: string;
-  mode: string; // 'paper' | 'live'
-  account_label?: string | null;
+  account_label?: string;
   scope?: any;
-  status: 'active' | 'revoked' | 'error' | null;
-  last_sync?: string | null;
+  status: 'active' | 'revoked' | 'error';
+  last_sync?: string;
   created_at: string;
   updated_at: string;
 }

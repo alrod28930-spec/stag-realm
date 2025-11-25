@@ -1,4 +1,3 @@
-import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -99,8 +98,7 @@ export default function Portfolio() {
   ];
 
   return (
-    <ErrorBoundary>
-      <div className="space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -358,7 +356,6 @@ export default function Portfolio() {
           </div>
         </TabsContent>
       </Tabs>
-      </div>
-    </ErrorBoundary>
+    </div>
   );
 }

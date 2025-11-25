@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Save
 } from 'lucide-react';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { useToast } from '@/hooks/use-toast';
 
 interface TradeMarker {
@@ -68,7 +69,11 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
   const [showOrderBook, setShowOrderBook] = useState(false);
   const [showPresetDialog, setShowPresetDialog] = useState(false);
   
+  const { subscriptionStatus } = useSubscriptionAccess();
   const { toast } = useToast();
+  
+  const isElite = subscriptionStatus.tier === 'elite';
+  const canShowDOM = isElite && allowDOMView;
 
   // Load saved layout on mount
   useEffect(() => {
@@ -347,8 +352,8 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
                 Add Chart
               </Button>
 
-              {/* DOM Toggle */}
-              {allowDOMView && (
+              {/* DOM Toggle (Elite only) */}
+              {canShowDOM && (
                 <Button
                   variant={showOrderBook ? 'default' : 'outline'}
                   size="sm"
@@ -532,8 +537,8 @@ export const MultiChartPanel: React.FC<MultiChartPanelProps> = ({
           ))}
         </div>
 
-        {/* Order Book Panel */}
-        {showOrderBook && (
+        {/* Order Book Panel (Elite only) */}
+        {showOrderBook && canShowDOM && (
           <div className="w-80">
             <OrderBookDOM
               symbol={visibleCharts.find(c => c.id === selectedChart)?.symbol || 'AAPL'}

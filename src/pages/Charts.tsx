@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart3, TrendingUp } from 'lucide-react';
 import { CandlestickChart } from '@/components/charts/CandlestickChart';
 import { SymbolSearchInput } from '@/components/market/SymbolSearchInput';
+import TierComplianceGuard from '@/components/compliance/TierComplianceGuard';
 
 const Charts = () => {
   const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
@@ -12,7 +13,8 @@ const Charts = () => {
   const [chartType, setChartType] = useState('candlestick');
 
   return (
-    <div className="h-full flex flex-col p-4">
+    <TierComplianceGuard requiredTier="pro" feature="CHARTS_ADVANCED">
+      <div className="h-full flex flex-col p-4">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -129,6 +131,7 @@ const Charts = () => {
           )}
         </div>
       </div>
+    </TierComplianceGuard>
   );
 };
 

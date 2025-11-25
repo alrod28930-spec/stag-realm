@@ -26,8 +26,24 @@ serve(async (req) => {
     const { text, workspace_id, voice_opts = {} } = await req.json()
     if (!text) throw new Error('text required')
 
-    // Subscription checks removed - always grant voice access
-    console.log('🔓 Voice analyst access granted (subscription enforcement disabled)');
+    // Check VOICE_ANALYST entitlement
+    if (workspace_id) {
+      const { data: hasEntitlement } = await supabaseClient.rpc('has_entitlement', {
+        p_workspace: workspace_id,
+        p_feature: 'VOICE_ANALYST'
+      })
+
+      if (!hasEntitlement) {
+        return new Response(JSON.stringify({ 
+          audio_url: null,
+          error: 'LOCKED_FEATURE',
+          feature: 'VOICE_ANALYST',
+          required_tier: 'elite'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    }
 
     // Check user voice preferences
     const { data: prefs } = await supabaseClient

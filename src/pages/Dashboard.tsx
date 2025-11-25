@@ -18,17 +18,14 @@ import {
 } from 'lucide-react';
 import { useRealPortfolioStore } from '@/stores/realPortfolioStore';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
 import { RiskDisclaimerBanner, FloatingRiskIndicator } from '@/components/compliance/RiskDisclaimerBanner';
 import { EquityCurveChart } from '@/components/charts/EquityCurveChart';
 import { RiskMetricsChart } from '@/components/charts/RiskMetricsChart';
 import { AllocationPieChart } from '@/components/charts/AllocationPieChart';
-import { ConnectionHealthIndicator } from '@/components/system/ConnectionHealthIndicator';
-import { useConnectionHealth } from '@/hooks/useConnectionHealth';
-import { connectionPool } from '@/services/connectionPool';
-import { connectionLifecycle } from '@/services/connectionLifecycle';
-import { migrationQueue } from '@/services/migrationQueue';
+import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
 
 export default function Dashboard() {
   const {
@@ -42,35 +39,10 @@ export default function Dashboard() {
   
   const { toast } = useToast();
   const { workspace } = useWorkspace();
-  const { registerConnection, systemHealth, connections } = useConnectionHealth();
-
-  // State for connection management stats
-  const [poolStats, setPoolStats] = useState<any>(null);
-  const [lifecycleStates, setLifecycleStates] = useState<any[]>([]);
-  const [queueStatus, setQueueStatus] = useState<any>(null);
-
-  // Update connection stats
-  useEffect(() => {
-    const updateStats = () => {
-      setPoolStats(connectionPool.getAllStats());
-      setLifecycleStates(connectionLifecycle.getAllLifecycles());
-      setQueueStatus(migrationQueue.getStatus());
-    };
-
-    updateStats();
-    const interval = setInterval(updateStats, 5000); // Update every 5 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Register database connection for health monitoring
-  useEffect(() => {
-    registerConnection('database', 'database', 'Supabase Database');
-  }, [registerConnection]);
+  const { subscription, loading: subscriptionLoading } = useSubscription(workspace?.id);
 
   // Load portfolio data and subscribe to updates
   useEffect(() => {
-    console.log('📊 Dashboard loading portfolio data');
     loadPortfolio();
     const unsubscribe = subscribeToUpdates();
     return unsubscribe;
@@ -150,6 +122,15 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2 items-center">
+          {!subscriptionLoading && subscription && (
+            <SubscriptionStatus
+              planCode={subscription.planCode}
+              status={subscription.status}
+              currentPeriodEnd={subscription.currentPeriodEnd}
+              cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
+              isDemoMode={false}
+            />
+          )}
           <Button onClick={handleRefresh} disabled={isLoading} size="sm" variant="outline">
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -158,7 +139,7 @@ export default function Dashboard() {
       </div>
 
       {/* No Portfolio Connection Warning */}
-      {portfolioValue === 0 && !isLoading && (
+      {portfolioValue === 0 && (
         <Card className="border-warning bg-warning/10">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
@@ -166,16 +147,11 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <p className="font-medium text-warning-foreground">No Portfolio Data Found</p>
                 <p className="text-sm text-warning-foreground/80">
-                  Connect your brokerage account in Settings → Brokers tab to start tracking your portfolio and enable live trading.
+                  Connect your brokerage account in Settings to start tracking your portfolio and enable live trading.
                 </p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2"
-                  onClick={() => window.location.href = '/settings'}
-                >
+                <Button variant="outline" size="sm" className="mt-2">
                   <Building2 className="w-4 h-4 mr-2" />
-                  Go to Settings
+                  Connect Brokerage Account
                 </Button>
               </div>
             </div>
@@ -225,117 +201,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Connection Management Status */}
-      <Card className="bg-gradient-card shadow-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-primary" />
-                Connection Management
-              </CardTitle>
-              <CardDescription className="mt-2">
-                Real-time system health, connection pools, and lifecycle monitoring
-              </CardDescription>
-            </div>
-            <ConnectionHealthIndicator />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* System Health */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-muted-foreground">System Health</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Status</span>
-                  <Badge variant={
-                    systemHealth.status === 'healthy' ? 'default' : 
-                    systemHealth.status === 'degraded' ? 'secondary' : 
-                    'destructive'
-                  }>
-                    {systemHealth.status}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Healthy</span>
-                  <span className="font-medium">{systemHealth.healthyCount}/{systemHealth.total}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Degraded</span>
-                  <span className="font-medium text-warning">{systemHealth.degradedCount}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Down</span>
-                  <span className="font-medium text-destructive">{systemHealth.downCount}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Connection Pool */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-muted-foreground">Connection Pool</h4>
-              {poolStats && Array.from(poolStats.entries()).map(([poolId, stats]: [string, any]) => (
-                <div key={poolId} className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="font-medium">{stats?.total || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Active</span>
-                    <span className="font-medium text-accent">{stats?.active || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Idle</span>
-                    <span className="font-medium">{stats?.idle || 0}</span>
-                  </div>
-                  <Progress value={(stats?.active || 0) / (stats?.maxConnections || 1) * 100} className="h-2" />
-                </div>
-              ))}
-              {(!poolStats || poolStats.size === 0) && (
-                <p className="text-sm text-muted-foreground">No pools initialized</p>
-              )}
-            </div>
-
-            {/* Lifecycle & Queue */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-muted-foreground">Active Connections</h4>
-              <div className="space-y-2">
-                {lifecycleStates.slice(0, 3).map((lifecycle) => (
-                  <div key={lifecycle.id} className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground truncate">{lifecycle.id.split('-')[1]}</span>
-                    <Badge variant={
-                      lifecycle.state === 'connected' ? 'default' : 
-                      lifecycle.state === 'reconnecting' ? 'secondary' : 
-                      'destructive'
-                    } className="text-xs">
-                      {lifecycle.state}
-                    </Badge>
-                  </div>
-                ))}
-                {lifecycleStates.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No connections</p>
-                )}
-              </div>
-              
-              {queueStatus && queueStatus.queueLength > 0 && (
-                <div className="mt-4 pt-4 border-t">
-                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Migration Queue</h4>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Pending</span>
-                    <span className="font-medium">{queueStatus.pending}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Running</span>
-                    <Badge variant="secondary">{queueStatus.running}</Badge>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <EquityCurveChart 
@@ -368,10 +233,6 @@ export default function Dashboard() {
           }))}
         />
 
-        <ConnectionHealthIndicator />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Position Summary</CardTitle>

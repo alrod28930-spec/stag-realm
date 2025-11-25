@@ -3,9 +3,6 @@ import { BrokerAdapter, FakeBrokerAdapter, PortfolioSummary, TradeOrder, TradeRe
 import { logService } from '@/services/logging';
 import { eventBus } from '@/services/eventBus';
 import { serviceManager } from '@/services/serviceManager';
-import { demoDataService } from '@/services/demoDataService';
-import { isDemoUserId, isDemoWorkspace } from '@/hooks/useDemoAware';
-import { useAuthStore } from '@/stores/authStore';
 
 interface PortfolioState {
   // Broker Connection
@@ -126,57 +123,6 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   // Refresh Portfolio Data
   refreshPortfolio: async () => {
     const { brokerAdapter, isConnected } = get();
-    const user = useAuthStore.getState().user;
-    
-    // Check if this is a demo user - use demo data instead
-    if (isDemoUserId(user?.id)) {
-      set({ isLoading: true, error: null });
-      
-      try {
-        const demoPortfolio = demoDataService.getPortfolio();
-        
-        // Map demo positions to match BrokerAdapter Position interface
-        const mappedPositions = demoPortfolio.positions.map(pos => ({
-          symbol: pos.symbol,
-          name: pos.symbol,
-          shares: pos.qty,
-          avgPrice: pos.avg_cost,
-          currentPrice: pos.currentPrice,
-          marketValue: pos.mv,
-          gainLoss: pos.unr_pnl,
-          gainLossPercent: (pos.unr_pnl / (pos.avg_cost * pos.qty)) * 100,
-          allocation: (pos.mv / demoPortfolio.totalValue) * 100
-        }));
-        
-        const portfolio: PortfolioSummary = {
-          totalValue: demoPortfolio.totalValue,
-          dayChange: demoPortfolio.dayChange,
-          dayChangePercent: demoPortfolio.dayChangePercent,
-          totalGainLoss: demoPortfolio.positions.reduce((sum, p) => sum + p.unr_pnl, 0),
-          totalGainLossPercent: (demoPortfolio.positions.reduce((sum, p) => sum + p.unr_pnl, 0) / demoPortfolio.equity) * 100,
-          availableCash: demoPortfolio.cash,
-          positions: mappedPositions
-        };
-        
-        set({
-          portfolio,
-          lastUpdated: new Date(),
-          isLoading: false,
-          isConnected: true
-        });
-        
-        eventBus.emit('portfolio.updated' as any, portfolio);
-        logService.log('info', 'Demo portfolio loaded', { 
-          totalValue: portfolio.totalValue,
-          positions: portfolio.positions.length 
-        });
-        return;
-      } catch (error) {
-        logService.log('error', 'Demo portfolio load failed', { error });
-        set({ isLoading: false });
-        return;
-      }
-    }
     
     if (!isConnected) return;
     
@@ -212,25 +158,6 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   // Execute Trade
   executeTrade: async (order: TradeOrder) => {
     const { brokerAdapter, isConnected, tradeHistory } = get();
-    const user = useAuthStore.getState().user;
-    
-    // Check if this is a demo user - simulate trade instead
-    if (isDemoUserId(user?.id)) {
-      try {
-        const result = await demoDataService.placeDemoTrade(order);
-        
-        const newHistory = [result, ...tradeHistory].slice(0, 100);
-        set({ tradeHistory: newHistory });
-        
-        eventBus.emit('trade-executed', result);
-        logService.log('info', 'Demo trade simulated', result);
-        
-        return result;
-      } catch (error) {
-        logService.log('error', 'Demo trade simulation failed', { error, order });
-        throw error;
-      }
-    }
     
     if (!isConnected) {
       throw new Error('Not connected to broker');
@@ -285,10 +212,7 @@ const startPortfolioSync = () => {
   
   portfolioInterval = serviceManager.createGlobalInterval(async () => {
     const { isConnected, refreshPortfolio } = usePortfolioStore.getState();
-    const user = useAuthStore.getState().user;
-    
-    // Always refresh for demo users, or for connected users
-    if (isDemoUserId(user?.id) || isConnected) {
+    if (isConnected) {
       try {
         await refreshPortfolio();
       } catch (error) {
@@ -307,18 +231,6 @@ const stopPortfolioSync = () => {
 
 // Initialize sync
 startPortfolioSync();
-
-// Initialize demo portfolio if demo user is already logged in
-const initializeDemoIfNeeded = () => {
-  const user = useAuthStore.getState().user;
-  if (isDemoUserId(user?.id)) {
-    console.log('✅ Initializing demo portfolio data');
-    usePortfolioStore.getState().refreshPortfolio();
-  }
-};
-
-// Check on load
-setTimeout(initializeDemoIfNeeded, 100);
 
 // Expose cleanup for testing
 (window as any).__stopPortfolioSync = stopPortfolioSync;

@@ -69,21 +69,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               set({ user: minimalUser, isAuthenticated: true, isLoading: false });
               eventBus.emit('user-login' as any, { email: minimalUser.email, timestamp: new Date() });
 
-              // Initialize workspace for user (ensure they have one)
+              // Initialize workspace for user
               const initializeWorkspaceAsync = async () => {
-                try {
-                  // Call ensure_workspace_for_user to guarantee workspace exists
-                  const { data: workspaceId } = await supabase.rpc('ensure_workspace_for_user', {
-                    _user: session.user!.id
-                  });
-                  
-                  if (workspaceId) {
-                    const { initializeUserWorkspace } = await import('@/utils/workspaceInitializer');
-                    await initializeUserWorkspace();
-                  }
-                } catch (e) {
-                  console.error('Workspace initialization failed:', e);
-                }
+                const { initializeUserWorkspace } = await import('@/utils/workspaceInitializer');
+                await initializeUserWorkspace();
               };
               initializeWorkspaceAsync(); // Execute without blocking
 
@@ -196,8 +185,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             const { initializeUserWorkspace } = await import('@/utils/workspaceInitializer');
             initializeLandingPageDemo();
             await initializeUserWorkspace();
-            
-            console.log('✅ Demo account logged in successfully');
             
             eventBus.emit('user-login' as any, { email: demoUser.email, timestamp: new Date() });
             return { data: { user: demoUser }, error: null };

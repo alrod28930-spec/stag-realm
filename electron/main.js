@@ -2,19 +2,12 @@ const { app, BrowserWindow, Menu, systemPreferences } = require('electron');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 
-// Import IPC handlers
-const { registerIPCHandlers, unregisterIPCHandlers } = require('./ipc-handlers');
-
-// Enable live reload for development only
+// Enable live reload for development
 if (isDev) {
-  try {
-    require('electron-reload')(__dirname, {
-      electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
-      hardResetMethod: 'exit'
-    });
-  } catch (e) {
-    console.log('electron-reload not available in development');
-  }
+  require('electron-reload')(__dirname, {
+    electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
+    hardResetMethod: 'exit'
+  });
 }
 
 async function requestPermissions() {
@@ -41,44 +34,19 @@ function createWindow() {
     minWidth: 1200,
     minHeight: 800,
     webPreferences: {
-      // Security: Force safe defaults
-      sandbox: true,
-      contextIsolation: true,
       nodeIntegration: false,
+      contextIsolation: true,
       enableRemoteModule: false,
       webSecurity: true,
+      // Enable media permissions
       allowRunningInsecureContent: false,
-      experimentalFeatures: false,
-      devTools: isDev, // Only enable in development
-      preload: path.join(__dirname, 'preload.js'), // Use compiled preload
+      experimentalFeatures: false
     },
     icon: path.join(__dirname, '../public/lovable-uploads/aa502076-83e2-4336-bda8-00b2eaac7a75.png'),
     titleBarStyle: 'default',
-    show: false, // Don't show until ready-to-show
+    show: false,
+    // App metadata
     title: 'StagAlgo - Advanced Trading Platform'
-  });
-
-  // Security: Block all navigation attempts
-  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-    const parsedUrl = new URL(navigationUrl);
-    const validOrigins = isDev 
-      ? ['localhost:5173'] 
-      : ['file://'];
-    
-    const isValid = validOrigins.some(origin => 
-      navigationUrl.includes(origin)
-    );
-    
-    if (!isValid) {
-      console.warn('🚫 Blocked navigation to:', navigationUrl);
-      event.preventDefault();
-    }
-  });
-
-  // Security: Block new window creation
-  mainWindow.webContents.setWindowOpenHandler(() => {
-    console.warn('🚫 Blocked attempt to open new window');
-    return { action: 'deny' };
   });
 
   // Load the app
@@ -89,7 +57,7 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  // Show window when ready (prevents white flash)
+  // Show window when ready
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.focus();
@@ -99,15 +67,10 @@ function createWindow() {
   mainWindow.on('closed', () => {
     app.quit();
   });
-
-  return mainWindow;
 }
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
-  // Register IPC handlers with validation
-  registerIPCHandlers();
-  
   // Request permissions during startup
   await requestPermissions();
   
@@ -122,34 +85,14 @@ app.whenReady().then(async () => {
 
 // Quit when all windows are closed
 app.on('window-all-closed', () => {
-  // Cleanup IPC handlers
-  unregisterIPCHandlers();
-  
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-// Security: Additional web contents protection
-app.on('web-contents-created', (_event, contents) => {
-  // Block new windows from renderer
-  contents.on('new-window', (event) => {
-    console.warn('🚫 Blocked new-window event');
-    event.preventDefault();
-  });
-
-  // Block navigation to external URLs
-  contents.on('will-navigate', (event, navigationUrl) => {
-    const parsedUrl = new URL(navigationUrl);
-    if (parsedUrl.protocol !== 'file:' && !navigationUrl.includes('localhost:5173')) {
-      console.warn('🚫 Blocked navigation to:', navigationUrl);
-      event.preventDefault();
-    }
-  });
-
-  // Disable remote content
-  contents.on('will-attach-webview', (event) => {
-    console.warn('🚫 Blocked webview attachment');
+// Security: Prevent new window creation
+app.on('web-contents-created', (event, contents) => {
+  contents.on('new-window', (event, navigationUrl) => {
     event.preventDefault();
   });
 });

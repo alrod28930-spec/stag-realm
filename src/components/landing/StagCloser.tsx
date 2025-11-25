@@ -93,6 +93,14 @@ export function StagCloser() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
                 </motion.a>
                 
+                <motion.a
+                  href="/subscription"
+                  whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
+                  whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                  className="rounded-xl border-2 border-[#C8A64D]/50 px-8 py-4 text-[#E8ECEF] font-semibold text-lg hover:bg-[#C8A64D]/10 hover:border-[#C8A64D] focus:outline-none focus:ring-2 focus:ring-[#C8A64D]/40 focus:ring-offset-2 focus:ring-offset-[#0B0D12] transition-all duration-200 backdrop-blur-sm"
+                >
+                  Pricing & Plans
+                </motion.a>
               </motion.div>
 
               {/* Value Bullets */}

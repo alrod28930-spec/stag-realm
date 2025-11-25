@@ -1,43 +1,35 @@
 import { useAuthStore } from '@/stores/authStore';
 import { demoDataService } from '@/services/demoDataService';
 
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000000';
-const DEMO_USER_EMAIL = 'demo@example.com';
-
 /**
- * Check if the current user is the demo account
+ * Check if the current user is the SINGLE demo account for landing page display ONLY
+ * This should ONLY be used for the landing page demo portal
  */
 export function isLandingPageDemo(): boolean {
   const authState = useAuthStore.getState();
-  const isDemo = authState.user?.email === DEMO_USER_EMAIL && 
-                 authState.user?.id === DEMO_USER_ID;
-  
-  if (isDemo) {
-    console.log('✅ Demo user detected:', authState.user?.email);
-  }
-  
-  return isDemo;
+  return authState.user?.email === 'demo@example.com' && 
+         authState.user?.id === '00000000-0000-0000-0000-000000000000';
 }
 
 /**
- * Initialize demo data when demo user logs in
+ * Initialize landing page demo data when demo user logs in
+ * This is ONLY for the landing page viewing portal
  */
 export function initializeLandingPageDemo(): void {
   if (isLandingPageDemo()) {
     demoDataService.activate();
-    console.log('✅ Demo mode activated - all data is isolated from production');
-    console.log('📊 Demo portfolio available:', demoDataService.getPortfolio());
   } else {
     demoDataService.deactivate();
   }
 }
 
 /**
- * Demo hook for components
+ * Landing page demo hook - ONLY for landing page components
  */
 export function useLandingPageDemo() {
   const user = useAuthStore(state => state.user);
-  const isDemo = user?.email === DEMO_USER_EMAIL && user?.id === DEMO_USER_ID;
+  const isDemo = user?.email === 'demo@example.com' && 
+                 user?.id === '00000000-0000-0000-0000-000000000000';
   return {
     isLandingPageDemo: isDemo,
     demoUser: isDemo ? user : null

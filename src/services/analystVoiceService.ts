@@ -1,8 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 import { eventBus } from './eventBus';
-import { circuitBreaker } from './circuitBreaker';
-import { connectionLifecycle } from './connectionLifecycle';
-import { analystCache } from './analystCache';
 
 export interface VoiceAnalystResult {
   success: boolean;
@@ -15,25 +13,6 @@ export interface VoiceAnalystResult {
 
 class AnalystVoiceService {
   private isProcessing = false;
-  private retryCount = 0;
-  private maxRetries = 3;
-
-  constructor() {
-    // Register voice service connection
-    connectionLifecycle.register('analyst-voice', {
-      maxReconnectAttempts: 3,
-      reconnectDelay: 5000,
-      maxReconnectDelay: 30000
-    });
-
-    // Register circuit breaker
-    circuitBreaker.register('analyst-voice', {
-      failureThreshold: 3,
-      successThreshold: 2,
-      timeout: 60000,
-      monitoringPeriod: 180000
-    });
-  }
 
   async processVoiceInput(
     audioData: string, 
@@ -50,60 +29,34 @@ class AnalystVoiceService {
     try {
       console.log('Processing voice input:', { personality, audioLength: audioData.length });
       
-      // Use circuit breaker for API call
-      const result = await circuitBreaker.execute<any>(
-        'analyst-voice',
-        async () => {
-          // Call unified voice processing function
-          const { data, error } = await supabase.functions.invoke('analyst-voice-unified', {
-            body: {
-              audio: audioData,
-              personality,
-              workspace_id: workspaceId
-            }
-          });
-
-          if (error) {
-            throw new Error(error.message || 'Voice processing failed');
-          }
-
-          if (!data.success) {
-            throw new Error(data.error || 'Voice processing failed');
-          }
-
-          // Mark connection as healthy
-          connectionLifecycle.markConnected('analyst-voice');
-          this.retryCount = 0;
-
-          return data;
-        },
-        async () => {
-          // Fallback when circuit is open
-          throw new Error('Voice service is temporarily unavailable due to repeated failures. Please try again in a moment.');
-        }
-      );
-
-      // Cache the transcription and response
-      if (result.transcription && result.response) {
-        analystCache.set(
-          result.transcription,
+      // Call unified voice processing function
+      const { data, error } = await supabase.functions.invoke('analyst-voice-unified', {
+        body: {
+          audio: audioData,
           personality,
-          result.response,
-          { personality, workspaceId },
-          600000 // 10 minutes for voice responses
-        );
+          workspace_id: workspaceId
+        }
+      });
+
+      if (error) {
+        console.error('Voice processing error:', error);
+        throw new Error(error.message || 'Voice processing failed');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Voice processing failed');
       }
 
       // Emit successful interaction event
       eventBus.emit('analyst.voice_interaction', {
-        transcription: result.transcription,
-        response: result.response,
-        personality: result.personality,
-        timestamp: result.timestamp
+        transcription: data.transcription,
+        response: data.response,
+        personality: data.personality,
+        timestamp: data.timestamp
       });
 
       console.log('Voice processing completed successfully');
-      return result;
+      return data;
 
     } catch (error) {
       console.error('Voice service error:', error);

@@ -4,7 +4,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import {
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { 
   Users, 
   Shield, 
   Crown, 
@@ -15,8 +16,9 @@ import {
 
 export const WorkspaceStatusBar: React.FC = () => {
   const { workspace, workspaceId, isOwner, loading, error, refreshWorkspace } = useWorkspace();
+  const { entitlements, loading: entitlementsLoading } = useEntitlements(workspaceId);
 
-  if (loading) {
+  if (loading || entitlementsLoading) {
     return (
       <Card className="p-3">
         <div className="flex items-center gap-2">
@@ -64,8 +66,10 @@ export const WorkspaceStatusBar: React.FC = () => {
     }
   };
 
-  const activeFeatures = [];
-  const eliteFeatures = 0;
+  const activeFeatures = entitlements.filter(e => e.enabled);
+  const eliteFeatures = activeFeatures.filter(f => 
+    f.feature_code.includes('elite') || f.feature_code.includes('ELITE')
+  ).length;
 
   return (
     <Card className="p-3">

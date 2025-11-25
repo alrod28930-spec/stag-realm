@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { LockedCard } from '@/components/subscription/LockedCard';
 import { WorkspaceLayout } from '@/components/workspace/WorkspaceLayout';
 import { WorkspaceStatusBar } from '@/components/workspace/WorkspaceStatusBar';
 import { WorkspaceMetrics } from '@/components/workspace/WorkspaceMetrics';
@@ -24,6 +26,7 @@ import type { WorkspaceLayoutConfig } from '@/types/workspace';
 const Workspace: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
   const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const { hasFeature, loading: entitlementsLoading } = useEntitlements(workspaceId);
   const { toast } = useToast();
   
   const [isBubbleMode, setIsBubbleMode] = useState(false);
@@ -40,7 +43,7 @@ const Workspace: React.FC = () => {
     ]
   });
 
-  const hasEliteAccess = true; // Feature access enabled
+  const hasEliteAccess = hasFeature('workspace_multi_panel');
 
   // Handle layout preset changes
   const setPresetLayout = useCallback((cols: number, rows: number) => {
@@ -81,7 +84,7 @@ const Workspace: React.FC = () => {
   useKeyboardShortcuts(shortcuts, { enabled: hasEliteAccess });
 
   // Loading states
-  if (workspaceLoading) {
+  if (workspaceLoading || entitlementsLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
@@ -111,6 +114,20 @@ const Workspace: React.FC = () => {
     );
   }
 
+  // Feature access check
+  if (!hasEliteAccess) {
+    return (
+      <WorkspaceErrorBoundary>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <LockedCard
+            feature="workspace_multi_panel"
+            title="Elite Workspace"
+            description="Multi-panel drag-and-drop workspace with bubble mode and advanced layouting capabilities."
+          />
+        </div>
+      </WorkspaceErrorBoundary>
+    );
+  }
 
   // Bubble Mode (Full screen)
   if (isBubbleMode) {

@@ -14,57 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ab_experiments: {
-        Row: {
-          a_policy_id: string
-          b_policy_id: string
-          id: string
-          name: string
-          started_at: string | null
-          status: string
-          stopped_at: string | null
-          workspace_id: string
-        }
-        Insert: {
-          a_policy_id: string
-          b_policy_id: string
-          id?: string
-          name: string
-          started_at?: string | null
-          status?: string
-          stopped_at?: string | null
-          workspace_id: string
-        }
-        Update: {
-          a_policy_id?: string
-          b_policy_id?: string
-          id?: string
-          name?: string
-          started_at?: string | null
-          status?: string
-          stopped_at?: string | null
-          workspace_id?: string
-        }
-        Relationships: []
-      }
-      agent_feature_flags: {
-        Row: {
-          flags: Json
-          updated_at: string | null
-          workspace_id: string
-        }
-        Insert: {
-          flags?: Json
-          updated_at?: string | null
-          workspace_id: string
-        }
-        Update: {
-          flags?: Json
-          updated_at?: string | null
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       analyst_context: {
         Row: {
           context_data: Json
@@ -92,21 +41,6 @@ export type Database = {
           session_id?: string
           user_id?: string
           workspace_id?: string | null
-        }
-        Relationships: []
-      }
-      analyst_hparams: {
-        Row: {
-          params: Json
-          workspace_id: string
-        }
-        Insert: {
-          params?: Json
-          workspace_id: string
-        }
-        Update: {
-          params?: Json
-          workspace_id?: string
         }
         Relationships: []
       }
@@ -221,39 +155,6 @@ export type Database = {
           },
         ]
       }
-      analyst_states: {
-        Row: {
-          context: Json
-          created_at: string | null
-          last_plan: Json | null
-          mode: string
-          tone: string
-          updated_at: string | null
-          user_id: string
-          workspace_id: string
-        }
-        Insert: {
-          context?: Json
-          created_at?: string | null
-          last_plan?: Json | null
-          mode?: string
-          tone?: string
-          updated_at?: string | null
-          user_id: string
-          workspace_id: string
-        }
-        Update: {
-          context?: Json
-          created_at?: string | null
-          last_plan?: Json | null
-          mode?: string
-          tone?: string
-          updated_at?: string | null
-          user_id?: string
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       analyst_telemetry: {
         Row: {
           created_at: string | null
@@ -288,108 +189,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      bid_learning_events: {
-        Row: {
-          event_type: string
-          id: string
-          order_id: string | null
-          payload: Json
-          pnl: number | null
-          symbol: string | null
-          tf: string | null
-          ts: string | null
-          user_id: string | null
-          workspace_id: string
-        }
-        Insert: {
-          event_type: string
-          id?: string
-          order_id?: string | null
-          payload?: Json
-          pnl?: number | null
-          symbol?: string | null
-          tf?: string | null
-          ts?: string | null
-          user_id?: string | null
-          workspace_id: string
-        }
-        Update: {
-          event_type?: string
-          id?: string
-          order_id?: string | null
-          payload?: Json
-          pnl?: number | null
-          symbol?: string | null
-          tf?: string | null
-          ts?: string | null
-          user_id?: string | null
-          workspace_id?: string
-        }
-        Relationships: []
-      }
-      bid_patterns: {
-        Row: {
-          feature: Json | null
-          id: string
-          last_seen: string | null
-          pattern_hash: string | null
-          success_rate: number | null
-          workspace_id: string
-        }
-        Insert: {
-          feature?: Json | null
-          id?: string
-          last_seen?: string | null
-          pattern_hash?: string | null
-          success_rate?: number | null
-          workspace_id: string
-        }
-        Update: {
-          feature?: Json | null
-          id?: string
-          last_seen?: string | null
-          pattern_hash?: string | null
-          success_rate?: number | null
-          workspace_id?: string
-        }
-        Relationships: []
-      }
-      bid_user_stats: {
-        Row: {
-          avg_hold_minutes: number
-          avg_rr: number
-          last_updated: string | null
-          symbol: string
-          tf: string
-          trades: number
-          user_id: string
-          win_rate: number
-          workspace_id: string
-        }
-        Insert: {
-          avg_hold_minutes?: number
-          avg_rr?: number
-          last_updated?: string | null
-          symbol: string
-          tf: string
-          trades?: number
-          user_id: string
-          win_rate?: number
-          workspace_id: string
-        }
-        Update: {
-          avg_hold_minutes?: number
-          avg_rr?: number
-          last_updated?: string | null
-          symbol?: string
-          tf?: string
-          trades?: number
-          user_id?: string
-          win_rate?: number
-          workspace_id?: string
-        }
-        Relationships: []
       }
       billing_customers: {
         Row: {
@@ -666,33 +465,6 @@ export type Database = {
         }
         Relationships: []
       }
-      broker_links: {
-        Row: {
-          broker: string
-          last_ok: string | null
-          meta: Json
-          mode: string
-          status: string
-          workspace_id: string
-        }
-        Insert: {
-          broker: string
-          last_ok?: string | null
-          meta?: Json
-          mode: string
-          status?: string
-          workspace_id: string
-        }
-        Update: {
-          broker?: string
-          last_ok?: string | null
-          meta?: Json
-          mode?: string
-          status?: string
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       brokerage_dock_sites: {
         Row: {
           created_at: string | null
@@ -809,7 +581,7 @@ export type Database = {
           acknowledged_at: string | null
           document_type: string
           id: string
-          ip_address: unknown
+          ip_address: unknown | null
           user_agent: string | null
           user_id: string | null
           version: string
@@ -819,7 +591,7 @@ export type Database = {
           acknowledged_at?: string | null
           document_type: string
           id?: string
-          ip_address?: unknown
+          ip_address?: unknown | null
           user_agent?: string | null
           user_id?: string | null
           version: string
@@ -829,7 +601,7 @@ export type Database = {
           acknowledged_at?: string | null
           document_type?: string
           id?: string
-          ip_address?: unknown
+          ip_address?: unknown | null
           user_agent?: string | null
           user_id?: string | null
           version?: string
@@ -848,13 +620,12 @@ export type Database = {
       connections_brokerages: {
         Row: {
           account_label: string | null
-          api_key_cipher: string | null
-          api_secret_cipher: string | null
+          api_key_cipher: string
+          api_secret_cipher: string
           created_at: string | null
           id: string
           last_sync: string | null
-          mode: string
-          nonce: string | null
+          nonce: string
           provider: string
           scope: Json | null
           status: string | null
@@ -863,13 +634,12 @@ export type Database = {
         }
         Insert: {
           account_label?: string | null
-          api_key_cipher?: string | null
-          api_secret_cipher?: string | null
+          api_key_cipher: string
+          api_secret_cipher: string
           created_at?: string | null
           id?: string
           last_sync?: string | null
-          mode?: string
-          nonce?: string | null
+          nonce: string
           provider: string
           scope?: Json | null
           status?: string | null
@@ -878,13 +648,12 @@ export type Database = {
         }
         Update: {
           account_label?: string | null
-          api_key_cipher?: string | null
-          api_secret_cipher?: string | null
+          api_key_cipher?: string
+          api_secret_cipher?: string
           created_at?: string | null
           id?: string
           last_sync?: string | null
-          mode?: string
-          nonce?: string | null
+          nonce?: string
           provider?: string
           scope?: Json | null
           status?: string | null
@@ -1047,30 +816,6 @@ export type Database = {
           pay_date?: string | null
           symbol?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      execution_audit: {
-        Row: {
-          created_at: string | null
-          event: string
-          id: string
-          payload: Json | null
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          event: string
-          id?: string
-          payload?: Json | null
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string | null
-          event?: string
-          id?: string
-          payload?: Json | null
-          workspace_id?: string
         }
         Relationships: []
       }
@@ -1394,39 +1139,6 @@ export type Database = {
         }
         Relationships: []
       }
-      learning_jobs: {
-        Row: {
-          error_message: string | null
-          finished_at: string | null
-          id: string
-          job_type: string
-          payload: Json
-          started_at: string | null
-          status: string
-          workspace_id: string
-        }
-        Insert: {
-          error_message?: string | null
-          finished_at?: string | null
-          id?: string
-          job_type: string
-          payload?: Json
-          started_at?: string | null
-          status?: string
-          workspace_id: string
-        }
-        Update: {
-          error_message?: string | null
-          finished_at?: string | null
-          id?: string
-          job_type?: string
-          payload?: Json
-          started_at?: string | null
-          status?: string
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       market_data: {
         Row: {
           change: number | null
@@ -1466,73 +1178,8 @@ export type Database = {
         }
         Relationships: []
       }
-      oracle_anomalies: {
-        Row: {
-          id: string
-          kind: string
-          meta: Json
-          observed_at: string
-          severity: number
-          symbol: string
-          tf: string
-          workspace_id: string
-        }
-        Insert: {
-          id?: string
-          kind: string
-          meta?: Json
-          observed_at?: string
-          severity: number
-          symbol: string
-          tf: string
-          workspace_id: string
-        }
-        Update: {
-          id?: string
-          kind?: string
-          meta?: Json
-          observed_at?: string
-          severity?: number
-          symbol?: string
-          tf?: string
-          workspace_id?: string
-        }
-        Relationships: []
-      }
-      oracle_models: {
-        Row: {
-          enabled: boolean
-          id: string
-          name: string
-          params: Json
-          updated_at: string | null
-          weight: number
-          workspace_id: string
-        }
-        Insert: {
-          enabled?: boolean
-          id?: string
-          name: string
-          params?: Json
-          updated_at?: string | null
-          weight?: number
-          workspace_id: string
-        }
-        Update: {
-          enabled?: boolean
-          id?: string
-          name?: string
-          params?: Json
-          updated_at?: string | null
-          weight?: number
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       oracle_news: {
         Row: {
-          confidence: number
-          created_at: string | null
           headline: string | null
           id: string
           sentiment: number | null
@@ -1544,8 +1191,6 @@ export type Database = {
           workspace_id: string | null
         }
         Insert: {
-          confidence?: number
-          created_at?: string | null
           headline?: string | null
           id?: string
           sentiment?: number | null
@@ -1557,8 +1202,6 @@ export type Database = {
           workspace_id?: string | null
         }
         Update: {
-          confidence?: number
-          created_at?: string | null
           headline?: string | null
           id?: string
           sentiment?: number | null
@@ -1578,39 +1221,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      oracle_predictive: {
-        Row: {
-          anomaly: number
-          price_momentum: number
-          score: number
-          sentiment: number
-          symbol: string
-          tf: string
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          anomaly: number
-          price_momentum: number
-          score: number
-          sentiment: number
-          symbol: string
-          tf: string
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          anomaly?: number
-          price_momentum?: number
-          score?: number
-          sentiment?: number
-          symbol?: string
-          tf?: string
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: []
       }
       oracle_scores: {
         Row: {
@@ -1647,42 +1257,8 @@ export type Database = {
           },
         ]
       }
-      oracle_signal_scores: {
-        Row: {
-          avg_edge_bp: number
-          hit_rate: number
-          last_updated: string | null
-          n: number
-          regime: string
-          symbol: string
-          tf: string
-          workspace_id: string
-        }
-        Insert: {
-          avg_edge_bp?: number
-          hit_rate?: number
-          last_updated?: string | null
-          n?: number
-          regime: string
-          symbol: string
-          tf: string
-          workspace_id: string
-        }
-        Update: {
-          avg_edge_bp?: number
-          hit_rate?: number
-          last_updated?: string | null
-          n?: number
-          regime?: string
-          symbol?: string
-          tf?: string
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       oracle_signals: {
         Row: {
-          confidence: number | null
           direction: number
           id: string
           name: string
@@ -1698,7 +1274,6 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
-          confidence?: number | null
           direction: number
           id?: string
           name: string
@@ -1714,7 +1289,6 @@ export type Database = {
           workspace_id: string
         }
         Update: {
-          confidence?: number | null
           direction?: number
           id?: string
           name?: string
@@ -2181,30 +1755,6 @@ export type Database = {
           },
         ]
       }
-      repository_events: {
-        Row: {
-          id: string
-          payload: Json
-          source: string
-          ts: string | null
-          workspace_id: string
-        }
-        Insert: {
-          id?: string
-          payload: Json
-          source: string
-          ts?: string | null
-          workspace_id: string
-        }
-        Update: {
-          id?: string
-          payload?: Json
-          source?: string
-          ts?: string | null
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       risk_counters: {
         Row: {
           day: string
@@ -2458,75 +2008,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      rl_policies: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          params: Json
-          status: string
-          updated_at: string | null
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          params: Json
-          status?: string
-          updated_at?: string | null
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          params?: Json
-          status?: string
-          updated_at?: string | null
-          workspace_id?: string
-        }
-        Relationships: []
-      }
-      rl_policy_results: {
-        Row: {
-          avg_rr: number
-          created_at: string | null
-          id: string
-          pnl_bp: number
-          policy_id: string
-          sharpe: number | null
-          time_window: string
-          trades: number
-          win_rate: number
-          workspace_id: string
-        }
-        Insert: {
-          avg_rr?: number
-          created_at?: string | null
-          id?: string
-          pnl_bp?: number
-          policy_id: string
-          sharpe?: number | null
-          time_window: string
-          trades?: number
-          win_rate?: number
-          workspace_id: string
-        }
-        Update: {
-          avg_rr?: number
-          created_at?: string | null
-          id?: string
-          pnl_bp?: number
-          policy_id?: string
-          sharpe?: number | null
-          time_window?: string
-          trades?: number
-          win_rate?: number
-          workspace_id?: string
-        }
-        Relationships: []
       }
       search_queries: {
         Row: {
@@ -2934,42 +2415,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_profiles: {
-        Row: {
-          created_at: string | null
-          max_daily_trades: number
-          max_position_risk_pct: number
-          objectives: Json
-          risk_level: string
-          style: string
-          updated_at: string | null
-          user_id: string
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          max_daily_trades?: number
-          max_position_risk_pct?: number
-          objectives?: Json
-          risk_level?: string
-          style?: string
-          updated_at?: string | null
-          user_id: string
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string | null
-          max_daily_trades?: number
-          max_position_risk_pct?: number
-          objectives?: Json
-          risk_level?: string
-          style?: string
-          updated_at?: string | null
-          user_id?: string
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       user_settings: {
         Row: {
           analyst_persona: string | null
@@ -3060,30 +2505,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      vault_keys: {
-        Row: {
-          broker: string
-          created_at: string | null
-          id: string
-          vault_ref: string
-          workspace_id: string
-        }
-        Insert: {
-          broker: string
-          created_at?: string | null
-          id?: string
-          vault_ref: string
-          workspace_id: string
-        }
-        Update: {
-          broker?: string
-          created_at?: string | null
-          id?: string
-          vault_ref?: string
-          workspace_id?: string
-        }
-        Relationships: []
       }
       voice_profiles: {
         Row: {
@@ -3223,6 +2644,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       create_order_record: {
         Args: {
           _broker_status: string
@@ -3247,8 +2672,6 @@ export type Database = {
         Args: { p_workspace_id: string }
         Returns: undefined
       }
-      ensure_default_workspace: { Args: never; Returns: string }
-      ensure_workspace_for_user: { Args: { _user: string }; Returns: string }
       fetch_candles: {
         Args: {
           _from: string
@@ -3287,16 +2710,46 @@ export type Database = {
           wins: number
           workspace_id: string
         }
-        SetofOptions: {
-          from: "*"
-          to: "risk_counters"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
       get_user_subscription_tier: {
         Args: { p_workspace_id: string }
         Returns: string
+      }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
       has_entitlement: {
         Args: { p_feature: string; p_workspace: string }
@@ -3306,13 +2759,54 @@ export type Database = {
         Args: { p_tab_code: string; p_workspace_id: string }
         Returns: boolean
       }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       increment_trade_counter: {
         Args: { _is_loss: boolean; _pnl: number; _workspace_id: string }
         Returns: undefined
       }
-      is_member_of_workspace: { Args: { w_id: string }; Returns: boolean }
-      is_owner_of_workspace: { Args: { w_id: string }; Returns: boolean }
-      is_subscription_enforcement_enabled: { Args: never; Returns: boolean }
+      is_member_of_workspace: {
+        Args: { w_id: string }
+        Returns: boolean
+      }
+      is_owner_of_workspace: {
+        Args: { w_id: string }
+        Returns: boolean
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: string
+      }
       log_sync_event: {
         Args: {
           _actor: string
@@ -3350,10 +2844,62 @@ export type Database = {
         }
         Returns: string
       }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
-      trigger_market_data_sync: { Args: never; Returns: Json }
-      validate_workspace_name: { Args: { p_name: string }; Returns: boolean }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      trigger_market_data_sync: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      validate_workspace_name: {
+        Args: { p_name: string }
+        Returns: boolean
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
     }
     Enums: {
       plan_tier: "lite" | "standard" | "pro" | "elite"

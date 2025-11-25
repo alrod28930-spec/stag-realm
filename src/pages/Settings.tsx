@@ -37,8 +37,6 @@ import { BrokerageConnectionCard } from '@/components/settings/BrokerageConnecti
 import { BrokerageDockSettings } from '@/components/settings/BrokerageDockSettings';
 import { BrokerHealthCard } from '@/components/system/BrokerHealthCard';
 import { RiskPolicyCard } from '@/components/trading/RiskPolicyCard';
-import BrokerageDock from '@/components/brokerage/BrokerageDock';
-import { UpdateBrokerageCredentials } from '@/components/settings/UpdateBrokerageCredentials';
 import { supabase } from '@/integrations/supabase/client';
 import type { BrokerageConnection } from '@/types/userSettings';
 import { useEffect } from 'react';
@@ -76,7 +74,6 @@ export default function Settings() {
         id: conn.id,
         workspace_id: conn.workspace_id,
         provider: conn.provider,
-        mode: conn.mode || 'paper',
         account_label: conn.account_label,
         scope: conn.scope,
         status: conn.status as 'active' | 'revoked' | 'error',
@@ -281,8 +278,6 @@ export default function Settings() {
 
         {/* Broker API Keys */}
         <TabsContent value="brokers" className="space-y-6">
-          <UpdateBrokerageCredentials />
-          
           {currentWorkspaceId && (
             <>
               <BrokerageConnectionCard
@@ -331,8 +326,6 @@ export default function Settings() {
 
         {/* Brokerage Dock Settings */}
         <TabsContent value="dock" className="space-y-6">
-          <BrokerageDock />
-          <Separator />
           <BrokerageDockSettings />
         </TabsContent>
 

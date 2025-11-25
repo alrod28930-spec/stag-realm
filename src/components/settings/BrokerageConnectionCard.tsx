@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,30 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useBrokerageSync } from '@/hooks/useBrokerageSync';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Link, Plus, Trash2, AlertTriangle, RefreshCw, Activity } from 'lucide-react';
+import { Loader2, Link, Plus, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import type { BrokerageConnection } from '@/types/userSettings';
-import { useConnectionHealth } from '@/hooks/useConnectionHealth';
-import { migrationManager } from '@/services/migrationManager';
-import { migrationQueue } from '@/services/migrationQueue';
-import { circuitBreaker } from '@/services/circuitBreaker';
-import { recoveryManager } from '@/services/recoveryManager';
-import { connectionPool } from '@/services/connectionPool';
-import { connectionLifecycle } from '@/services/connectionLifecycle';
-import { useEffect } from 'react';
-
-// Input validation schema
-const brokerageCredentialsSchema = z.object({
-  provider: z.string().min(1, 'Provider is required'),
-  apiKey: z.string()
-    .min(10, 'API Key must be at least 10 characters')
-    .max(200, 'API Key too long')
-    .trim(),
-  apiSecret: z.string()
-    .min(10, 'API Secret must be at least 10 characters')
-    .max(200, 'API Secret too long')
-    .trim(),
-  accountLabel: z.string().max(100, 'Account label too long').optional()
-});
 
 interface BrokerageConnectionCardProps {
   workspaceId: string;
@@ -46,234 +23,70 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncingMarketData, setIsSyncingMarketData] = useState(false);
   const [newConnection, setNewConnection] = useState({
-    provider: 'alpaca',
+    provider: '',
     accountLabel: '',
     apiKey: '',
     apiSecret: ''
   });
   const { toast } = useToast();
   const { triggerSync, autoSyncAfterConnection } = useBrokerageSync();
-  const { registerConnection, checkConnection } = useConnectionHealth();
-
-  // Register brokerage connections for health monitoring and lifecycle management
-  useEffect(() => {
-    connections.forEach(conn => {
-      const connectionId = `brokerage-${conn.provider}-${conn.mode}`;
-      
-      // Register for health monitoring
-      registerConnection(
-        connectionId,
-        'brokerage',
-        `${conn.provider} (${conn.mode})`,
-        { broker: conn.provider, mode: conn.mode }
-      );
-
-      // Register for lifecycle management with automatic reconnection
-      connectionLifecycle.register(connectionId, {
-        maxReconnectAttempts: 5,
-        reconnectDelay: 2000,
-        maxReconnectDelay: 60000
-      });
-
-      // Mark as connected if last_sync is recent
-      if (conn.last_sync) {
-        const lastSync = new Date(conn.last_sync);
-        const fiveMinutesAgo = Date.now() - 300000;
-        
-        if (lastSync.getTime() > fiveMinutesAgo) {
-          connectionLifecycle.markConnected(connectionId);
-        }
-      }
-    });
-
-    // Initialize connection pool for brokerage connections
-    if (connections.length > 0 && !connectionPool.getStats('brokerage-pool')) {
-      connectionPool.initialize('brokerage-pool', 'brokerage', {
-        minConnections: 1,
-        maxConnections: 3,
-        idleTimeout: 300000,
-        warmupInterval: 60000
-      });
-    }
-
-    return () => {
-      // Cleanup is handled by individual services
-    };
-  }, [connections, registerConnection]);
-
-  // Enhanced sync function with retry logic
-  const syncPortfolioWithRetry = async (workspaceId: string, mode: string, maxRetries = 3) => {
-    let attempt = 0;
-    let lastError: any = null;
-
-    while (attempt < maxRetries) {
-      try {
-        attempt++;
-        console.log(`📊 Portfolio sync attempt ${attempt}/${maxRetries}`);
-
-        // Wait progressively longer between retries to allow DB commits
-        if (attempt > 1) {
-          const waitTime = Math.pow(2, attempt - 1) * 1000; // 2s, 4s, 8s
-          console.log(`⏳ Waiting ${waitTime}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-
-        // Verify credentials exist before attempting sync
-        const { data: connCheck } = await supabase
-          .from('connections_brokerages')
-          .select('api_key_cipher, nonce')
-          .eq('workspace_id', workspaceId)
-          .eq('provider', 'alpaca')
-          .eq('mode', mode)
-          .maybeSingle();
-
-        if (!connCheck?.api_key_cipher || !connCheck?.nonce) {
-          console.warn('⚠️ Credentials not yet stored, retrying...');
-          lastError = new Error('Credentials not ready');
-          continue;
-        }
-
-        console.log('✅ Credentials verified, attempting sync...');
-
-        // Attempt sync
-        const { data: syncData, error: syncError } = await supabase.functions.invoke('alpaca-sync', {
-          body: { 
-            workspace_id: workspaceId,
-            broker: 'alpaca',
-            mode: mode
-          }
-        });
-
-        if (syncError) throw syncError;
-        if (!syncData?.success) throw new Error(syncData?.error || 'Sync failed');
-
-        console.log('✅ Portfolio synced successfully:', syncData);
-        
-        toast({
-          title: "Portfolio Synced",
-          description: `Loaded ${syncData.data?.positions_count || 0} positions, equity: $${(syncData.data?.equity || 0).toLocaleString()}`,
-        });
-        
-        // Refresh connections to show updated last_sync
-        onUpdate();
-        return;
-
-      } catch (error) {
-        lastError = error;
-        console.error(`❌ Sync attempt ${attempt} failed:`, error);
-      }
-    }
-
-    // All retries exhausted
-    console.error('💥 Portfolio sync failed after all retries:', lastError);
-    toast({
-      title: "Portfolio Sync Failed",
-      description: `Unable to sync after ${maxRetries} attempts. Please try manual sync from the Sync Portfolio button.`,
-      variant: "destructive",
-    });
-  };
 
   const handleAddConnection = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!newConnection.provider || !newConnection.apiKey || !newConnection.apiSecret) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    const connectionId = `brokerage-${newConnection.provider}-paper`;
-
     try {
-      // Check if circuit breaker allows this connection
-      if (!circuitBreaker.canExecute(connectionId)) {
-        throw new Error('Connection temporarily blocked due to repeated failures. Please wait before retrying.');
-      }
-
-      // Validate inputs client-side
-      const validationResult = brokerageCredentialsSchema.safeParse({
-        provider: newConnection.provider,
-        apiKey: newConnection.apiKey,
-        apiSecret: newConnection.apiSecret,
-        accountLabel: newConnection.accountLabel
+      // Use the new detect-account-type function
+      const { data, error } = await supabase.functions.invoke('detect-account-type', {
+        body: { 
+          apiKey: newConnection.apiKey, 
+          secretKey: newConnection.apiSecret 
+        }
       });
 
-      if (!validationResult.success) {
-        const firstError = validationResult.error.issues[0];
-        throw new Error(firstError.message);
-      }
+      if (error) throw error;
 
-      console.log('🔌 Creating brokerage connection migration...');
-
-      // Register circuit breaker for this connection
-      circuitBreaker.register(connectionId, {
-        failureThreshold: 3,
-        successThreshold: 2,
-        timeout: 120000, // 2 minutes
-        monitoringPeriod: 300000 // 5 minutes
-      });
-
-      // Use migration manager for safe connection process
-      const migrationId = migrationManager.createBrokerageConnectionMigration(
-        newConnection.provider,
-        newConnection.apiKey.trim(),
-        newConnection.apiSecret.trim(),
-        'paper' // Will be auto-detected
-      );
-
-      // Add to migration queue with high priority
-      console.log(`📋 Queuing migration: ${migrationId}`);
-      const queueId = migrationQueue.enqueue(migrationId, workspaceId, 'high', 2);
-      
       toast({
-        title: "Connection Queued",
-        description: "Your connection is being processed...",
+        title: "Connection Successful",
+        description: `Connected to ${data.accountType} trading account. Syncing portfolio data...`,
       });
 
-      // Wait for queue to complete
-      const maxWait = 60000; // 60 seconds
-      const startTime = Date.now();
+      setNewConnection({
+        provider: '',
+        accountLabel: '',
+        apiKey: '',
+        apiSecret: ''
+      });
+      setIsAdding(false);
       
-      while (Date.now() - startTime < maxWait) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const queuedItem = migrationQueue.getQueue().find(q => q.id === queueId);
-        
-        if (queuedItem?.status === 'completed') {
-          const result = queuedItem.result!;
+      // Refresh connections list
+      onUpdate();
+      
+      // Trigger immediate portfolio sync using alpaca-sync
+      setTimeout(async () => {
+        try {
+          await supabase.functions.invoke('alpaca-sync', {
+            body: { workspace_id: workspaceId }
+          });
           
           toast({
-            title: "Connection Successful",
-            description: `Connected successfully. Completed ${result.completedSteps.length} steps in ${result.duration}ms.`,
+            title: "Portfolio Synced",
+            description: "Initial portfolio data has been loaded.",
           });
-
-          setNewConnection({
-            provider: '',
-            accountLabel: '',
-            apiKey: '',
-            apiSecret: ''
-          });
-          setIsAdding(false);
-          
-          // Refresh connections list to show new connection
-          onUpdate();
-          
-          // Register new connection for health monitoring
-          registerConnection(
-            connectionId,
-            'brokerage',
-            `${newConnection.provider} (paper)`,
-            { broker: newConnection.provider, mode: 'paper' }
-          );
-
-          // Check connection health
-          setTimeout(() => {
-            checkConnection(connectionId);
-          }, 2000);
-          
-          return;
-        } else if (queuedItem?.status === 'failed') {
-          throw new Error(queuedItem.result?.error || 'Migration failed after retries');
+        } catch (error) {
+          console.error('Sync failed:', error);
         }
-      }
-
-      throw new Error('Connection timeout - please try again');
+      }, 1000);
 
     } catch (error) {
       toast({
@@ -281,9 +94,6 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
         description: error instanceof Error ? error.message : "Failed to add connection.",
         variant: "destructive",
       });
-      
-      // Enable automatic recovery
-      recoveryManager.scheduleRecovery(connectionId);
     } finally {
       setIsLoading(false);
     }
@@ -319,38 +129,11 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
   const handleManualSync = async (connectionId?: string) => {
     setIsSyncing(true);
     try {
-      console.log('🔄 Manual sync triggered...');
-      
-      // Find the connection mode for proper sync
-      const connection = connections.find(c => !connectionId || c.id === connectionId);
-      const mode = connection?.mode || 'paper';
-      
-      // Use alpaca-sync directly for better control
-      const { data, error } = await supabase.functions.invoke('alpaca-sync', {
-        body: {
-          workspace_id: workspaceId,
-          broker: 'alpaca',
-          mode: mode
-        }
-      });
-
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Sync failed');
-
-      toast({
-        title: "Sync Complete",
-        description: `Portfolio updated: ${data.data?.positions_count || 0} positions, $${(data.data?.equity || 0).toLocaleString()} equity`,
-      });
-
-      // Refresh connections and wait for update
-      onUpdate();
-    } catch (error) {
-      console.error('Manual sync error:', error);
-      toast({
-        title: "Sync Failed",
-        description: error instanceof Error ? error.message : "Failed to sync portfolio",
-        variant: "destructive",
-      });
+      await triggerSync(workspaceId, connectionId);
+      // Refresh data after sync
+      setTimeout(() => {
+        onUpdate();
+      }, 1000);
     } finally {
       setIsSyncing(false);
     }
@@ -399,10 +182,8 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
           <Plus className="w-4 w-4 mr-2" />
           Add Connection
         </Button>
-      </CardHeader>
-      <CardHeader className="flex flex-row items-center justify-between pt-0">
         {connections.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 ml-2">
             <Button
               variant="outline"
               onClick={() => handleManualSync()}
@@ -552,9 +333,6 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
                     >
                       {connection.status}
                     </Badge>
-                    <Badge variant="outline" className="capitalize">
-                      {connection.mode || 'paper'}
-                    </Badge>
                     {connection.scope?.account_type && (
                       <Badge variant="outline">
                         {connection.scope.account_type}
@@ -564,11 +342,6 @@ export function BrokerageConnectionCard({ workspaceId, connections, onUpdate }: 
                   <p className="text-sm text-muted-foreground capitalize">
                     {connection.provider.replace('_', ' ')}
                   </p>
-                  {connection.last_sync && (
-                    <p className="text-xs text-muted-foreground">
-                      Last synced: {new Date(connection.last_sync).toLocaleString()}
-                    </p>
-                  )}
                   <p className="text-xs text-muted-foreground">
                     Added {new Date(connection.created_at).toLocaleDateString()}
                   </p>

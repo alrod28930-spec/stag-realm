@@ -17,7 +17,6 @@ export interface FeatureFlags {
   circuit_breaker: boolean;
   idempotency_check: boolean;
   websocket_enabled: boolean;
-  subscription_enforcement: boolean; // Controls whether subscription/tier checks are enforced
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
@@ -31,7 +30,6 @@ const DEFAULT_FLAGS: FeatureFlags = {
   circuit_breaker: true,
   idempotency_check: true,
   websocket_enabled: true,
-  subscription_enforcement: false, // Disabled by default - treat all users as Elite tier
 };
 
 class FeatureFlagService {

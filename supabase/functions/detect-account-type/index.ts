@@ -1,198 +1,165 @@
-import { serve } from "https://deno.land/std/http/server.ts";
-import { supaFromReq, json, handleCORS, ensureWorkspace } from "../_shared/supa.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
-  const cors = handleCORS(req);
-  if (cors) return cors;
-  
-  try {
-    const supabase = supaFromReq(req);
-    const workspace_id = await ensureWorkspace(supabase);
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
-    const { broker = "alpaca", apiKey, secretKey } = await req.json().catch(() => ({}));
-    
+  try {
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization')!
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+    if (authError || !user) {
+      return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    }
+
+    const { apiKey, secretKey } = await req.json()
+
     if (!apiKey || !secretKey) {
-      return json({ 
-        ok: false, 
-        error: "missing_credentials",
-        message: "API key and secret are required"
-      }, 400);
+      return new Response(
+        JSON.stringify({ error: 'API key and secret key are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    console.log('🔍 Testing account credentials with provided API key...');
+    // Test against paper trading endpoint first
+    let accountType = 'unknown'
+    let accountInfo = null
     
-    // Try live first
-    const live = await probe("live", apiKey, secretKey);
-    if (live.ok) {
-      await storeConnection(supabase, workspace_id, broker, "live", live.account);
-      await encryptCredentials(workspace_id, broker, "live", apiKey, secretKey);
-      return json({ 
-        ok: true, 
-        broker, 
-        mode: "live",
-        accountType: "live",
-        account: live.account,
-        message: "Connected to live trading account successfully"
-      });
-    }
-    
-    // Try paper
-    const paper = await probe("paper", apiKey, secretKey);
-    if (paper.ok) {
-      await storeConnection(supabase, workspace_id, broker, "paper", paper.account);
-      await encryptCredentials(workspace_id, broker, "paper", apiKey, secretKey);
-      return json({ 
-        ok: true, 
-        broker, 
-        mode: "paper",
-        accountType: "paper",
-        account: paper.account,
-        message: "Connected to paper trading account successfully"
-      });
-    }
-    
-    return json({ 
-      ok: false, 
-      error: "authentication_failed",
-      message: "Invalid API credentials for both live and paper accounts. Please check your API key and secret."
-    }, 401);
-  } catch (e) {
-    console.error('💥 Unexpected error:', e);
-    return json({ 
-      ok: false, 
-      error: "exception", 
-      detail: (e as Error).message 
-    }, 500);
-  }
-});
-
-async function probe(mode: "live" | "paper", apiKey: string, secretKey: string) {
-  const base = mode === "live" 
-    ? "https://api.alpaca.markets" 
-    : "https://paper-api.alpaca.markets";
-    
-  try {
-    console.log(`🔍 Probing ${mode} endpoint...`);
-    const r = await fetch(`${base}/v2/account`, {
-      headers: { 
-        "APCA-API-KEY-ID": apiKey.trim(), 
-        "APCA-API-SECRET-KEY": secretKey.trim() 
-      }
-    });
-    
-    if (!r.ok) {
-      console.log(`❌ ${mode} probe failed with status: ${r.status}`);
-      return { ok: false, error: String(r.status) };
-    }
-    
-    const account = await r.json();
-    console.log(`✅ ${mode} probe successful, account: ${account.account_number}`);
-    return { ok: true, account };
-  } catch (e) {
-    console.error(`💥 ${mode} probe error:`, e);
-    return { ok: false, error: (e as Error).message };
-  }
-}
-
-async function storeConnection(supabase: any, workspace_id: string, broker: string, mode: string, accountInfo: any) {
-  try {
-    console.log('💾 Storing connection metadata...');
-    
-    const { error: upsertError } = await supabase
-      .from('connections_brokerages')
-      .upsert({
-        workspace_id,
-        provider: broker,
-        mode,
-        status: 'active',
-        account_label: `Alpaca ${mode.charAt(0).toUpperCase() + mode.slice(1)} Account`,
-        scope: { 
-          account_type: mode,
-          trading_permissions: accountInfo?.trading_blocked === false ? ['trading'] : [],
-          account_status: accountInfo?.status || 'unknown',
-          account_number: accountInfo?.account_number
+    try {
+      console.log('Testing paper trading endpoint...')
+      const paperResponse = await fetch('https://paper-api.alpaca.markets/v2/account', {
+        headers: {
+          'APCA-API-KEY-ID': apiKey,
+          'APCA-API-SECRET-KEY': secretKey,
         },
-        last_sync: new Date().toISOString()
-      }, { onConflict: 'workspace_id,provider,mode' });
-
-    if (upsertError) {
-      console.error('❌ Failed to store connection:', upsertError);
-      throw new Error(`Database error: ${upsertError.message}`);
-    }
-
-    console.log(`✅ Connection metadata stored successfully`);
-  } catch (e) {
-    console.error('💥 Error in storeConnection:', e);
-    throw e;
-  }
-}
-
-async function encryptCredentials(workspaceId: string, broker: string, mode: string, apiKey: string, secretKey: string) {
-  try {
-    const encryptionKey = Deno.env.get('CREDENTIAL_ENCRYPTION_KEY');
-    if (!encryptionKey) {
-      console.error('❌ CREDENTIAL_ENCRYPTION_KEY not configured');
-      return;
-    }
-
-    console.log(`🔐 Encrypting credentials for ${broker}:${mode}`);
-
-    // Generate a random nonce
-    const nonce = crypto.getRandomValues(new Uint8Array(12));
-    
-    // Import the encryption key
-    const keyData = new TextEncoder().encode(encryptionKey.padEnd(32, '0').substring(0, 32));
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt']
-    );
-
-    // Encrypt API key
-    const apiKeyEncrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce },
-      key,
-      new TextEncoder().encode(apiKey)
-    );
-
-    // Encrypt secret key
-    const secretKeyEncrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce },
-      key,
-      new TextEncoder().encode(secretKey)
-    );
-
-    // Convert to base64 for storage
-    const apiKeyCipher = btoa(String.fromCharCode(...new Uint8Array(apiKeyEncrypted)));
-    const secretKeyCipher = btoa(String.fromCharCode(...new Uint8Array(secretKeyEncrypted)));
-    const nonceB64 = btoa(String.fromCharCode(...nonce));
-
-    // Use service role to update encrypted credentials
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.57.0');
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { error } = await supabase
-      .from('connections_brokerages')
-      .update({
-        api_key_cipher: apiKeyCipher,
-        api_secret_cipher: secretKeyCipher,
-        nonce: nonceB64,
-        updated_at: new Date().toISOString()
       })
-      .eq('workspace_id', workspaceId)
-      .eq('provider', broker)
-      .eq('mode', mode);
 
-    if (error) {
-      console.error('❌ Failed to store encrypted credentials:', error);
-    } else {
-      console.log(`✅ Credentials encrypted and stored for ${broker}:${mode}`);
+      if (paperResponse.ok) {
+        accountInfo = await paperResponse.json()
+        accountType = 'paper'
+        console.log('Successfully connected to paper trading account')
+      }
+    } catch (error) {
+      console.log('Paper trading test failed:', error)
     }
-  } catch (e) {
-    console.error('💥 Error encrypting credentials:', e);
+
+    // If paper failed, test live trading endpoint
+    if (accountType === 'unknown') {
+      try {
+        console.log('Testing live trading endpoint...')
+        const liveResponse = await fetch('https://api.alpaca.markets/v2/account', {
+          headers: {
+            'APCA-API-KEY-ID': apiKey,
+            'APCA-API-SECRET-KEY': secretKey,
+          },
+        })
+
+        if (liveResponse.ok) {
+          accountInfo = await liveResponse.json()
+          accountType = 'live'
+          console.log('Successfully connected to live trading account')
+        }
+      } catch (error) {
+        console.log('Live trading test failed:', error)
+      }
+    }
+
+    if (accountType === 'unknown') {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid API credentials',
+          message: 'Could not connect to either paper or live trading accounts'
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Resolve workspace
+    let workspaceId: string;
+    try {
+      const { data: memberships } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1);
+      workspaceId = memberships?.[0]?.workspace_id || user.user_metadata?.workspace_id || user.id;
+    } catch (_) {
+      workspaceId = user.user_metadata?.workspace_id || user.id;
+    }
+
+    // Store credentials with detected account type
+    const { error: storeError } = await supabase
+      .from('connections_brokerages')
+      .insert({
+        workspace_id: workspaceId,
+        provider: 'alpaca',
+        status: 'active',
+        account_label: `Alpaca ${accountType.charAt(0).toUpperCase() + accountType.slice(1)} Account`,
+        api_key_cipher: new TextEncoder().encode(apiKey), // In production, this should be properly encrypted
+        api_secret_cipher: new TextEncoder().encode(secretKey),
+        nonce: new TextEncoder().encode('dummy_nonce'), // In production, use proper encryption nonce
+        scope: { 
+          account_type: accountType,
+          trading_permissions: accountInfo?.trading_permissions || [],
+          account_status: accountInfo?.status || 'unknown'
+        }
+      })
+
+    if (storeError) {
+      console.error('Error storing credentials:', storeError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to store credentials' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        accountType,
+        accountStatus: accountInfo?.status,
+        tradingPermissions: accountInfo?.trading_permissions || [],
+        buyingPower: accountInfo?.buying_power,
+        portfolioValue: accountInfo?.portfolio_value,
+        message: `Connected to ${accountType} trading account successfully`
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    )
+
+  } catch (error) {
+    console.error('Account type detection error:', error)
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to detect account type', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      }),
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    )
   }
-}
+})

@@ -3,9 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getCandles } from '@/integrations/supabase/candles';
-import { resolveWorkspaceId } from '@/lib/workspace';
-import { normalizeTf } from '@/lib/timeframes';
+import { BID } from '@/integrations/supabase/bid.adapter';
 import type { Candle } from '@/integrations/supabase/candles';
 
 type CandleState = 'loading' | 'ready' | 'degraded' | 'error';
@@ -98,20 +96,13 @@ export function useEnhancedCandles(
 
     try {
       const { days } = getWindowedRange(tf);
-      // Ensure valid workspace ID and normalized timeframe
-      const validWsId = resolveWorkspaceId(workspaceId);
-      if (!validWsId) {
-        throw new Error('No valid workspace ID');
-      }
-      
-      const normalizedTf = normalizeTf(tf);
       const now = new Date();
       const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-      const candles = await getCandles(
-        validWsId,
+      const response = await BID.getMarketSnapshots(
+        workspaceId,
         symbol,
-        normalizedTf,
+        tf as '1m' | '5m' | '15m' | '1h' | '1D',
         from.toISOString(),
         now.toISOString()
       );
@@ -119,7 +110,12 @@ export function useEnhancedCandles(
       // Check if request was aborted
       if (abortControllerRef.current?.signal.aborted) return;
 
-      if (candles && candles.length > 0) {
+      if (response.error) {
+        throw response.error;
+      }
+
+      if (response.data && response.data.length > 0) {
+        const candles = response.data as Candle[];
         const hash = computeHash(candles);
 
         // Only update if data changed
@@ -132,15 +128,12 @@ export function useEnhancedCandles(
           // Update cache
           candleCache.set(cacheKey, { data: candles, timestamp, hash });
           pruneCache();
-          
-          console.log(`📊 Chart data ready: ${candles.length} candles for ${symbol}`);
         } else {
           setState('ready');
         }
       } else {
         // No data but no error - show cached if available
         if (cached) {
-          console.log(`⚠️ No fresh data, using ${cached.data.length} cached candles for ${symbol}`);
           setState('degraded');
         } else {
           setState('error');
@@ -150,13 +143,10 @@ export function useEnhancedCandles(
     } catch (err) {
       if (abortControllerRef.current?.signal.aborted) return;
 
-      console.error(`❌ Chart data error for ${symbol}:`, err);
-      
       // On error, stay in degraded mode if we have cache
       if (cached) {
-        console.log(`⚠️ Error fetching data, using ${cached.data.length} cached candles for ${symbol}`);
         setState('degraded');
-        setError('Using cached data - live feed unavailable');
+        setError('Using cached data');
       } else {
         setState('error');
         setError(err instanceof Error ? err.message : 'Failed to load chart data');

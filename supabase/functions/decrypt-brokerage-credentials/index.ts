@@ -1,168 +1,111 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { preflight, json } from "../_shared/http.ts";
-import { ensureWorkspace, repoEvent, safeFail } from "../_shared/guards.ts";
-import { validateCredentials, validateEncryptedData, logValidation } from "../_shared/validation.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const FN = "decrypt-brokerage-credentials";
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
-  const pre = preflight(req);
-  if (pre) return pre;
-  
-  let workspace_id = "";
-  let supabase: any;
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const result = await ensureWorkspace(req);
-    workspace_id = result.workspaceId;
-    supabase = result.supabase;
-    
-    const body = await req.json().catch(() => ({}));
-    const { broker = "alpaca", mode = "paper" } = body;
-    
-    console.log(`🔓 Decrypt request - workspace: ${workspace_id}, broker: ${broker}, mode: ${mode}`);
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    // Fetch encrypted credentials from database
-    const { data: connection, error: fetchError } = await supabase
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization')!
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+    if (authError || !user) {
+      return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    }
+
+    const { connectionId } = await req.json()
+
+    if (!connectionId) {
+      return new Response('Connection ID required', { status: 400, headers: corsHeaders })
+    }
+
+    // Get the connection metadata (we'll use env vars for actual credentials)
+    const { data: connection, error: connectionError } = await supabase
       .from('connections_brokerages')
-      .select('api_key_cipher, api_secret_cipher, nonce')
-      .eq('workspace_id', workspace_id)
-      .eq('provider', broker)
-      .eq('mode', mode)
-      .single();
+      .select('*')
+      .eq('id', connectionId)
+      .single()
 
-    if (fetchError || !connection) {
-      console.error('❌ No credentials found in database');
-      
-      // Fallback to env variables for development
-      const apiKey = Deno.env.get("ALPACA_API_KEY");
-      const secretKey = Deno.env.get("ALPACA_SECRET_KEY");
-      
-      if (apiKey && secretKey) {
-        console.log("⚠️ Using env credentials (dev mode fallback)");
-        await repoEvent(supabase, workspace_id, FN, { ok: true, mode: "env_fallback" });
-        
-        return json({
-          ok: true,
-          credentials: {
-            apiKey,
-            secretKey,
-            api_key: apiKey,
-            secret_key: secretKey
-          },
-          mode: "env_fallback"
-        });
+    if (connectionError || !connection) {
+      return new Response('Connection not found', { status: 404, headers: corsHeaders })
+    }
+
+    // Verify user has access to this connection
+    const { data: hasAccess } = await supabase.rpc('is_member_of_workspace', {
+      w_id: connection.workspace_id
+    })
+
+    if (!hasAccess) {
+      return new Response('Access denied', { status: 403, headers: corsHeaders })
+    }
+
+    // Option 2: Use environment variables as the single source of truth
+    const apiKey = Deno.env.get('ALPACA_API_KEY');
+    const secretKey = Deno.env.get('ALPACA_SECRET_KEY');
+    
+    if (!apiKey || !secretKey) {
+      console.error('Missing Alpaca credentials in environment variables');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Alpaca credentials not configured. Please set ALPACA_API_KEY and ALPACA_SECRET_KEY.'
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('Using Alpaca credentials from environment variables (Option 2)');
+
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        credentials: {
+          api_key: apiKey,
+          secret_key: secretKey
+        },
+        provider: connection.provider,
+        accountLabel: connection.account_label
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
       }
-      
-      await repoEvent(supabase, workspace_id, FN, { ok: false, error: "no_credentials_found" });
-      return json({ ok: false, error: "no_credentials_found" }, 404);
-    }
+    )
 
-    const { api_key_cipher, api_secret_cipher, nonce } = connection;
-
-    if (!api_key_cipher || !api_secret_cipher || !nonce) {
-      console.error('❌ Incomplete encrypted credentials');
-      await repoEvent(supabase, workspace_id, FN, { ok: false, error: "incomplete_credentials" });
-      return json({ ok: false, error: "incomplete_credentials" }, 400);
-    }
-
-    // Validate encrypted data structure
-    const encValidation = validateEncryptedData(api_key_cipher, nonce);
-    logValidation('encrypted_data', encValidation);
-    
-    if (!encValidation.valid) {
-      console.error('❌ Encrypted data validation failed:', encValidation.errors);
-      await repoEvent(supabase, workspace_id, FN, { 
-        ok: false, 
-        error: "invalid_encrypted_data",
-        details: encValidation.errors
-      });
-      return json({ 
-        ok: false, 
-        error: "invalid_encrypted_data",
-        details: encValidation.errors.join(', ')
-      }, 400);
-    }
-
-    const encryptionKey = Deno.env.get('CREDENTIAL_ENCRYPTION_KEY');
-    if (!encryptionKey) {
-      console.error('❌ CREDENTIAL_ENCRYPTION_KEY not configured');
-      await repoEvent(supabase, workspace_id, FN, { ok: false, error: "encryption_key_not_configured" });
-      return json({ ok: false, error: "encryption_key_not_configured" }, 500);
-    }
-
-    console.log('🔓 Decrypting credentials from database');
-
-    // Decode base64 values
-    const apiKeyCipherBytes = Uint8Array.from(atob(api_key_cipher), c => c.charCodeAt(0));
-    const secretKeyCipherBytes = Uint8Array.from(atob(api_secret_cipher), c => c.charCodeAt(0));
-    const nonceBytes = Uint8Array.from(atob(nonce), c => c.charCodeAt(0));
-
-    // Import the decryption key
-    const keyData = new TextEncoder().encode(encryptionKey.padEnd(32, '0').substring(0, 32));
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['decrypt']
-    );
-
-    // Decrypt API key
-    const apiKeyDecrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: nonceBytes },
-      key,
-      apiKeyCipherBytes
-    );
-
-    // Decrypt secret key
-    const secretKeyDecrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: nonceBytes },
-      key,
-      secretKeyCipherBytes
-    );
-
-    const apiKey = new TextDecoder().decode(apiKeyDecrypted);
-    const secretKey = new TextDecoder().decode(secretKeyDecrypted);
-    
-    // Validate decrypted credentials
-    const credValidation = validateCredentials(apiKey, secretKey);
-    logValidation('decrypted_credentials', credValidation);
-    
-    if (!credValidation.valid) {
-      console.error('❌ Decrypted credentials invalid:', credValidation.errors);
-      await repoEvent(supabase, workspace_id, FN, { 
-        ok: false, 
-        error: "invalid_credentials",
-        details: credValidation.errors
-      });
-      return json({ 
-        ok: false, 
-        error: "invalid_credentials",
-        details: credValidation.errors.join(', ')
-      }, 400);
-    }
-    
-    if (credValidation.warnings.length > 0) {
-      console.warn('⚠️ Credential warnings:', credValidation.warnings);
-    }
-
-    console.log('✅ Credentials decrypted and validated successfully');
-    await repoEvent(supabase, workspace_id, FN, { ok: true, mode: "database" });
-    
-    return json({
-      ok: true,
-      credentials: {
-        apiKey,
-        secretKey,
-        api_key: apiKey,
-        secret_key: secretKey
-      },
-      mode: "database"
-    });
-  } catch (e) {
-    console.error("[decrypt] Error:", e);
-    await repoEvent(supabase, workspace_id || "00000000-0000-0000-0000-000000000000", `${FN}:error`, { message: (e as Error).message });
-    return safeFail(FN, e);
+  } catch (error) {
+    console.error('Get credentials error:', error)
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to get credentials', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      }),
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    )
   }
-});
+})

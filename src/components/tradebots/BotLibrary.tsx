@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { botTemplateService, type BotTemplate } from '@/services/botTemplates';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { LockedCard } from '@/components/subscription/LockedCard';
 import { BotTemplateModal } from './BotTemplateModal';
 
 interface BotLibraryProps {
@@ -51,9 +53,21 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const { toast } = useToast();
+  const { subscriptionStatus, checkTabAccess } = useSubscriptionAccess();
 
-  // Always show all templates - subscription checks removed
-  const availableTemplates = botTemplateService.getTemplates('elite');
+  // Check if user can access bot library
+  const canAccessBots = checkTabAccess('/trade-bots').hasAccess;
+  const userTier = subscriptionStatus?.tier || 'lite';
+
+  if (!canAccessBots) {
+    return (
+      <LockedCard 
+        feature="Default Bot Library"
+      />
+    );
+  }
+
+  const availableTemplates = botTemplateService.getTemplates(userTier as 'lite' | 'standard' | 'pro' | 'elite');
   
   const handleDeployBot = async (template: BotTemplate) => {
     setSelectedTemplate(template);
@@ -109,7 +123,7 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
           </div>
             <Badge variant="secondary" className="flex items-center gap-1">
               <Star className="w-3 h-3" />
-              Elite Member
+              {userTier?.toUpperCase()} Member
             </Badge>
         </div>
 
@@ -130,14 +144,8 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
                 <CardContent className="p-8 text-center">
                   <Bot className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-lg font-semibold mb-2">No Bots Available</h3>
-                  {/* Upgrade prompt hidden while subscription enforcement is disabled */}
-                  {/* 
                   <p className="text-muted-foreground">
                     Upgrade to Pro or Elite tier to access our default bot library.
-                  </p>
-                  */}
-                  <p className="text-muted-foreground">
-                    No bot templates available. Check back later.
                   </p>
                 </CardContent>
               </Card>
@@ -282,6 +290,24 @@ export function BotLibrary({ onBotDeployed }: BotLibraryProps) {
           </TabsContent>
         </Tabs>
 
+        {/* Tier Upgrade Notice for Elite Bots */}
+        {userTier === 'pro' && (
+          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+                <div>
+                  <h4 className="font-semibold text-amber-800 dark:text-amber-200">
+                    Unlock Advanced Bots
+                  </h4>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Upgrade to Elite to access the Scalper bot and full strategy editing capabilities.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Deployment Modal */}

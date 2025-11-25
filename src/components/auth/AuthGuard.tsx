@@ -2,8 +2,6 @@ import { ReactNode, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { LoginForm } from './LoginForm';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { logService } from '@/services/logging';
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -19,20 +17,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
     const init = async () => {
       try {
         await initializeAuth();
-        
-        // Ensure user has a workspace after auth
-        if (user) {
-          try {
-            const { data: workspaceId, error } = await supabase.rpc('ensure_default_workspace');
-            if (error) {
-              logService.log('error', 'Failed to ensure workspace', { error });
-            } else {
-              logService.log('info', 'Workspace ensured', { workspaceId });
-            }
-          } catch (wsError) {
-            logService.log('error', 'Workspace setup error', { error: wsError });
-          }
-        }
       } catch (error) {
         console.error('Auth initialization failed:', error);
         // Force stop loading on error
@@ -40,7 +24,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       }
     };
     init();
-  }, [initializeAuth, user]);
+  }, [initializeAuth]);
 
   // Add timeout to prevent infinite loading
   useEffect(() => {

@@ -5,9 +5,6 @@ import { recorder } from './recorder';
 import { llmService, LLMResponse, ANALYST_PERSONAS } from './llm';
 import { knowledgeBaseService, RetrievalResult } from './knowledgeBase';
 import { userBID } from './userBID';
-import { analystCache } from './analystCache';
-import { circuitBreaker } from './circuitBreaker';
-import { connectionLifecycle } from './connectionLifecycle';
 
 export interface AnalystMessage {
   id: string;
@@ -34,6 +31,7 @@ export interface AnalystSession {
   startTime: Date;
   endTime?: Date;
   messageCount: number;
+  persona: string;
   disclaimerShown: boolean;
   topics: string[];
 }
@@ -41,89 +39,10 @@ export interface AnalystSession {
 class AnalystService {
   private messages: AnalystMessage[] = [];
   private currentSession: AnalystSession | null = null;
-  private requestQueue: Array<() => Promise<any>> = [];
-  private isProcessingQueue = false;
+  private currentPersona: string = ANALYST_PERSONAS[0].id;
 
   constructor() {
     this.subscribeToEvents();
-    this.initializeConnections();
-    this.loadPersistedSession();
-  }
-
-  /**
-   * Initialize connections for health monitoring
-   */
-  private initializeConnections() {
-    // Register Analyst API connection
-    connectionLifecycle.register('analyst-api', {
-      maxReconnectAttempts: 5,
-      reconnectDelay: 3000,
-      maxReconnectDelay: 30000
-    });
-
-    // Register circuit breaker for API calls
-    circuitBreaker.register('analyst-llm', {
-      failureThreshold: 3,
-      successThreshold: 2,
-      timeout: 120000,
-      monitoringPeriod: 300000
-    });
-
-    console.log('🧠 Analyst connections initialized');
-  }
-
-  /**
-   * Load persisted session from localStorage
-   */
-  private loadPersistedSession() {
-    try {
-      const stored = localStorage.getItem('analyst_session');
-      if (stored) {
-        const data = JSON.parse(stored);
-        
-        // Only restore if recent (within last hour)
-        const sessionStart = new Date(data.startTime);
-        const hourAgo = Date.now() - 3600000;
-        
-        if (sessionStart.getTime() > hourAgo) {
-          this.currentSession = {
-            ...data,
-            startTime: new Date(data.startTime),
-            endTime: data.endTime ? new Date(data.endTime) : undefined
-          };
-          
-          // Restore messages
-          const storedMessages = localStorage.getItem('analyst_messages');
-          if (storedMessages) {
-            this.messages = JSON.parse(storedMessages).map((m: any) => ({
-              ...m,
-              timestamp: new Date(m.timestamp)
-            }));
-          }
-          
-          console.log('🧠 Restored analyst session:', this.currentSession.id);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load analyst session:', error);
-    }
-  }
-
-  /**
-   * Persist session state
-   */
-  private persistSession() {
-    try {
-      if (this.currentSession) {
-        localStorage.setItem('analyst_session', JSON.stringify(this.currentSession));
-      }
-      
-      // Only store last 50 messages to save space
-      const recentMessages = this.messages.slice(-50);
-      localStorage.setItem('analyst_messages', JSON.stringify(recentMessages));
-    } catch (error) {
-      console.error('Failed to persist analyst session:', error);
-    }
   }
 
   private subscribeToEvents() {
@@ -159,14 +78,15 @@ class AnalystService {
       id: sessionId,
       startTime: new Date(),
       messageCount: 0,
+      persona: this.currentPersona,
       disclaimerShown: false,
       topics: []
     };
 
     // Add welcome message with disclaimer
     this.addSystemMessage(
-      "Welcome to the Strategic Analyst. I provide professional analysis of your portfolio, market context, and trading decisions.\n\n" +
-      "**Important:** This is educational analysis, not financial advice. Always consult qualified financial professionals before making investment decisions.",
+      "Welcome to The Analyst. I'm here to explain your portfolio, market context, system decisions, and outcomes.\n\n" +
+      "**Important:** This is not financial advice. All analysis is for educational purposes only. Always consult with qualified financial professionals before making investment decisions.",
       'system'
     );
 
@@ -174,7 +94,7 @@ class AnalystService {
       this.currentSession.disclaimerShown = true;
     }
 
-    logService.log('info', 'Analyst session started', { sessionId });
+    logService.log('info', 'Analyst session started', { sessionId, persona: this.currentPersona });
     
     return sessionId;
   }
@@ -188,6 +108,7 @@ class AnalystService {
         sessionId: this.currentSession.id,
         duration: this.currentSession.endTime.getTime() - this.currentSession.startTime.getTime(),
         messageCount: this.currentSession.messageCount,
+        persona: this.currentSession.persona,
         topics: this.currentSession.topics
       });
     }
@@ -195,7 +116,23 @@ class AnalystService {
     this.currentSession = null;
   }
 
-  // Persona functionality removed - using single Strategic Analyst personality
+  setPersona(personaId: string) {
+    const persona = ANALYST_PERSONAS.find(p => p.id === personaId);
+    if (persona) {
+      this.currentPersona = personaId;
+      llmService.setPersona(personaId);
+      
+      this.addSystemMessage(
+        `Switched to ${persona.name} persona: ${persona.description}`,
+        'system'
+      );
+
+      logService.log('info', 'Analyst persona changed', { 
+        newPersona: personaId,
+        sessionId: this.currentSession?.id 
+      });
+    }
+  }
 
   async processUserMessage(userInput: string): Promise<AnalystMessage> {
     if (!this.currentSession) {
@@ -218,45 +155,9 @@ class AnalystService {
       retrievedSources: kbResults.sources
     };
 
-    // Check cache first
-    const cachedResponse = analystCache.get(userInput, 'strategic', enhancedContext);
-    if (cachedResponse) {
-      const analystMessage = this.addAnalystMessage(
-        cachedResponse,
-        undefined,
-        undefined,
-        undefined,
-        enhancedContext
-      );
-      
-      this.persistSession();
-      return analystMessage;
-    }
-
-    // Generate LLM response with circuit breaker protection
+    // Generate LLM response
     try {
-      const llmResponse = await circuitBreaker.execute<LLMResponse>(
-        'analyst-llm',
-        async () => {
-          connectionLifecycle.markConnected('analyst-api');
-          return await llmService.generateResponse(userInput, enhancedContext);
-        },
-        async () => {
-          // Fallback response when circuit is open
-          return {
-            content: "I'm currently experiencing high load. Please try again in a moment, or check the cache for recent similar queries.",
-            persona: 'strategic',
-            actionButtons: [
-              {
-                label: 'Retry',
-                eventType: 'analyst.retry',
-                eventData: { message: userInput },
-                variant: 'default' as const
-              }
-            ]
-          };
-        }
-      );
+      const llmResponse = await llmService.generateResponse(userInput, enhancedContext);
       
       // Add analyst response
       const analystMessage = this.addAnalystMessage(
@@ -267,14 +168,11 @@ class AnalystService {
         enhancedContext
       );
 
-      // Cache the response
-      analystCache.set(userInput, 'strategic', llmResponse.content, enhancedContext);
-
       // Log to recorder with knowledge base sources
       recorder.recordAnalystConversation({
         userQuery: userInput,
         analystResponse: llmResponse.content,
-        persona: 'strategic',
+        persona: this.currentPersona,
         citedSources: [...(llmResponse.relatedEventIds || []), ...kbResults.sources],
         chartsGenerated: [],
         confidenceLevel: 0.8
@@ -286,15 +184,12 @@ class AnalystService {
       // Extract topics for session tracking
       this.extractTopics(userInput);
 
-      // Persist session state
-      this.persistSession();
-
       // Emit analyst note event
       eventBus.emit('analyst.note', {
         sessionId: this.currentSession!.id,
         userQuery: userInput,
         response: llmResponse.content,
-        persona: 'strategic',
+        persona: this.currentPersona,
         knowledgeBaseSources: kbResults.sources
       });
 
@@ -307,27 +202,12 @@ class AnalystService {
         sessionId: this.currentSession?.id
       });
 
-      // Mark connection as having issues
-      eventBus.emit('connection.error', {
-        connectionId: 'analyst-api',
-        type: 'api',
-        name: 'Analyst API',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        errorCount: 1
-      });
-
       return this.addAnalystMessage(
-        "I apologize, but I'm having difficulty processing your request right now. The system is attempting to recover automatically. Please try again in a moment.",
+        "I apologize, but I'm having difficulty processing your request right now. Please try again or rephrase your question.",
         [
           {
-            label: 'Retry',
-            eventType: 'analyst.retry',
-            eventData: { message: userInput },
-            variant: 'default'
-          },
-          {
-            label: 'Check Cache',
-            eventType: 'analyst.cache.stats',
+            label: 'Refresh Data',
+            eventType: 'portfolio.refresh.request',
             eventData: {},
             variant: 'outline'
           }
@@ -394,6 +274,7 @@ class AnalystService {
         sessionId: this.currentSession?.id,
         userInputPreview: userInput.substring(0, 100),
         responsePreview: analystResponse.substring(0, 100),
+        persona: this.currentPersona,
         complianceMode: 'educational',
         citedSources: context.retrievedSources || [],
         contextSummary: {
@@ -474,6 +355,7 @@ class AnalystService {
       timestamp: new Date(),
       type: 'analyst',
       content,
+      persona: this.currentPersona,
       actionButtons,
       watchNext,
       relatedEventIds,
@@ -585,7 +467,7 @@ class AnalystService {
   }
 
   getCurrentPersona(): string {
-    return 'strategic'; // Fixed single personality
+    return this.currentPersona;
   }
 
   clearMessages() {

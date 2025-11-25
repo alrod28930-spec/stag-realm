@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCandles } from './useCandles';
+import { useSubscriptionAccess } from './useSubscriptionAccess';
 import { getCurrentUserWorkspace } from '@/utils/auth';
 
 export interface CandleData {
@@ -71,6 +72,8 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
   const [oracleSignals, setOracleSignals] = useState<OracleSignal[]>([]);
   const [workspaceId, setWorkspaceId] = useState<string>('');
   
+  const { subscriptionStatus } = useSubscriptionAccess();
+  
   // Use resilient candles hook
   const { state: candleState, rows: rawCandles } = useCandles(
     workspaceId,
@@ -102,6 +105,12 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
   useEffect(() => {
     const fetchAdditionalData = async () => {
       try {
+        if (subscriptionStatus.isDemo) {
+          setIndicatorData(DEMO_INDICATORS);
+          setOracleSignals(DEMO_SIGNALS);
+          return;
+        }
+
         if (!workspaceId || rawCandles.length === 0) return;
 
         const signalsResponse = await supabase
@@ -148,15 +157,21 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
 
       } catch (err) {
         console.error('Additional chart data fetch error:', err);
-        setIndicatorData([]);
-        setOracleSignals([]);
+        // Fallback to demo data for demo accounts
+        if (subscriptionStatus.isDemo) {
+          setIndicatorData(DEMO_INDICATORS);
+          setOracleSignals(DEMO_SIGNALS);
+        } else {
+          setIndicatorData([]);
+          setOracleSignals([]);
+        }
       }
     };
 
     if (symbol && workspaceId && rawCandles.length > 0) {
       fetchAdditionalData();
     }
-  }, [symbol, workspaceId, rawCandles.length]);
+  }, [symbol, workspaceId, rawCandles.length, subscriptionStatus.isDemo]);
 
   return {
     candleData,
@@ -164,6 +179,7 @@ export const useChartData = (symbol: string, timeframe: string = '1D') => {
     oracleSignals,
     loading,
     error,
+    isDemo: subscriptionStatus.isDemo,
     isDegraded: candleState === 'degraded'
   };
 };

@@ -3,7 +3,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import {
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { 
   Activity, 
   Users, 
   Database, 
@@ -14,10 +15,15 @@ import {
 
 export const WorkspaceMetrics: React.FC = () => {
   const { workspace, workspaceId, isOwner } = useWorkspace();
+  const { entitlements } = useEntitlements(workspaceId);
 
-  const activeFeatures = [];
-  const eliteFeatures = [];
-  const proFeatures = [];
+  const activeFeatures = entitlements.filter(e => e.enabled);
+  const eliteFeatures = activeFeatures.filter(f => 
+    f.feature_code.includes('elite') || f.feature_code.includes('ELITE')
+  );
+  const proFeatures = activeFeatures.filter(f => 
+    f.feature_code.includes('pro') || f.feature_code.includes('PRO')
+  );
 
   const metrics = [
     {

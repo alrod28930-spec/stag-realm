@@ -183,15 +183,12 @@ export function ComplianceStatus({ className }: ComplianceStatusProps) {
                 {complianceData.sessionId.split('_')[1]}
               </code>
             </div>
-            {/* Subscription tier hidden while enforcement is disabled */}
-            {/* 
             <div className="flex items-center justify-between mt-1">
               <span>Compliance Tier</span>
               <Badge variant="outline" className="text-xs">
                 {complianceData.settings.subscriptionTier.complianceLevel.toUpperCase()}
               </Badge>
             </div>
-            */}
           </div>
         </CardContent>
       </Card>

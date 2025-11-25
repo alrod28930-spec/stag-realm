@@ -1,107 +1,130 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-/**
- * Encrypts brokerage credentials and stores them in the database
- */
+interface CredentialRequest {
+  workspace_id: string;
+  provider: string;
+  account_label?: string;
+  api_key: string;
+  api_secret: string;
+  scope?: Record<string, any>;
+}
+
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { broker, mode, apiKey, secretKey, workspaceId } = await req.json().catch(() => ({}));
-    
-    if (!broker || !apiKey || !secretKey || !workspaceId) {
-      return json({ ok: false, error: "missing_parameters" }, 400);
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
     }
 
-    const encryptionKey = Deno.env.get('CREDENTIAL_ENCRYPTION_KEY');
-    if (!encryptionKey) {
-      console.error('❌ CREDENTIAL_ENCRYPTION_KEY not configured');
-      return json({ ok: false, error: "encryption_key_not_configured" }, 500);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: { 
+          autoRefreshToken: false, 
+          persistSession: false,
+          detectSessionInUrl: false
+        }
+      }
+    );
+
+    // Verify the JWT token from the authorization header
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    
+    if (authError || !user) {
+      throw new Error('Invalid authentication');
     }
 
-    console.log(`🔐 Encrypting credentials for ${broker}:${mode}`);
+    const { workspace_id, provider, account_label, api_key, api_secret, scope }: CredentialRequest = await req.json();
 
-    // Generate a random nonce for this encryption
-    const nonce = crypto.getRandomValues(new Uint8Array(12));
-    
-    // Import the encryption key
-    const keyData = new TextEncoder().encode(encryptionKey.padEnd(32, '0').substring(0, 32));
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
+    if (!workspace_id || !provider || !api_key || !api_secret) {
+      throw new Error('Missing required fields');
+    }
+
+    // Generate a random key for encryption (in production, use a proper key derivation)
+    const key = await crypto.subtle.generateKey(
       { name: 'AES-GCM', length: 256 },
       false,
-      ['encrypt']
+      ['encrypt', 'decrypt']
     );
 
     // Encrypt API key
-    const apiKeyEncrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce },
+    const apiKeyEncoder = new TextEncoder();
+    const apiKeyData = apiKeyEncoder.encode(api_key);
+    const apiKeyNonce = crypto.getRandomValues(new Uint8Array(12));
+    const encryptedApiKey = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: apiKeyNonce },
       key,
-      new TextEncoder().encode(apiKey)
+      apiKeyData
     );
 
     // Encrypt secret key
-    const secretKeyEncrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce },
+    const secretData = apiKeyEncoder.encode(api_secret);
+    const secretNonce = crypto.getRandomValues(new Uint8Array(12));
+    const encryptedSecret = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: secretNonce },
       key,
-      new TextEncoder().encode(secretKey)
+      secretData
     );
 
-    // Convert to base64 for storage
-    const apiKeyCipher = btoa(String.fromCharCode(...new Uint8Array(apiKeyEncrypted)));
-    const secretKeyCipher = btoa(String.fromCharCode(...new Uint8Array(secretKeyEncrypted)));
-    const nonceB64 = btoa(String.fromCharCode(...nonce));
+    // For demo purposes, we'll use a simple combined nonce
+    // In production, store the encryption key securely (e.g., in Vault)
+    const combinedNonce = new Uint8Array([...apiKeyNonce, ...secretNonce]);
 
-    // Store in database
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { error: dbError } = await supabase
+    // Store encrypted credentials in database
+    const { data, error } = await supabase
       .from('connections_brokerages')
-      .update({
-        api_key_cipher: apiKeyCipher,
-        api_secret_cipher: secretKeyCipher,
-        nonce: nonceB64,
-        updated_at: new Date().toISOString()
+      .insert({
+        workspace_id,
+        provider,
+        account_label,
+        api_key_cipher: new Uint8Array(encryptedApiKey),
+        api_secret_cipher: new Uint8Array(encryptedSecret),
+        nonce: combinedNonce,
+        scope,
+        status: 'active'
       })
-      .eq('workspace_id', workspaceId)
-      .eq('provider', broker)
-      .eq('mode', mode);
+      .select()
+      .single();
 
-    if (dbError) {
-      console.error('❌ Database error:', dbError);
-      return json({ ok: false, error: "database_error", detail: dbError.message }, 500);
+    if (error) {
+      throw error;
     }
 
-    console.log(`✅ Credentials encrypted and stored for ${broker}:${mode}`);
+    console.log('Brokerage credentials encrypted and stored', { 
+      workspace_id, 
+      provider,
+      connection_id: data.id 
+    });
 
-    return json({
-      ok: true,
-      message: "Credentials encrypted and stored successfully"
+    return new Response(JSON.stringify({ 
+      success: true, 
+      connection_id: data.id,
+      message: 'Credentials encrypted and stored successfully'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('💥 Encryption error:', error);
-    return json({ 
-      ok: false, 
+    console.error('Error encrypting credentials:', error);
+    return new Response(JSON.stringify({ 
       error: (error as Error).message || 'Failed to encrypt credentials'
-    }, 500);
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
-
-function json(body: any, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
-}

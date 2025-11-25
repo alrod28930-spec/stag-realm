@@ -1,4 +1,3 @@
-import { DegradedBanner } from './DegradedBanner';
 import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +7,7 @@ import { Settings, Download, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useEnhancedCandles } from '@/hooks/useEnhancedCandles';
 import { useOracleIndicators } from '@/hooks/useOracleIndicators';
 import { useTimeSync } from '@/hooks/useTimeSync';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { format } from 'date-fns';
 import { getCurrentUserWorkspace } from '@/utils/auth';
 
@@ -50,6 +50,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   const { state, data: candleData, error, lastUpdated } = useEnhancedCandles(workspaceId, symbol, timeframe);
   const { indicators: oracleIndicators } = useOracleIndicators(workspaceId, symbol, timeframe, showOracleSignals);
   const { linked, range, setRange } = useTimeSync();
+  const { subscriptionStatus, checkTabAccess } = useSubscriptionAccess();
+
+  const chartAccess = checkTabAccess('/charts');
+  const canShowAdvanced = chartAccess.hasAccess;
   const loading = state === 'loading';
   const isDegraded = state === 'degraded';
 
@@ -173,7 +177,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
   // Update oracle indicators
   useEffect(() => {
-    if (!chartRef.current || !showIndicators || !oracleIndicators.length) return;
+    if (!chartRef.current || !showIndicators || !canShowAdvanced || !oracleIndicators.length) return;
 
     // Group indicators by name
     const indicatorsByName = oracleIndicators.reduce((acc, ind) => {
@@ -215,7 +219,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       series.setData(lineData);
       indicatorSeriesRef.current.set(name, series);
     });
-  }, [oracleIndicators, showIndicators]);
+  }, [oracleIndicators, showIndicators, canShowAdvanced]);
 
   // Apply linked time range
   useEffect(() => {
@@ -256,11 +260,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   return (
     <Card className={className}>
       {/* Degraded mode banner */}
-      {isDegraded && (
-        <DegradedBanner 
-          message={`Using cached data from ${lastUpdated ? format(lastUpdated, 'HH:mm:ss') : 'earlier'}`}
-          onRetry={() => window.location.reload()}
-        />
+      {isDegraded && lastUpdated && (
+        <div className="absolute top-2 right-2 z-10 text-xs px-2 py-1 bg-amber-500/15 border border-amber-400/30 rounded">
+          Degraded: {format(lastUpdated, 'HH:mm:ss')}
+        </div>
       )}
 
       {showControls && (
@@ -277,22 +280,26 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             </div>
             
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toggleIndicator('sma20')}
-                className={activeIndicators.sma20 ? 'bg-primary text-primary-foreground' : ''}
-              >
-                SMA20
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toggleIndicator('vwap')}
-                className={activeIndicators.vwap ? 'bg-accent text-accent-foreground' : ''}
-              >
-                VWAP
-              </Button>
+              {canShowAdvanced && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleIndicator('sma20')}
+                    className={activeIndicators.sma20 ? 'bg-primary text-primary-foreground' : ''}
+                  >
+                    SMA20
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleIndicator('vwap')}
+                    className={activeIndicators.vwap ? 'bg-accent text-accent-foreground' : ''}
+                  >
+                    VWAP
+                  </Button>
+                </>
+              )}
               
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <Download className="w-4 h-4" />

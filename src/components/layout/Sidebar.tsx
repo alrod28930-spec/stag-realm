@@ -31,6 +31,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { cn } from '@/lib/utils';
 import { Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -40,9 +41,25 @@ export function AppSidebar() {
   const { state, isMobile } = useSidebar();
   const location = useLocation();
   const { user, hasPermission } = useAuthStore();
+  const { checkTabAccess, subscriptionStatus } = useSubscriptionAccess();
   const currentPath = location.pathname;
   const collapsed = state === 'collapsed' && !isMobile;
   
+  const getTierIcon = (path: string) => {
+    const tabAccess = checkTabAccess(path);
+    const tier = tabAccess.requiresTier;
+    
+    switch (tier) {
+      case 'standard':
+        return { Icon: Circle, className: 'text-info' };
+      case 'pro': 
+        return { Icon: Star, className: 'text-accent' };
+      case 'elite':
+        return { Icon: Crown, className: 'text-warning' };
+      default:
+        return null;
+    }
+  };
 
   const navigationItems = [
     { title: 'Dashboard', url: '/dashboard', icon: BarChart3, description: 'Overview & analytics' },
@@ -59,7 +76,7 @@ export function AppSidebar() {
   const adminItems = [
     { title: 'About', url: '/about', icon: Info, description: 'Platform overview' },
     { title: 'User Manual', url: '/user-manual', icon: BookOpen, description: 'Complete user guide' },
-    { title: 'Account & Connections', url: '/account', icon: CreditCard, description: 'Broker & data health' },
+    { title: 'Subscription', url: '/subscription', icon: CreditCard, description: 'Manage your plan' },
     { title: 'Settings', url: '/settings', icon: Settings, description: 'App configuration' },
     { title: 'System Monitor', url: '/system-monitor', icon: Monitor, description: 'Core scaffold health' },
     { title: 'Admin Portal', url: '/admin', icon: Shield, description: 'Admin controls', adminOnly: true },
@@ -116,35 +133,88 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <SidebarMenuButton asChild>
-                          <NavLink to={item.url} className={getNavClassName(item.url)}>
-                            <item.icon className="w-4 h-4 flex-shrink-0 group-hover:text-primary-glow transition-colors" />
-                            {!collapsed && (
-                              <div className="flex flex-col min-w-0 flex-1">
-                                <span className="text-sm font-medium truncate">{item.title}</span>
-                                <span className="text-xs text-sidebar-foreground/60 truncate">
-                                  {item.description}
-                                </span>
-                              </div>
+              {navigationItems.map((item) => {
+                const tabAccess = checkTabAccess(item.url);
+                const active = isActive(item.url);
+                
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <SidebarMenuButton asChild>
+                            {tabAccess.isLocked ? (
+                              <Link 
+                                to="/subscription" 
+                                className={cn(
+                                  "flex items-center gap-3 px-3 py-2 rounded-md transition-smooth group",
+                                  "text-sidebar-foreground/50 hover:bg-sidebar-accent/30 opacity-60 cursor-not-allowed"
+                                )}
+                              >
+                                <div className="relative">
+                                  <item.icon className="w-4 h-4 flex-shrink-0" />
+                                  <Lock className="absolute -top-1 -right-1 h-3 w-3 text-muted-foreground" />
+                                </div>
+                                {!collapsed && (
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium truncate">{item.title}</span>
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-xs px-1 py-0 ml-auto"
+                                      >
+                                        {tabAccess.requiresTier === 'standard' ? 'STD' :
+                                         tabAccess.requiresTier === 'pro' ? 'PRO' : 'ELITE'}
+                                      </Badge>
+                                    </div>
+                                    <span className="text-xs text-sidebar-foreground/40 truncate">
+                                      {item.description}
+                                    </span>
+                                  </div>
+                                )}
+                              </Link>
+                            ) : (
+                              <NavLink to={item.url} className={getNavClassName(item.url)}>
+                                <item.icon className="w-4 h-4 flex-shrink-0 group-hover:text-primary-glow transition-colors" />
+                                {!collapsed && (
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium truncate">{item.title}</span>
+                                      {(() => {
+                                        const tierIcon = getTierIcon(item.url);
+                                        return tierIcon ? <tierIcon.Icon className={`w-3 h-3 ${tierIcon.className}`} /> : null;
+                                      })()}
+                                      {subscriptionStatus.isDemo && (
+                                        <Badge variant="secondary" className="text-xs px-1 py-0 ml-auto">
+                                          DEMO
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-sidebar-foreground/60 truncate">
+                                      {item.description}
+                                    </span>
+                                  </div>
+                                )}
+                              </NavLink>
                             )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-xs">
-                        <div>
-                          <p className="font-medium">{item.title}</p>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </SidebarMenuItem>
-              ))}
+                          </SidebarMenuButton>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs">
+                          <div>
+                            <p className="font-medium">{item.title}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                            {tabAccess.isLocked && (
+                              <p className="text-xs text-warning mt-1">
+                                Upgrade to {tabAccess.requiresTier} to unlock
+                              </p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

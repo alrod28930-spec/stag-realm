@@ -38,7 +38,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { tradeBotEngine } from '@/services/tradeBotEngine';
 import { botTemplateService } from '@/services/botTemplates';
-import { isSubscriptionEnforcementEnabled } from '@/utils/subscriptionGate';
 import type { 
   TradeBotEngine, 
   BotRunMode, 
@@ -233,6 +232,25 @@ export function TradeBotManager({ userTier, isDemo = false }: TradeBotManagerPro
   const formatPercentage = (value: number) => {
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
+
+  if (userTier === 'lite' || userTier === 'standard') {
+    return (
+      <Card className="p-6">
+        <div className="text-center space-y-4">
+          <Bot className="w-16 h-16 mx-auto text-muted-foreground" />
+          <div>
+            <h3 className="text-lg font-semibold">TradeBot Engine</h3>
+            <p className="text-muted-foreground">
+              Autonomous trading bots with machine learning are available for Pro and Elite subscribers.
+            </p>
+          </div>
+          <Button variant="outline">
+            Upgrade to Pro
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

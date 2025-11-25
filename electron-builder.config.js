@@ -129,25 +129,22 @@ module.exports = {
     afterInstall: 'build/linux-post-install.sh'
   },
 
-  // SECURITY: Auto-updates disabled for initial stable release
-  // Re-enable after proper code signing and update feed validation are configured
-  // Publish configuration (for auto-updates) - COMMENTED OUT
-  // publish: [
-  //   {
-  //     provider: 'github',
-  //     owner: 'stagalgo',
-  //     repo: 'desktop-releases'
-  //   }
-  // ],
+  // Publish configuration (for auto-updates)
+  publish: [
+    {
+      provider: 'github',
+      owner: 'stagalgo',
+      repo: 'desktop-releases'
+    }
+  ],
 
   // Compression settings
-  compression: 'maximum'
+  compression: 'maximum',
   
-  // Auto-update configuration - DISABLED FOR SECURITY
-  // Uncomment after implementing proper code signing:
-  // autoUpdater: {
-  //   provider: 'github',
-  //   owner: 'stagalgo',
-  //   repo: 'desktop-releases'
-  // }
+  // Auto-update configuration
+  autoUpdater: {
+    provider: 'github',
+    owner: 'stagalgo',
+    repo: 'desktop-releases'
+  }
 };

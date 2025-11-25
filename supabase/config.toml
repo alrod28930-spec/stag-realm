@@ -1,12 +1,6 @@
 project_id = "vtfpwvzufffmtnovvilx"
 
-[functions.broker-connect]
-verify_jwt = true
-
 [functions.decrypt-brokerage-credentials]
-verify_jwt = true
-
-[functions.update-brokerage-credentials]
 verify_jwt = true
 
 [functions.oracle-realtime-data]
@@ -55,55 +49,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.oracle-health]
-verify_jwt = false
-
-[functions.analyst-core]
-verify_jwt = true
-
-[functions.oracle-top]
-verify_jwt = true
-
-[functions.oracle-score]
-verify_jwt = true
-
-[functions.bid-learn-aggregate]
-verify_jwt = true
-
-[functions.analyst-core-v2]
-verify_jwt = true
-
-[functions.bid-learn-aggregate-v2]
-verify_jwt = false
-
-[functions.oracle-scan-v2]
-verify_jwt = false
-
-[functions.oracle-score-v2]
-verify_jwt = false
-
-[functions.learning-hub-sync]
-verify_jwt = false
-
-[functions.oracle-online-update]
-verify_jwt = false
-
-[functions.analyst-auto-tune]
-verify_jwt = false
-
-[functions.backtest-run]
-verify_jwt = true
-
-[functions.analyst-portfolio-plan]
-verify_jwt = true
-
-[functions.analyst-chat-enhanced]
-verify_jwt = true
-
-[functions.analyst-chat-streaming]
-verify_jwt = true
-
-[functions.analyst-chat-lite]
-verify_jwt = false
-
-[functions.kpis-lite]
 verify_jwt = false

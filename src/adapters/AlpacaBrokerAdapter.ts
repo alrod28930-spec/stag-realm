@@ -2,27 +2,6 @@ import { BrokerAdapter, Position, PortfolioSummary, TradeOrder, TradeResult } fr
 import { logService } from '@/services/logging';
 import { supabase } from '@/integrations/supabase/client';
 
-// Retry helper with exponential backoff
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3, baseDelayMs = 300): Promise<T> {
-  let lastError: Error | undefined;
-  
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      lastError = e as Error;
-      
-      if (i < attempts - 1) {
-        const delay = baseDelayMs * Math.pow(2, i) + Math.random() * 150;
-        console.log(`Retry attempt ${i + 1}/${attempts} after ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-  
-  throw lastError || new Error('Max retries exceeded');
-}
-
 export class AlpacaBrokerAdapter extends BrokerAdapter {
   private alpacaApiKey?: string;
   private alpacaSecretKey?: string;
@@ -149,70 +128,68 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
     }
 
     try {
-      return await withRetry(async () => {
-        const baseUrl = this.accountType === 'live' ? this.liveBaseUrl : this.paperBaseUrl;
-        
-        // Fetch account info
-        const accountResponse = await fetch(`${baseUrl}/v2/account`, {
-          headers: {
-            'APCA-API-KEY-ID': this.alpacaApiKey!,
-            'APCA-API-SECRET-KEY': this.alpacaSecretKey!,
-          },
-        });
-
-        if (!accountResponse.ok) {
-          throw new Error(`Failed to fetch account: ${accountResponse.status}`);
-        }
-
-        const account = await accountResponse.json();
-
-        // Fetch positions
-        const positionsResponse = await fetch(`${baseUrl}/v2/positions`, {
-          headers: {
-            'APCA-API-KEY-ID': this.alpacaApiKey!,
-            'APCA-API-SECRET-KEY': this.alpacaSecretKey!,
-          },
-        });
-
-        if (!positionsResponse.ok) {
-          throw new Error(`Failed to fetch positions: ${positionsResponse.status}`);
-        }
-
-        const alpacaPositions = await positionsResponse.json();
-
-        // Convert Alpaca positions to our format
-        const positions: Position[] = alpacaPositions.map((pos: any) => ({
-          symbol: pos.symbol,
-          name: pos.symbol,
-          shares: parseFloat(pos.qty),
-          avgPrice: parseFloat(pos.avg_cost || pos.cost_basis),
-          currentPrice: parseFloat(pos.market_value) / parseFloat(pos.qty),
-          marketValue: parseFloat(pos.market_value),
-          gainLoss: parseFloat(pos.unrealized_pl),
-          gainLossPercent: parseFloat(pos.unrealized_plpc) * 100,
-          allocation: 0
-        }));
-
-        const totalValue = parseFloat(account.portfolio_value);
-        const availableCash = parseFloat(account.buying_power);
-        const totalGainLoss = parseFloat(account.unrealized_pl);
-        const dayChange = parseFloat(account.unrealized_pl);
-
-        // Calculate allocations
-        positions.forEach(pos => {
-          pos.allocation = (pos.marketValue / totalValue) * 100;
-        });
-
-        return {
-          totalValue,
-          dayChange,
-          dayChangePercent: totalValue > 0 ? (dayChange / totalValue) * 100 : 0,
-          totalGainLoss,
-          totalGainLossPercent: totalValue > 0 ? (totalGainLoss / totalValue) * 100 : 0,
-          availableCash,
-          positions
-        };
+      const baseUrl = this.accountType === 'live' ? this.liveBaseUrl : this.paperBaseUrl;
+      
+      // Fetch account info
+      const accountResponse = await fetch(`${baseUrl}/v2/account`, {
+        headers: {
+          'APCA-API-KEY-ID': this.alpacaApiKey,
+          'APCA-API-SECRET-KEY': this.alpacaSecretKey,
+        },
       });
+
+      if (!accountResponse.ok) {
+        throw new Error(`Failed to fetch account: ${accountResponse.status}`);
+      }
+
+      const account = await accountResponse.json();
+
+      // Fetch positions
+      const positionsResponse = await fetch(`${baseUrl}/v2/positions`, {
+        headers: {
+          'APCA-API-KEY-ID': this.alpacaApiKey,
+          'APCA-API-SECRET-KEY': this.alpacaSecretKey,
+        },
+      });
+
+      if (!positionsResponse.ok) {
+        throw new Error(`Failed to fetch positions: ${positionsResponse.status}`);
+      }
+
+      const alpacaPositions = await positionsResponse.json();
+
+      // Convert Alpaca positions to our format
+      const positions: Position[] = alpacaPositions.map((pos: any) => ({
+        symbol: pos.symbol,
+        name: pos.symbol, // Alpaca doesn't provide company names in positions
+        shares: parseFloat(pos.qty),
+        avgPrice: parseFloat(pos.avg_cost || pos.cost_basis),
+        currentPrice: parseFloat(pos.market_value) / parseFloat(pos.qty),
+        marketValue: parseFloat(pos.market_value),
+        gainLoss: parseFloat(pos.unrealized_pl),
+        gainLossPercent: parseFloat(pos.unrealized_plpc) * 100,
+        allocation: 0 // Will calculate below
+      }));
+
+      const totalValue = parseFloat(account.portfolio_value);
+      const availableCash = parseFloat(account.buying_power);
+      const totalGainLoss = parseFloat(account.unrealized_pl);
+      const dayChange = parseFloat(account.unrealized_pl); // Simplified
+
+      // Calculate allocations
+      positions.forEach(pos => {
+        pos.allocation = (pos.marketValue / totalValue) * 100;
+      });
+
+      return {
+        totalValue,
+        dayChange,
+        dayChangePercent: totalValue > 0 ? (dayChange / totalValue) * 100 : 0,
+        totalGainLoss,
+        totalGainLossPercent: totalValue > 0 ? (totalGainLoss / totalValue) * 100 : 0,
+        availableCash,
+        positions
+      };
     } catch (error) {
       logService.log('error', 'Failed to fetch Alpaca portfolio', { error });
       throw error;
@@ -277,21 +254,19 @@ export class AlpacaBrokerAdapter extends BrokerAdapter {
       throw new Error('Not connected to Alpaca');
     }
 
-    return await withRetry(async () => {
-      const baseUrl = this.accountType === 'live' ? this.liveBaseUrl : this.paperBaseUrl;
-      const response = await fetch(`${baseUrl}/v2/account`, {
-        headers: {
-          'APCA-API-KEY-ID': this.alpacaApiKey!,
-          'APCA-API-SECRET-KEY': this.alpacaSecretKey!,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch account info: ${response.status}`);
-      }
-
-      return await response.json();
+    const baseUrl = this.accountType === 'live' ? this.liveBaseUrl : this.paperBaseUrl;
+    const response = await fetch(`${baseUrl}/v2/account`, {
+      headers: {
+        'APCA-API-KEY-ID': this.alpacaApiKey,
+        'APCA-API-SECRET-KEY': this.alpacaSecretKey,
+      },
     });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch account info: ${response.status}`);
+    }
+
+    return await response.json();
   }
 
   private mapOrderType(orderType: string): string {
